@@ -1,6 +1,17 @@
 import { useState } from "react";
-import { Mail, Phone, Pencil, Plus, Trash2, X, User, Lock, Shield, ChevronDown } from "lucide-react";
-import { ChangePasswordForm } from "@/components/common/ChangePasswordForm";
+import {
+  Mail,
+  Phone,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+  User,
+  Lock,
+  Shield,
+  ChevronDown,
+} from "lucide-react";
+import { ChangePasswordForm } from "@/forms/ChangePasswordForm";
 
 type Role = "Super Admin" | "Manager";
 
@@ -40,7 +51,13 @@ const initialAdmins: Admin[] = [
   },
 ];
 
-const emptyForm = { name: "", email: "", phone: "", image: "", role: "Manager" as Role };
+const emptyForm = {
+  name: "",
+  email: "",
+  phone: "",
+  image: "",
+  role: "Manager" as Role,
+};
 
 export function Admin() {
   const [admins, setAdmins] = useState<Admin[]>(initialAdmins);
@@ -60,7 +77,14 @@ export function Admin() {
     if (!form.name.trim()) return;
     setAdmins((prev) => [
       ...prev,
-      { id: Date.now(), name: form.name, email: form.email, phone: form.phone, image: form.image, role: form.role },
+      {
+        id: Date.now(),
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        image: form.image,
+        role: form.role,
+      },
     ]);
     setShowModal(false);
   };
@@ -84,8 +108,12 @@ export function Admin() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admins</h1>
-          <p className="text-gray-500 mt-1 text-sm sm:text-base">Manage administrative users</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            Admins
+          </h1>
+          <p className="text-gray-500 mt-1 text-sm sm:text-base">
+            Manage administrative users
+          </p>
         </div>
         <button
           onClick={openModal}
@@ -100,11 +128,18 @@ export function Admin() {
       {/* Admins Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {admins.map((admin) => (
-          <div key={admin.id} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col items-center">
+          <div
+            key={admin.id}
+            className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col items-center"
+          >
             {/* Avatar */}
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden mb-3 bg-gray-200 shrink-0">
               {admin.image ? (
-                <img src={admin.image} alt={admin.name} className="w-full h-full object-cover" />
+                <img
+                  src={admin.image}
+                  alt={admin.name}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <User className="w-10 h-10 text-gray-400" />
@@ -113,7 +148,9 @@ export function Admin() {
             </div>
 
             {/* Name & Role */}
-            <p className="font-bold text-gray-900 text-base sm:text-lg text-center">{admin.name}</p>
+            <p className="font-bold text-gray-900 text-base sm:text-lg text-center">
+              {admin.name}
+            </p>
             <span className="flex items-center gap-1.5 mt-1.5 mb-4 bg-purple-100 text-purple-500 text-xs font-medium px-3 py-1 rounded-full">
               <Shield className="w-3 h-3" strokeWidth={2} />
               {admin.role}
@@ -157,7 +194,6 @@ export function Admin() {
         ))}
       </div>
 
-
       {/* Add Admin Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -170,13 +206,19 @@ export function Admin() {
               <X className="w-5 h-5" strokeWidth={2} />
             </button>
 
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Add New Admin</h2>
-            <p className="text-gray-500 text-sm mt-0.5 mb-6">Fill in the admin information</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+              Add New Admin
+            </h2>
+            <p className="text-gray-500 text-sm mt-0.5 mb-6">
+              Fill in the admin information
+            </p>
 
             <div className="space-y-4">
               {/* Full Name */}
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1.5">Full Name</label>
+                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                  Full Name
+                </label>
                 <input
                   type="text"
                   placeholder="John Doe"
@@ -188,7 +230,9 @@ export function Admin() {
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1.5">Email</label>
+                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                  Email
+                </label>
                 <input
                   type="email"
                   placeholder="john@example.com"
@@ -200,7 +244,9 @@ export function Admin() {
 
               {/* Contact Number */}
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1.5">Contact Number</label>
+                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                  Contact Number
+                </label>
                 <input
                   type="text"
                   placeholder="+63 912 345 6789"
@@ -212,7 +258,9 @@ export function Admin() {
 
               {/* Profile Image URL */}
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1.5">Profile Image URL</label>
+                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                  Profile Image URL
+                </label>
                 <input
                   type="text"
                   placeholder="https://example.com/image.jpg"
@@ -224,17 +272,24 @@ export function Admin() {
 
               {/* Role */}
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1.5">Role</label>
+                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                  Role
+                </label>
                 <div className="relative">
                   <select
                     value={form.role}
-                    onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
+                    onChange={(e) =>
+                      setForm({ ...form, role: e.target.value as Role })
+                    }
                     className="w-full appearance-none bg-gray-100 rounded-lg px-3 py-2.5 text-sm text-gray-700 outline-none cursor-pointer"
                   >
                     <option value="Manager">Manager</option>
                     <option value="Super Admin">Super Admin</option>
                   </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" strokeWidth={2} />
+                  <ChevronDown
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                    strokeWidth={2}
+                  />
                 </div>
               </div>
             </div>
@@ -261,7 +316,11 @@ export function Admin() {
       <ChangePasswordForm
         open={showChangePassword}
         onClose={closeChangePasswordModal}
-        title={selectedAdmin ? `Change Password for ${selectedAdmin.name}` : "Change Password"}
+        title={
+          selectedAdmin
+            ? `Change Password for ${selectedAdmin.name}`
+            : "Change Password"
+        }
         subtitle="Set a temporary password and share it securely with the admin user."
       />
     </div>

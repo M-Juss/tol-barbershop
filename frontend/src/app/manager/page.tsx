@@ -2,32 +2,32 @@
 
 import { useState, type ElementType } from "react";
 import {
-  User,
   Calendar,
-  LayoutDashboard,
   LogOut,
-  Scissors,
   BriefcaseBusiness,
+  History,
+  UserPlus,
+  LayoutDashboard
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { Management } from "@/layout/manager/Management";
+import { Appointment } from "@/layout/manager/Appointment";
+import { Walkin } from "@/layout/manager/Walkin";
+import { Historical } from "@/layout/admin/Historical";
 import { Overview } from "@/layout/manager/Overview";
-import { Service } from "@/layout/manager/Service";
-import { Barber } from "@/layout/manager/Barber";
-import { Admin } from "@/layout/manager/Admin";
-import { Slots } from "@/layout/manager/Slots";
 
-type TabKey = "overview" | "service" | "barber" | "admin" | "slots";
+type TabKey = "overview" | "management" | "appointment" | "walkin" | "historical";
 
 export default function ManagerPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
 
   const navItems: { key: TabKey; icon: ElementType; label: string }[] = [
-    { key: "overview", icon: LayoutDashboard, label: "Overview" },
-    { key: "service", icon: BriefcaseBusiness, label: "Service" },
-    { key: "barber", icon: Scissors, label: "Barber" },
-    { key: "admin", icon: User, label: "Admin" },
-    { key: "slots", icon: Calendar, label: "Appointment Slots" },
+    { key: "overview", icon: LayoutDashboard , label: "Overview" },
+    { key: "management", icon: BriefcaseBusiness, label: "Management" },
+    { key: "appointment", icon: Calendar, label: "Appointment" },
+    { key: "walkin", icon: UserPlus, label: "Walk-in" },
+    { key: "historical", icon: History, label: "Historical" },
   ];
 
   return (
@@ -39,6 +39,7 @@ export default function ManagerPage() {
             Tols Barbershop
           </h1>
         </div>
+
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {navItems.map((item) => (
             <button
@@ -56,6 +57,7 @@ export default function ManagerPage() {
             </button>
           ))}
         </nav>
+
         <div className="p-3 border-t border-slate-600">
           <Link
             href="/"
@@ -69,10 +71,10 @@ export default function ManagerPage() {
 
       <main className="flex-1 min-w-0 h-screen overflow-y-auto">
         {activeTab === "overview" && <Overview />}
-        {activeTab === "service" && <Service />}
-        {activeTab === "barber" && <Barber />}
-        {activeTab === "admin" && <Admin />}
-        {activeTab === "slots" && <Slots />}
+        {activeTab === "management" && <Management />}
+        {activeTab === "appointment" && <Appointment />}
+        {activeTab === "walkin" && <Walkin />}
+        {activeTab === "historical" && <Historical />}
       </main>
     </div>
   );
