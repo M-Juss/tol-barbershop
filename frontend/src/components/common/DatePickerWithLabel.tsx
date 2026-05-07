@@ -23,7 +23,6 @@ export function DatePickerWithLabel({
   date,
   onDateChange,
 }: DatePickerWithLabelProps) {
-    
   const [open, setOpen] = useState(false);
   const [internalDate, setInternalDate] = useState<Date | undefined>(undefined);
 
@@ -56,10 +55,13 @@ export function DatePickerWithLabel({
             id={id}
             type="button"
             variant="outline"
+            className="w-full bg-white py-5 justify-between border-gray-300 px-3 font-normal"
           >
-
-\][';l.,']            className="w-full bg-white py-5 justify-between border-gray-300 px-3 font-normal"
-            <span className={selectedDate ? "text-foreground" : "text-muted-foreground"}>
+            <span
+              className={
+                selectedDate ? "text-foreground" : "text-muted-foreground"
+              }
+            >
               {selectedDate ? selectedDate.toLocaleDateString() : placeholder}
             </span>
             <ChevronDown className="h-4 w-4 text-muted-foreground" />

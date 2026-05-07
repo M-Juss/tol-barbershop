@@ -36,21 +36,22 @@ trait ApiResponseTrait
         ], 200);
     }
 
-    protected function error(
-        string $message = 'Something went wrong',
-        array $errors = [],
-        int $status = 400
-    ): JsonResponse {
-        $body = [
-            'success' => false,
-            'message' => $message,
-        ];
+protected function error(
+    string $message = 'Something went wrong',
+    array $errors = [],
+    int $status = 400
+): JsonResponse {
 
-        if (!empty($errors)) {
-            $body['errors'] = $errors;
-        }
+    $body = [
+        'success' => false,
+        'message' => $message,
+    ];
 
-        return response()->json($body, $status);
+    if (!empty($errors)) {
+        $body['errors'] = $errors;
     }
+
+    return response()->json($body, $status);
+}
 
 }

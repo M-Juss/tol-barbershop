@@ -1,4 +1,5 @@
 'use client';
+
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,8 +7,14 @@ import {
   loginSchema,
   LoginSchemaFormValues,
 } from "@/validations/auth.validation";
+import { loginRequest } from "@/services/auth.api";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export function LoginForm() {
+
+  const router = useRouter();
+
   const {
     register: formRegister,
     handleSubmit,
@@ -16,8 +23,28 @@ export function LoginForm() {
     resolver: zodResolver(loginSchema),
   });
 
+  const onSubmit = async (data: LoginSchemaFormValues) => {
+    try {
+      const response = await loginRequest(data);
+      if (response.success == true) {
+        toast.success("Login successful! ");
+        if (response.data.user.role === "customer") {
+          router.push("/customer");
+        }
+      }
+    } catch (error: any) {
+      const errorMessage =
+        error?.message || "Login failed. Please try again.";
+
+      toast.error(errorMessage);
+    }
+  };
+
   return (
-    <form  className="w-full space-y-4">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="w-full space-y-7 relative"
+    >
       <InputWithLabel
         id="email"
         type="email"
@@ -26,8 +53,11 @@ export function LoginForm() {
         className="h-10 border-gray-300 focus-visible:ring-accent/40"
         {...formRegister("email")}
       />
+
       {errors.email && (
-        <p className="text-red-500 text-xs">{errors.email.message}</p>
+        <p className="text-red-500 text-xs absolute top-16">
+          {errors.email.message}
+        </p>
       )}
 
       <InputWithLabel
@@ -38,11 +68,16 @@ export function LoginForm() {
         className="h-10 border-gray-300 focus-visible:ring-accent/40"
         {...formRegister("password")}
       />
+
       {errors.password && (
-        <p className="text-red-500 text-xs">{errors.password.message}</p>
+        <p className="text-red-500 text-xs absolute top-38">
+          {errors.password.message}
+        </p>
       )}
+
       <button
         type="submit"
+        disabled={isSubmitting}
         className="bg-accent hover:bg-accent/90 mb-4 w-full text-white py-2 px-4 rounded-md transition duration-300"
       >
         Login

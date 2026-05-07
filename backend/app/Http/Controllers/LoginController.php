@@ -6,6 +6,8 @@ use App\Http\Requests\LoginRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Traits\ApiResponseTrait;
+use Illuminate\Validation\ValidationException;
+
 
 
 class LoginController extends Controller
@@ -13,18 +15,33 @@ class LoginController extends Controller
     use ApiResponseTrait;
     public function login(LoginRequest $request)
     {
-    
-        $request->authenticate();
-        $user = $request->user();
+        try{
+            $request->authenticate();
+            $user = $request->user();
         
-        $token = $user->createToken('auth_token')->plainTextToken;
+            $token = $user->createToken('auth_token')->plainTextToken;
         
-        $data = [
-            'user' => new UserResource($user),
-            'token' => $token,
-        ];
+            $data = [
+                'user' => new UserResource($user),
+                'token' => $token,
+            ];
         
-        return $this->success('Login successful', $data);
-        
+            return $this->success('Login successful', $data);
+        } catch (ValidationException $e) {
+
+        return $this->error(
+            'Invalid credentials',
+            $e->errors(),
+            401
+        );
+
+    } catch (\Exception $e) {
+
+        return $this->error(
+            'Something went wrong',
+            [],
+            500
+        );
     }
+}
 }

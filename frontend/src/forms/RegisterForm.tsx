@@ -6,8 +6,12 @@ import {
   registerSchema,
   RegisterSchemaFormValues,
 } from "@/validations/auth.validation";
+import { registerCustomerRequest } from "@/services/auth.api";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export function RegisterForm() {
+  const router = useRouter();
   const {
     register: formRegister,
     handleSubmit,
@@ -16,16 +20,41 @@ export function RegisterForm() {
     resolver: zodResolver(registerSchema),
   });
 
+  const onSubmit = async (data: RegisterSchemaFormValues) => {
+    
+    try {
+      const response = await registerCustomerRequest(data);
+      if (response.success == true) {
+        toast.success("Registration successful! ");
+        router.push("/login");
+      }
+    } catch (error: any) {
+      const errorMessage =
+        error?.message || "Registration failed. Please try again.";
+
+      toast.error(errorMessage);
+    }
+  };
+
   return (
-    <form action="" className="w-full space-y-4">
+    <form
+      action=""
+      className="w-full space-y-7 relative"
+      onSubmit={handleSubmit(onSubmit)}
+    >
       <InputWithLabel
-        id="name"
+        id="fullname"
         type="text"
         label="Full Name"
         placeholder="Enter your full name"
         className="h-10 border-gray-300 focus-visible:ring-accent/40"
         {...formRegister("fullname")}
       />
+      {errors.fullname && (
+        <p className="text-red-500 text-xs absolute top-16">
+          {errors.fullname.message}
+        </p>
+      )}
 
       <InputWithLabel
         id="contact_number"
@@ -35,6 +64,11 @@ export function RegisterForm() {
         className="h-10 border-gray-300 focus-visible:ring-accent/40"
         {...formRegister("contact_number")}
       />
+      {errors.contact_number && (
+        <p className="text-red-500 text-xs absolute top-39">
+          {errors.contact_number.message}
+        </p>
+      )}
 
       <InputWithLabel
         id="email"
@@ -44,6 +78,11 @@ export function RegisterForm() {
         className="h-10 border-gray-300 focus-visible:ring-accent/40"
         {...formRegister("email")}
       />
+      {errors.email && (
+        <p className="text-red-500 text-xs absolute top-61">
+          {errors.email.message}
+        </p>
+      )}
 
       <InputWithLabel
         id="password"
@@ -53,6 +92,11 @@ export function RegisterForm() {
         className="h-10 border-gray-300 focus-visible:ring-accent/40"
         {...formRegister("password")}
       />
+      {errors.password && (
+        <p className="text-red-500 text-xs absolute top-83">
+          {errors.password.message}
+        </p>
+      )}
 
       <InputWithLabel
         id="password_confirmation"
@@ -62,12 +106,18 @@ export function RegisterForm() {
         className="h-10 border-gray-300 focus-visible:ring-accent/40"
         {...formRegister("password_confirmation")}
       />
+      {errors.password_confirmation && (
+        <p className="text-red-500 text-xs absolute top-106">
+          {errors.password_confirmation.message}
+        </p>
+      )}
 
       <button
         type="submit"
+        disabled={isSubmitting}
         className="bg-accent hover:bg-accent/90 mb-4 w-full text-white py-2 px-4 rounded-md transition duration-300"
       >
-        Register
+        {isSubmitting ? "Registering..." : "Register"}
       </button>
     </form>
   );

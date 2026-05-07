@@ -15,13 +15,8 @@ export const registerSchema = z.object({
     contact_number: z
     .string()
     .trim()
-    .nonempty("Phone Number is required.")
-    .regex(/^(09|\+639|639)\d{9}$/, "Invalid Phone Number"),
-
-    address: z
-    .string()
-    .trim()
-    .nonempty("Address is required."),
+    .nonempty("Contact Number is required.")
+    .regex(/^(09|\+639|639)\d{9}$/, "Invalid Contact Number"),
 
     password: z
     .string()
@@ -32,11 +27,11 @@ export const registerSchema = z.object({
     password_confirmation: z
     .string()
     .trim()
-    .nonempty("Password is Required!")
+    .nonempty("Password Confirmation is required!")
 
 }).refine((data) => data.password === data.password_confirmation, {
     path: ["password_confirmation"],
-    message: "Password do not match",
+    message: "Passwords do not match",
 });
 
 export type RegisterSchemaFormValues = z.infer<typeof registerSchema>
