@@ -19,6 +19,7 @@ class RegisterRequest extends FormRequest
     {
         return [
             'fullname' => ['required', 'string', 'max:255'],
+            'contact_number' => ['required', 'string', 'max:11'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
         ];
@@ -30,6 +31,9 @@ class RegisterRequest extends FormRequest
             'fullname.required' => 'Full name is required.',
             'fullname.string' => 'Full name must be a string.',
             'fullname.max' => 'Full name must not exceed 255 characters.',
+            'contact_number.required' => 'Contact number is required.',
+            'contact_number.string' => 'Contact number must be a string.',
+            'contact_number.max' => 'Contact number must not exceed 11 characters.',
             'email.required' => 'Email is required.',
             'email.string' => 'Email must be a string.',
             'email.email' => 'Email must be a valid email address.',

@@ -56,8 +56,9 @@ export function DatePickerWithLabel({
             id={id}
             type="button"
             variant="outline"
-            className="w-full bg-white py-5 justify-between border-gray-300 px-3 font-normal"
           >
+
+\][';l.,']            className="w-full bg-white py-5 justify-between border-gray-300 px-3 font-normal"
             <span className={selectedDate ? "text-foreground" : "text-muted-foreground"}>
               {selectedDate ? selectedDate.toLocaleDateString() : placeholder}
             </span>
