@@ -4,8 +4,8 @@ import { LoginForm } from "@/forms/LoginForm";
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-primary">
-      <div className="flex flex-col items-center px-12 py-8 bg-white rounded-lg shadow-md ">
+    <div className="min-h-screen flex items-center justify-center bg-primary p-4">
+      <div className="flex w-full max-w-md flex-col items-center px-6 sm:px-12 py-8 bg-white rounded-lg shadow-md">
         <div className="flex space-x-2 items-center">
           <Image src="/logo.svg" alt="Logo" height={40} width={40} />
           <h1 className="font-bold text-primary text-xl ">Tols Barbershop</h1>

@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 import { Service } from "@/layout/manager/Service";
 import { Admin } from "@/layout/manager/Admin";
@@ -12,15 +13,15 @@ export default function Management() {
   const [activeTab, setActiveTab] = useState<ManagementTab>("Service");
 
   return (
-    <div className="w-full h-full bg-slate-100 p-6 font-sans">
+    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Management</h1>
           <p className="text-gray-500 mt-1">Manage services, admins, barbers, and appointment slots</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl flex p-1 gap-1 mb-4 shadow-sm border border-gray-100 w-fit">
+      <div className="bg-white rounded-xl flex flex-wrap p-1 gap-1 mb-4 shadow-sm border border-gray-100 w-full sm:w-fit">
         {tabs.map((tab) => (
           <button
             key={tab}
@@ -37,7 +38,7 @@ export default function Management() {
         ))}
       </div>
 
-      <div className="-mx-6">
+      <div className="sm:-mx-6">
         {activeTab === "Service" && <Service />}
         {activeTab === "Admin" && <Admin />}
         {activeTab === "Barber" && <Barber />}

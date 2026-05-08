@@ -148,7 +148,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      <header className="fixed z-10 min-w-screen flex items-center text-sm justify-between px-6 py-3 bg-accent/70 backdrop-blur">
+      <header className="fixed z-10 w-full top-0 flex items-center text-sm justify-between px-4 sm:px-6 py-3 bg-accent/70 backdrop-blur">
         <div className="flex space-x-2 items-center">
           <Image src="/logo.svg" alt="Logo" height={40} width={40} />
           <h1 className="font-bold text-primary-foreground text-md">
@@ -191,10 +191,10 @@ export default function Home() {
           />
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-center px-6">
             <div>
-              <h1 className="text-6xl font-extrabold text-white mb-2 ">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-2 ">
                 WHERE STYLE
               </h1>
-              <h1 className="text-6xl font-extrabold text-accent mb-4 ">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-accent mb-4 ">
                 MEETS PRECISION
               </h1>
               <p className="text-white/80 mb-6">
@@ -202,7 +202,7 @@ export default function Home() {
               </p>
               <Link
                 href="/login"
-                className="bg-accent/80 text-accent-foreground px-6 py-3 rounded-xl inline-block"
+                className="bg-accent/80 text-accent-foreground px-4 sm:px-6 py-3 rounded-xl inline-block"
               >
                 Book Appointment
               </Link>
@@ -210,7 +210,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="py-24 px-32 bg-primary flex flex-col items-center">
+        <section className="py-16 sm:py-24 px-4 sm:px-10 lg:px-20 xl:px-32 bg-primary flex flex-col items-center">
           <div className="flex items-center gap-4 ">
             <div className="h-1 w-20 bg-accent rounded-sm"></div>
             <p className="text-accent">
@@ -218,14 +218,14 @@ export default function Home() {
             </p>
             <div className="h-1 w-20 bg-accent rounded-sm"></div>
           </div>
-          <h1 className="text-primary-foreground text-5xl font-semibold mb-4 ">
+          <h1 className="text-primary-foreground text-3xl sm:text-4xl lg:text-5xl font-semibold mb-4 ">
             Our Services
           </h1>
           <h3 className="text-gray-400 mb-12">
             Crafted with precision, delivered with excellence
           </h3>
 
-          <div className="grid lg:grid-cols-2 md:grid-cols-1 gap-14 w-full">
+          <div className="grid lg:grid-cols-2 grid-cols-1 gap-8 lg:gap-14 w-full">
             <div className="flex-col space-y-5">
               {cardServices.map((service, index) => (
                 <div
@@ -259,7 +259,7 @@ export default function Home() {
 
         <section
           id="about"
-          className="lg:px-44 md:px-24 sm:px-20 px-8 py-20 bg-primary/95 grid xl:grid-cols-2 lg:grid-cols-1 gap-15 w-full text-white"
+          className="px-4 sm:px-10 lg:px-20 xl:px-44 py-16 sm:py-20 bg-primary/95 grid xl:grid-cols-2 grid-cols-1 gap-8 lg:gap-12 w-full text-white"
         >
           <div className="my-auto">
             <Image
@@ -274,7 +274,7 @@ export default function Home() {
           <div className="flex flex-col space-y-6">
             <p className="text-accent">ABOUT US</p>
 
-            <p className="text-4xl font-semibold">
+            <p className="text-3xl sm:text-4xl font-semibold">
               Crafting Confidence Through Classic Grooming
             </p>
 
@@ -291,7 +291,7 @@ export default function Home() {
               masterpiece and every shave is an indulgece.
             </p>
 
-            <div className="grid grid-cols-2 gap-7">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-7">
               {cardAbout.map((about, index) => (
                 <div
                   key={index}
@@ -307,9 +307,9 @@ export default function Home() {
 
         <section
           id="gallery"
-          className="xl:px-44 lg:px-24 md:px-24 sm:px-12 px-8 py-20 flex flex-col items-center text-white bg-primary"
+          className="px-4 sm:px-10 lg:px-20 xl:px-44 py-16 sm:py-20 flex flex-col items-center text-white bg-primary"
         >
-          <p className="mb-2 text-5xl font-semibold text-center">Our Gallery</p>
+          <p className="mb-2 text-3xl sm:text-4xl lg:text-5xl font-semibold text-center">Our Gallery</p>
           <p className="mb-8 text-neutral-landing text-center">
             A glimpse into our world of classic grooming and modern
           </p>
@@ -354,7 +354,7 @@ export default function Home() {
 
         <section
           id="testimonial"
-          className="xl:px-44 lg:px-24 md:px-22 sm:px-20 px-8 py-20 flex flex-col items-center bg-primary/95 text-center text-white"
+          className="px-4 sm:px-10 lg:px-20 xl:px-44 py-16 sm:py-20 flex flex-col items-center bg-primary/95 text-center text-white"
         >
           <p className="md:text-5xl sm:text-4xl text-3xl font-semibold mb-4 ">
             What Our Customer Say
@@ -363,7 +363,7 @@ export default function Home() {
             Don't just take our word for it - hear from our satisfied clients
           </p>
 
-          <div className="px-12 py-12 border border-white/12 relative flex flex-col items-center rounded-xl hover:scale-105 transition duration-300">
+          <div className="px-5 sm:px-8 lg:px-12 py-8 sm:py-12 border border-white/12 relative flex flex-col items-center rounded-xl hover:scale-105 transition duration-300">
             <div className="flex gap-1 mb-8">
               {[...Array(5)].map((_, i) => (
                 <Star
@@ -378,7 +378,7 @@ export default function Home() {
               ))}
             </div>
 
-            <p className="text-2xl mb-8">{testimonials[currentIndex].text}</p>
+            <p className="text-lg sm:text-xl lg:text-2xl mb-8">{testimonials[currentIndex].text}</p>
 
             <div className="flex items-center space-x-3 mb-1">
               <p className="px-4 py-3 bg-accent rounded-full font-bold">
@@ -406,7 +406,7 @@ export default function Home() {
         id="contact"
         className="flex flex-col border-y border-white/10 bg-primary text-white "
       >
-        <div className="grid md:grid-cols-3 sm:grid-cols-1 xl:px-56 lg:px-10 sm:px-8 px-8 py-12 gap-12">
+        <div className="grid md:grid-cols-3 grid-cols-1 px-4 sm:px-8 lg:px-10 xl:px-32 py-12 gap-8 sm:gap-12">
           {/*Column 1*/}
           <div className="flex flex-col">
             <div className="flex items-center gap-3 mb-5 ">
@@ -465,7 +465,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex justify-between items-center px-8 py-4 border-t border-white/10 text-center">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 px-4 sm:px-8 py-4 border-t border-white/10 text-center">
           <p className="text-sm text-neutral">
             &copy; 2024 Tols Barbershop. All rights reserved.
           </p>
