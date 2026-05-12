@@ -1,0 +1,169 @@
+"use client";
+import { useState, useEffect } from "react";
+import { Menu, X, LogOut } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+type NavItem = {
+  key: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+};
+
+interface ResponsiveSidebarProps {
+  navItems: NavItem[];
+}
+
+export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
+  const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const sidebar = document.getElementById("mobile-sidebar");
+      const backdrop = document.getElementById("sidebar-backdrop");
+      const hamburger = document.getElementById("hamburger-button");
+
+      if (
+        isOpen &&
+        isMobile &&
+        sidebar &&
+        !sidebar.contains(target) &&
+        backdrop &&
+        !backdrop.contains(target) &&
+        hamburger &&
+        !hamburger.contains(target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen && isMobile) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen, isMobile]);
+
+  // Prevent body scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (isOpen && isMobile) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen, isMobile]);
+
+  const handleNavClick = () => {
+    if (isMobile) {
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <>
+      {/* Hamburger Menu Button - Mobile Only */}
+      <button
+        id="hamburger-button"
+        onClick={() => setIsOpen(true)}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-primary text-primary-foreground hover:bg-slate-800 transition-colors shadow-lg"
+        aria-label="Open menu"
+      >
+        <Menu className="w-6 h-6" />
+      </button>
+
+      {/* Mobile Backdrop */}
+      {isOpen && isMobile && (
+        <div
+          id="sidebar-backdrop"
+          className="md:hidden fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        id="mobile-sidebar"
+        className={`
+          fixed md:sticky top-0 left-0 z-50 md:z-10
+          h-screen w-64 shrink-0 bg-primary text-sm
+          transform transition-transform duration-300 ease-in-out
+          ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+          flex flex-col
+        `}
+      >
+        {/* Logo Section */}
+        <div className="flex items-center justify-between p-4 border-b border-slate-600">
+          <div className="flex space-x-2 items-center">
+            <Image src="/logo.svg" alt="Logo" height={40} width={40} />
+            <h1 className="font-bold text-primary-foreground text-xl">
+              Tols Barbershop
+            </h1>
+          </div>
+          {/* Close Button - Mobile Only */}
+          <button
+            onClick={() => setIsOpen(false)}
+            className="md:hidden p-2 rounded-lg hover:bg-slate-800 text-primary-foreground transition-colors"
+            aria-label="Close menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Navigation Items */}
+        <nav className="flex-1 p-4 space-y-2 overflow-hidden">
+          {navItems.map((item) => (
+            <Link
+              key={item.key}
+              href={item.href}
+              onClick={handleNavClick}
+              className={`
+                w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
+                ${
+                  pathname === item.href
+                    ? "bg-slate-800 text-white"
+                    : "text-gray-300 hover:bg-slate-800 hover:text-white"
+                }
+              `}
+            >
+              <item.icon className="w-5 h-5 shrink-0" />
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+
+        {/* Logout Section */}
+        <div className="p-3 border-t border-slate-600">
+          <Link
+            href="/"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-slate-800 hover:text-white transition-colors"
+          >
+            <LogOut className="w-5 h-5 shrink-0" />
+            <span>Logout</span>
+          </Link>
+        </div>
+      </aside>
+    </>
+  );
+}

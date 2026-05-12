@@ -1,4 +1,10 @@
-import { CalendarDays, CheckCircle2, Clock, Settings, CalendarPlus } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  Settings,
+  CalendarPlus,
+} from "lucide-react";
 import { StatCard } from "@/components/common/StatCard";
 import { AppointmentCardCustomer } from "@/components/common/AppointmentCardCustomer";
 
@@ -7,17 +13,24 @@ type OverviewProps = {
   onProfileSettings: () => void;
 };
 
-export function Overview({ onBookAppointment, onProfileSettings }: OverviewProps) {
+export function Overview({
+  onBookAppointment,
+  onProfileSettings,
+}: OverviewProps) {
   return (
-    <div className="w-full h-full bg-slate-100 p-6 font-sans">
+    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Overview</h1>
-        <p className="text-gray-500 mt-1">Welcome back! Here's your appointment summary.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+          Overview
+        </h1>
+        <p className="text-gray-500 mt-1">
+          Welcome back! Here's your appointment summary.
+        </p>
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         <StatCard
           label="Completed"
           value="3"
@@ -43,8 +56,12 @@ export function Overview({ onBookAppointment, onProfileSettings }: OverviewProps
 
       {/* Upcoming Appointments */}
       <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 mb-4">
-        <h2 className="text-base font-bold text-gray-900">Upcoming Appointments</h2>
-        <p className="text-gray-500 text-sm mb-4">Your scheduled appointments</p>
+        <h2 className="text-base font-bold text-gray-900">
+          Upcoming Appointments
+        </h2>
+        <p className="text-gray-500 text-sm mb-4">
+          Your scheduled appointments
+        </p>
 
         <AppointmentCardCustomer
           service="Premium Haircut + Beard Trim"
@@ -59,11 +76,13 @@ export function Overview({ onBookAppointment, onProfileSettings }: OverviewProps
       {/* Quick Actions */}
       <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
         <h2 className="text-base font-bold text-gray-900">Quick Actions</h2>
-        <p className="text-gray-500 text-sm mb-4">Manage your account and appointments</p>
+        <p className="text-gray-500 text-sm mb-4">
+          Manage your account and appointments
+        </p>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* New Appointment */}
-          
+
           <button
             type="button"
             onClick={onBookAppointment}
@@ -74,7 +93,9 @@ export function Overview({ onBookAppointment, onProfileSettings }: OverviewProps
             </div>
             <div>
               <p className="text-white font-bold text-sm">New Appointment</p>
-              <p className="text-red-100 text-xs mt-0.5">Book your next visit</p>
+              <p className="text-red-100 text-xs mt-0.5">
+                Book your next visit
+              </p>
             </div>
           </button>
 
@@ -89,12 +110,13 @@ export function Overview({ onBookAppointment, onProfileSettings }: OverviewProps
             </div>
             <div>
               <p className="text-white font-bold text-sm">Profile Settings</p>
-              <p className="text-slate-400 text-xs mt-0.5">Update your information</p>
+              <p className="text-slate-400 text-xs mt-0.5">
+                Update your information
+              </p>
             </div>
           </button>
         </div>
       </div>
-
     </div>
   );
 }

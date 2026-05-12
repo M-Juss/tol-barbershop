@@ -23,6 +23,7 @@ export function DatePickerWithLabel({
   date,
   onDateChange,
 }: DatePickerWithLabelProps) {
+  
   const [open, setOpen] = useState(false);
   const [internalDate, setInternalDate] = useState<Date | undefined>(undefined);
 
@@ -72,7 +73,9 @@ export function DatePickerWithLabel({
             mode="single"
             selected={selectedDate}
             onSelect={handleDateSelect}
-            disabled={(day) => day < today || day > maxDate}
+            disabled={(day) =>
+              day < today || day > maxDate || day.getDay() === 0
+            }
             initialFocus
           />
         </PopoverContent>

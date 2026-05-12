@@ -31,16 +31,16 @@ const timeOptions = [
 
 export function NewAppointmentForm() {
   return (
-    <div className="w-full h-full bg-slate-100 font-sans">
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <form className="grid grid-cols-2 gap-x-6 gap-y-5">
+    <div className="w-full bg-slate-100 font-sans">
+      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
+        <form className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
           <div className="col-span-2">
             <InputWithLabel
               id="full-name"
               label="Full Name"
               value="John Dela Cruz"
               disabled
-              className="h-10 bg-gray-100 border-gray-200 text-gray-500"
+              className="h-10 border-gray-200 text-gray-500"
             />
           </div>
 
@@ -50,7 +50,7 @@ export function NewAppointmentForm() {
             label="Email"
             value="john.delacruz@email.com"
             disabled
-            className="h-10 bg-gray-100 border-gray-200 text-gray-500"
+            className="h-10 border-gray-200 text-gray-500"
           />
 
           <InputWithLabel
@@ -58,7 +58,7 @@ export function NewAppointmentForm() {
             label="Contact Number"
             value="+63 912 345 6789"
             disabled
-            className="h-10 bg-gray-100 border-gray-200 text-gray-500"
+            className="h-10 border-gray-200 text-gray-500"
           />
 
           <SelectWithLabel

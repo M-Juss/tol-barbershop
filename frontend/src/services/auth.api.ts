@@ -39,7 +39,7 @@ export const loginRequest = async (data: {
     throw new Error('Failed to login');
   }
   
-  localStorage.setItem('auth_token', res.data.token);
+  localStorage.setItem('auth_token', `Bearer ${res.data.token}`);
 
   return res;
 }

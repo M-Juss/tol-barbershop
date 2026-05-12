@@ -1,8 +1,16 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import {
-  CalendarDays, Clock, User, Mail, Phone,
-  MoreVertical, Check, X, CheckCircle2, UserX,
+  CalendarDays,
+  Clock,
+  User,
+  Mail,
+  Phone,
+  MoreVertical,
+  Check,
+  X,
+  CheckCircle2,
+  UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -42,17 +50,47 @@ const INITIAL_APPROVED: DateGroup[] = [
     label: "Monday, April 20, 2026",
     sortKey: "2026-04-20",
     appointments: [
-      { id: 1, time: "9:00 AM",  name: "Carlos Lopez",   service: "Deluxe Haircut + Hot Towel",   barber: "Miguel Santos" },
-      { id: 2, time: "11:00 AM", name: "Luis Martinez",  service: "Beard Trim",                   barber: "Jose Garcia"   },
-      { id: 3, time: "1:00 PM",  name: "Ana Rodriguez",  service: "Kids Haircut",                 barber: "Ramon Cruz"    },
+      {
+        id: 1,
+        time: "9:00 AM",
+        name: "Carlos Lopez",
+        service: "Deluxe Haircut + Hot Towel",
+        barber: "Miguel Santos",
+      },
+      {
+        id: 2,
+        time: "11:00 AM",
+        name: "Luis Martinez",
+        service: "Beard Trim",
+        barber: "Jose Garcia",
+      },
+      {
+        id: 3,
+        time: "1:00 PM",
+        name: "Ana Rodriguez",
+        service: "Kids Haircut",
+        barber: "Ramon Cruz",
+      },
     ],
   },
   {
     label: "Tuesday, April 21, 2026",
     sortKey: "2026-04-21",
     appointments: [
-      { id: 4, time: "10:00 AM", name: "Roberto Cruz",   service: "Premium Haircut + Beard Trim", barber: "Carlos Reyes"  },
-      { id: 5, time: "4:00 PM",  name: "Sofia Gonzales", service: "Hair Color",                   barber: "Miguel Santos" },
+      {
+        id: 4,
+        time: "10:00 AM",
+        name: "Roberto Cruz",
+        service: "Premium Haircut + Beard Trim",
+        barber: "Carlos Reyes",
+      },
+      {
+        id: 5,
+        time: "4:00 PM",
+        name: "Sofia Gonzales",
+        service: "Hair Color",
+        barber: "Miguel Santos",
+      },
     ],
   },
 ];
@@ -98,13 +136,18 @@ const MOCK_PENDING: PendingRequest[] = [
 
 // ─── Action Menu ──────────────────────────────────────────────────────────────
 
-function ActionMenu({ onSelect }: { onSelect: (action: "completed" | "no-show") => void }) {
+function ActionMenu({
+  onSelect,
+}: {
+  onSelect: (action: "completed" | "no-show") => void;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -113,7 +156,7 @@ function ActionMenu({ onSelect }: { onSelect: (action: "completed" | "no-show") 
   return (
     <div className="relative" ref={ref}>
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen((o) => !o)}
         className="p-1.5 rounded-lg hover:bg-gray-100 transition text-gray-400"
       >
         <MoreVertical className="w-4 h-4" />
@@ -121,13 +164,19 @@ function ActionMenu({ onSelect }: { onSelect: (action: "completed" | "no-show") 
       {open && (
         <div className="absolute right-0 top-8 z-10 w-40 bg-white rounded-xl border border-gray-200 shadow-lg py-1 text-sm">
           <button
-            onClick={() => { onSelect("completed"); setOpen(false); }}
+            onClick={() => {
+              onSelect("completed");
+              setOpen(false);
+            }}
             className="flex items-center gap-2 w-full px-3 py-2 hover:bg-gray-50 text-gray-700"
           >
             <CheckCircle2 className="w-4 h-4 text-green-500" /> Completed
           </button>
           <button
-            onClick={() => { onSelect("no-show"); setOpen(false); }}
+            onClick={() => {
+              onSelect("no-show");
+              setOpen(false);
+            }}
             className="flex items-center gap-2 w-full px-3 py-2 hover:bg-gray-50 text-gray-700"
           >
             <UserX className="w-4 h-4 text-red-400" /> No-show
@@ -153,11 +202,15 @@ function AppointmentRow({
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-1.5">
             <Clock className="w-4 h-4 text-blue-500" />
-            <span className="font-semibold text-gray-900 text-sm">{appt.time}</span>
+            <span className="font-semibold text-gray-900 text-sm">
+              {appt.time}
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             <User className="w-4 h-4 text-gray-400" />
-            <span className="font-semibold text-gray-900 text-sm">{appt.name}</span>
+            <span className="font-semibold text-gray-900 text-sm">
+              {appt.name}
+            </span>
           </div>
         </div>
         <p className="text-xs text-gray-500">
@@ -198,10 +251,21 @@ function PendingCard({
       </div>
       <div className="border-t border-yellow-200 mb-3" />
       <div className="text-xs text-gray-600 space-y-0.5 mb-4">
-        <p><span className="font-medium text-gray-800">Service:</span> {req.service}</p>
-        <p><span className="font-medium text-gray-800">Barber:</span> {req.barber}</p>
-        <p><span className="font-medium text-gray-800">Date:</span> {req.dateLabel}</p>
-        <p><span className="font-medium text-gray-800">Time:</span> {req.time}</p>
+        <p>
+          <span className="font-medium text-gray-800">Service:</span>{" "}
+          {req.service}
+        </p>
+        <p>
+          <span className="font-medium text-gray-800">Barber:</span>{" "}
+          {req.barber}
+        </p>
+        <p>
+          <span className="font-medium text-gray-800">Date:</span>{" "}
+          {req.dateLabel}
+        </p>
+        <p>
+          <span className="font-medium text-gray-800">Time:</span> {req.time}
+        </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <Button
@@ -226,22 +290,25 @@ function PendingCard({
 let nextId = 100;
 
 export default function Appointment() {
-  const [groups,  setGroups]  = useState<DateGroup[]>(INITIAL_APPROVED);
+  const [groups, setGroups] = useState<DateGroup[]>(INITIAL_APPROVED);
   const [pending, setPending] = useState<PendingRequest[]>(MOCK_PENDING);
 
   // Remove appointment from group; also remove the group if it becomes empty
   function handleRemove(apptId: number) {
-    setGroups(prev =>
+    setGroups((prev) =>
       prev
-        .map(g => ({ ...g, appointments: g.appointments.filter(a => a.id !== apptId) }))
-        .filter(g => g.appointments.length > 0)
+        .map((g) => ({
+          ...g,
+          appointments: g.appointments.filter((a) => a.id !== apptId),
+        }))
+        .filter((g) => g.appointments.length > 0),
     );
   }
 
   // Approve: remove from pending, add to correct date group (create if needed)
   function handleApprove(req: PendingRequest) {
-    setPending(prev => prev.filter(r => r.id !== req.id));
-    setGroups(prev => {
+    setPending((prev) => prev.filter((r) => r.id !== req.id));
+    setGroups((prev) => {
       const newAppt: Appointment = {
         id: nextId++,
         time: req.time,
@@ -249,12 +316,12 @@ export default function Appointment() {
         service: req.service,
         barber: req.barber,
       };
-      const exists = prev.find(g => g.sortKey === req.dateSortKey);
+      const exists = prev.find((g) => g.sortKey === req.dateSortKey);
       if (exists) {
-        return prev.map(g =>
+        return prev.map((g) =>
           g.sortKey === req.dateSortKey
             ? { ...g, appointments: [...g.appointments, newAppt] }
-            : g
+            : g,
         );
       }
       const newGroup: DateGroup = {
@@ -262,29 +329,37 @@ export default function Appointment() {
         sortKey: req.dateSortKey,
         appointments: [newAppt],
       };
-      return [...prev, newGroup].sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+      return [...prev, newGroup].sort((a, b) =>
+        a.sortKey.localeCompare(b.sortKey),
+      );
     });
   }
 
   function handleCancel(id: number) {
-    setPending(prev => prev.filter(r => r.id !== id));
+    setPending((prev) => prev.filter((r) => r.id !== id));
   }
 
   return (
-    <div className="w-full bg-slate-100 p-4 sm:p-6 font-sans min-h-screen">
-
+    <div className="w-full bg-slate-100 p-4 sm:p-6 font-sans">
       {/* Page Header */}
       <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Appointments</h1>
-        <p className="text-gray-500 mt-1">Manage appointment requests and scheduled appointments</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+          Appointments
+        </h1>
+        <p className="text-gray-500 mt-1">
+          Manage appointment requests and scheduled appointments
+        </p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-4 items-start">
-
         {/* ── Approved Appointments ── */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-          <h2 className="text-base font-bold text-gray-900">Approved Appointments</h2>
-          <p className="text-sm text-gray-400 mb-5">Scheduled appointments grouped by date</p>
+          <h2 className="text-base font-bold text-gray-900">
+            Approved Appointments
+          </h2>
+          <p className="text-sm text-gray-400 mb-5">
+            Scheduled appointments grouped by date
+          </p>
 
           {groups.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-14 text-gray-400">
@@ -293,18 +368,25 @@ export default function Appointment() {
             </div>
           ) : (
             <div className="flex flex-col gap-6">
-              {groups.map(group => (
+              {groups.map((group) => (
                 <div key={group.sortKey}>
                   <div className="flex items-center gap-3 mb-3">
                     <CalendarDays className="w-5 h-5 text-blue-500" />
-                    <span className="font-bold text-gray-900 text-sm">{group.label}</span>
+                    <span className="font-bold text-gray-900 text-sm">
+                      {group.label}
+                    </span>
                     <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                      {group.appointments.length} appointment{group.appointments.length !== 1 ? "s" : ""}
+                      {group.appointments.length} appointment
+                      {group.appointments.length !== 1 ? "s" : ""}
                     </span>
                   </div>
                   <div className="flex flex-col gap-2">
-                    {group.appointments.map(appt => (
-                      <AppointmentRow key={appt.id} appt={appt} onRemove={handleRemove} />
+                    {group.appointments.map((appt) => (
+                      <AppointmentRow
+                        key={appt.id}
+                        appt={appt}
+                        onRemove={handleRemove}
+                      />
                     ))}
                   </div>
                 </div>
@@ -315,7 +397,9 @@ export default function Appointment() {
 
         {/* ── Pending Requests ── */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-          <h2 className="text-base font-bold text-gray-900">Pending Requests</h2>
+          <h2 className="text-base font-bold text-gray-900">
+            Pending Requests
+          </h2>
           <p className="text-sm text-gray-400 mb-4">{pending.length} pending</p>
 
           {pending.length === 0 ? (
@@ -325,7 +409,7 @@ export default function Appointment() {
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {pending.map(req => (
+              {pending.map((req) => (
                 <PendingCard
                   key={req.id}
                   req={req}
@@ -336,7 +420,6 @@ export default function Appointment() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

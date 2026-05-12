@@ -1,59 +1,163 @@
-import { useState } from "react";
-import { Clock, DollarSign, Pencil, Plus, Trash2, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, AlertTriangle } from "lucide-react";
+import { ServiceForm } from "@/forms/ServiceForm";
+import { ServiceSchemaFormValues } from "@/validations/service.validation";
+import { ServicesCard } from "@/components/common/ServicesCard";
+import {
+  getServices,
+  createService,
+  updateService,
+  deleteService,
+  type Service,
+} from "@/services/manager/service.api";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
-interface Service {
-  id: number;
-  name: string;
-  description: string;
-  duration: number;
-  price: number;
-}
+const isActiveValue = (value: unknown): boolean => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "1" || normalized === "true";
+  }
+  return false;
+};
 
-const initialServices: Service[] = [
-  { id: 1, name: "Regular Haircut", description: "Classic haircut with basic styling", duration: 30, price: 200 },
-  { id: 2, name: "Premium Haircut", description: "Premium haircut with wash and styling", duration: 45, price: 250 },
-  { id: 3, name: "Premium Haircut + Beard Trim", description: "Complete grooming package with haircut and beard styling", duration: 60, price: 350 },
-  { id: 4, name: "Deluxe Haircut + Hot Towel", description: "Luxury haircut experience with hot towel treatment", duration: 60, price: 450 },
-  { id: 5, name: "Beard Trim", description: "Professional beard trimming and shaping", duration: 20, price: 150 },
-  { id: 6, name: "Hair Color", description: "Professional hair coloring service", duration: 120, price: 800 },
-];
+// const initialServices: Service[] = [
+//   {
+//     id: 1,
+//     name: "Regular Haircut",
+//     description: "Classic haircut with basic styling",
+//     duration: 30,
+//     price: 200,
+//   },
+//   {
+//     id: 2,
+//     name: "Premium Haircut",
+//     description: "Premium haircut with wash and styling",
+//     duration: 45,
+//     price: 250,
+//   },
+//   {
+//     id: 3,
+//     name: "Premium Haircut + Beard Trim",
+//     description: "Complete grooming package with haircut and beard styling",
+//     duration: 60,
+//     price: 350,
+//   },
+//   {
+//     id: 4,
+//     name: "Deluxe Haircut + Hot Towel",
+//     description: "Luxury haircut experience with hot towel treatment",
+//     duration: 60,
+//     price: 450,
+//   },
+//   {
+//     id: 5,
+//     name: "Beard Trim",
+//     description: "Professional beard trimming and shaping",
+//     duration: 20,
+//     price: 150,
+//   },
+//   {
+//     id: 6,
+//     name: "Hair Color",
+//     description: "Professional hair coloring service",
+//     duration: 120,
+//     price: 800,
+//   },
+// ];
 
 export function Service() {
-  const [services, setServices] = useState<Service[]>(initialServices);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ name: "", description: "", duration: 30, price: 200 });
+  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState<number | null>(null);
 
-  const openModal = () => {
-    setForm({ name: "", description: "", duration: 30, price: 200 });
+  useEffect(() => {
+    loadServices();
+  }, []);
+
+  const loadServices = async () => {
+    try {
+      setLoading(true);
+      const data = await getServices();
+      setServices(data);
+    } catch (error) {
+      console.error("Failed to load services:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openAddModal = () => {
+    setEditingService(null);
     setShowModal(true);
   };
 
-  const closeModal = () => setShowModal(false);
-
-  const handleAdd = () => {
-    if (!form.name.trim()) return;
-    setServices((prev) => [
-      ...prev,
-      { id: Date.now(), name: form.name, description: form.description, duration: form.duration, price: form.price },
-    ]);
-    setShowModal(false);
+  const openEditModal = (service: Service) => {
+    setEditingService(service);
+    setShowModal(true);
   };
 
-  const handleDelete = (id: number) => {
-    setServices((prev) => prev.filter((s) => s.id !== id));
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingService(null);
+  };
+
+  const handleSubmit = async (data: ServiceSchemaFormValues) => {
+    try {
+      if (editingService) {
+        await updateService(editingService.id, data);
+      } else {
+        await createService(data);
+      }
+      await loadServices();
+      closeModal();
+    } catch (error) {
+      console.error("Failed to save service:", error);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    setServiceToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!serviceToDelete) return;
+    try {
+      await deleteService(serviceToDelete);
+      await loadServices();
+      setDeleteConfirmOpen(false);
+      setServiceToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete service:", error);
+    }
   };
 
   return (
-    <div className="w-full h-full bg-slate-100 p-6 font-sans">
+    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Services</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            Services
+          </h1>
           <p className="text-gray-500 mt-1">Manage your barbershop services</p>
         </div>
         <button
-          onClick={openModal}
-          className="flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white font-semibold rounded-xl px-5 py-3 text-sm"
+          onClick={openAddModal}
+          className="flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white font-semibold rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 text-sm"
         >
           <Plus className="w-4 h-4" strokeWidth={2.5} />
           Add Service
@@ -61,121 +165,75 @@ export function Service() {
       </div>
 
       {/* Services Grid */}
-      <div className="grid grid-cols-3 gap-4">
-        {services.map((service) => (
-          <div key={service.id} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
-            <div>
-              <p className="font-bold text-gray-900 text-base">{service.name}</p>
-              <p className="text-gray-500 text-sm mt-1">{service.description}</p>
-            </div>
-            <div>
-              <div className="flex items-center justify-between mt-4 mb-3">
-                <span className="flex items-center gap-1.5 text-gray-500 text-sm">
-                  <Clock className="w-4 h-4" strokeWidth={1.8} />
-                  {service.duration} mins
-                </span>
-                <span className="flex items-center gap-1 font-bold text-gray-900 text-lg">
-                  <DollarSign className="w-4 h-4 text-gray-500" strokeWidth={1.8} />
-                  ₱{service.price}
-                </span>
-              </div>
-              <div className="border-t border-gray-100 pt-3 flex items-center gap-2">
-                <button className="flex-1 flex items-center justify-center gap-2 border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 transition-colors">
-                  <Pencil className="w-4 h-4" strokeWidth={2} />
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(service.id)}
-                  className="bg-red-500 hover:bg-red-600 transition-colors text-white rounded-lg p-2"
-                >
-                  <Trash2 className="w-5 h-5" strokeWidth={2} />
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-
-      {/* Add Service Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-7 w-full max-w-lg shadow-xl relative">
-            {/* Close */}
-            <button
-              onClick={closeModal}
-              className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 transition-colors"
-            >
-              <X className="w-5 h-5" strokeWidth={2} />
-            </button>
-
-            <h2 className="text-2xl font-bold text-gray-900">Add New Service</h2>
-            <p className="text-gray-500 text-sm mt-0.5 mb-6">Fill in the service information</p>
-
-            {/* Service Name */}
-            <div className="mb-4">
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">Service Name</label>
-              <input
-                type="text"
-                placeholder="e.g., Premium Haircut"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full bg-gray-100 border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-gray-400 transition-colors"
-              />
-            </div>
-
-            {/* Description */}
-            <div className="mb-4">
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">Description</label>
-              <textarea
-                placeholder="Describe the service..."
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                rows={3}
-                className="w-full bg-gray-100 rounded-lg px-3 py-2.5 text-sm text-gray-700 outline-none resize-none focus:border-gray-400 transition-colors"
-              />
-            </div>
-
-            {/* Duration & Price */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1.5">Duration (minutes)</label>
-                <input
-                  type="number"
-                  value={form.duration}
-                  onChange={(e) => setForm({ ...form, duration: Number(e.target.value) })}
-                  className="w-full bg-gray-100 rounded-lg px-3 py-2.5 text-sm text-gray-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1.5">Price (₱)</label>
-                <input
-                  type="number"
-                  value={form.price}
-                  onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-                  className="w-full bg-gray-100 rounded-lg px-3 py-2.5 text-sm text-gray-500 outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={closeModal}
-                className="border border-gray-200 rounded-xl px-6 py-2.5 text-sm font-semibold text-gray-800 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAdd}
-                className="bg-red-500 hover:bg-red-600 transition-colors text-white font-semibold rounded-xl px-6 py-2.5 text-sm"
-              >
-                Add Service
-              </button>
-            </div>
-          </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <p className="text-gray-500">Loading services...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {services.map((service) => (
+            <ServicesCard
+              key={service.id}
+              id={service.id}
+              name={service.name}
+              description={service.description}
+              duration={service.duration}
+              price={service.price}
+              is_active={isActiveValue(service.is_active)}
+              onEdit={openEditModal}
+              onDelete={handleDelete}
+            />
+          ))}
         </div>
       )}
+
+      <ServiceForm
+        open={showModal}
+        onClose={closeModal}
+        onSubmit={handleSubmit}
+        initialData={
+          editingService
+            ? {
+                name: editingService.name,
+                description: editingService.description,
+                duration: editingService.duration,
+                price: editingService.price,
+                is_active: isActiveValue(editingService.is_active),
+              }
+            : undefined
+        }
+        title={editingService ? "Edit Service" : "Add New Service"}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              Delete Service
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this service? This action cannot
+              be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirmOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDelete}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -30,6 +30,10 @@ export function LoginForm() {
         toast.success("Login successful! ");
         if (response.data.user.role === "customer") {
           router.push("/customer");
+        } else if (response.data.user.role === "admin"){
+          router.push("/admin");
+        } else if (response.data.user.role === "manager"){
+          router.push("/manager");
         }
       }
     } catch (error: any) {

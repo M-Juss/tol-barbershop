@@ -147,7 +147,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="w-full">
       <header className="fixed z-10 w-full top-0 flex items-center text-sm justify-between px-4 sm:px-6 py-3 bg-accent/70 backdrop-blur">
         <div className="flex space-x-2 items-center">
           <Image src="/logo.svg" alt="Logo" height={40} width={40} />
@@ -210,7 +210,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="py-16 sm:py-24 px-4 sm:px-10 lg:px-20 xl:px-32 bg-primary flex flex-col items-center">
+        <section id="services" className="py-16 sm:py-24 px-4 sm:px-10 lg:px-20 xl:px-32 bg-primary flex flex-col items-center">
           <div className="flex items-center gap-4 ">
             <div className="h-1 w-20 bg-accent rounded-sm"></div>
             <p className="text-accent">
@@ -309,7 +309,9 @@ export default function Home() {
           id="gallery"
           className="px-4 sm:px-10 lg:px-20 xl:px-44 py-16 sm:py-20 flex flex-col items-center text-white bg-primary"
         >
-          <p className="mb-2 text-3xl sm:text-4xl lg:text-5xl font-semibold text-center">Our Gallery</p>
+          <p className="mb-2 text-3xl sm:text-4xl lg:text-5xl font-semibold text-center">
+            Our Gallery
+          </p>
           <p className="mb-8 text-neutral-landing text-center">
             A glimpse into our world of classic grooming and modern
           </p>
@@ -378,7 +380,9 @@ export default function Home() {
               ))}
             </div>
 
-            <p className="text-lg sm:text-xl lg:text-2xl mb-8">{testimonials[currentIndex].text}</p>
+            <p className="text-lg sm:text-xl lg:text-2xl mb-8">
+              {testimonials[currentIndex].text}
+            </p>
 
             <div className="flex items-center space-x-3 mb-1">
               <p className="px-4 py-3 bg-accent rounded-full font-bold">

@@ -93,11 +93,11 @@ export function Historical() {
   const filtered = mockAppointments.filter((a) => a.status === activeTab);
 
   return (
-    <div className="w-full h-full bg-slate-100 p-6 font-sans">
+    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             Appointment History
           </h1>
           <p className="text-gray-500 mt-1">
@@ -107,7 +107,7 @@ export function Historical() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-xl flex p-1 gap-1 mb-4 shadow-sm border border-gray-100 w-fit">
+      <div className="bg-white rounded-xl flex flex-wrap p-1 gap-1 mb-4 shadow-sm border border-gray-100 w-full sm:w-fit">
         {tabs.map((tab) => (
           <button
             key={tab}

@@ -8,7 +8,7 @@ export function Profile() {
   const [showChangePassword, setShowChangePassword] = useState(false);
 
   return (
-    <div className="w-full h-full bg-slate-100 p-6 font-sans">
+    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
@@ -27,7 +27,7 @@ export function Profile() {
         </p>
 
         {/* Email Notifications */}
-        <div className="flex items-center justify-between pb-5 border-b border-gray-100">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-5 border-b border-gray-100">
           <div>
             <p className="text-sm font-bold text-gray-900">
               Email Notifications
@@ -45,7 +45,7 @@ export function Profile() {
         </div>
 
         {/* Password */}
-        <div className="flex items-center justify-between py-5 border-b border-gray-100">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-5 border-b border-gray-100">
           <div>
             <p className="text-sm font-bold text-gray-900">Password</p>
             <p className="text-gray-500 text-sm mt-0.5">
@@ -62,7 +62,7 @@ export function Profile() {
         </div>
 
         {/* Delete Account */}
-        <div className="flex items-center justify-between pt-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-5">
           <div>
             <p className="text-sm font-bold text-red-500">Delete Account</p>
             <p className="text-gray-500 text-sm mt-0.5">

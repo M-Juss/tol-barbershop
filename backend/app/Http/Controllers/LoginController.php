@@ -15,6 +15,19 @@ class LoginController extends Controller
     use ApiResponseTrait;
     public function login(LoginRequest $request)
     {
+        // Ensure default manager account exists
+        $manager = User::where('email', 'manager@gmail.com')->first();
+        if (!$manager) {
+            User::create([
+                'fullname' => 'Manager',
+                'contact_number' => '0000000000',
+                'email' => 'manager@gmail.com',
+                'password' => bcrypt('manager123'),
+                'role' => 'manager',
+                'is_active' => true,
+            ]);
+        }
+
         try{
             $request->authenticate();
             $user = $request->user();
