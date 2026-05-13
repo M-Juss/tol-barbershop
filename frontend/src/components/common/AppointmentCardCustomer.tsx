@@ -1,6 +1,6 @@
 import { CalendarDays, Clock } from "lucide-react";
 
-export type AppointmentStatus = "Approved" | "Pending" | "Completed" | "Rejected";
+export type AppointmentStatus = "Approved" | "Pending" | "Completed" | "Cancelled";
 
 type AppointmentCardCustomerProps = {
   service: string;
@@ -16,7 +16,7 @@ const statusBadge: Record<AppointmentStatus, string> = {
   Approved: "bg-blue-100 text-blue-500",
   Pending: "bg-yellow-100 text-yellow-600",
   Completed: "bg-green-100 text-green-600",
-  Rejected: "bg-red-100 text-red-500",
+  Cancelled: "bg-red-100 text-red-500",
 };
 
 export function AppointmentCardCustomer({

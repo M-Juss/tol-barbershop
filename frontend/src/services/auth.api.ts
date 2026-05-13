@@ -40,6 +40,7 @@ export const loginRequest = async (data: {
   }
   
   localStorage.setItem('auth_token', `Bearer ${res.data.token}`);
+  localStorage.setItem('auth_user', JSON.stringify(res.data.user));
 
   return res;
 }

@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   Clock,
@@ -12,16 +14,12 @@ import {
   UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type Appointment = {
-  id: number;
-  time: string;
-  name: string;
-  service: string;
-  barber: string;
-};
+import {
+  getAppointments,
+  updateAppointment,
+  type Appointment,
+} from "@/services/customer/appointment.api";
+import { updateAppointmentSchema } from "@/validations/appointment.validation";
 
 type DateGroup = {
   label: string;
@@ -29,125 +27,65 @@ type DateGroup = {
   appointments: Appointment[];
 };
 
-type PendingRequest = {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  service: string;
-  barber: string;
-  dateLabel: string;
-  dateSortKey: string;
-  dateGroupLabel: string;
-  time: string;
-};
+function formatDateLabel(date: string): string {
+  return new Date(date).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+function formatShortDate(date: string): string {
+  return new Date(date).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
-const INITIAL_APPROVED: DateGroup[] = [
-  {
-    label: "Monday, April 20, 2026",
-    sortKey: "2026-04-20",
-    appointments: [
-      {
-        id: 1,
-        time: "9:00 AM",
-        name: "Carlos Lopez",
-        service: "Deluxe Haircut + Hot Towel",
-        barber: "Miguel Santos",
-      },
-      {
-        id: 2,
-        time: "11:00 AM",
-        name: "Luis Martinez",
-        service: "Beard Trim",
-        barber: "Jose Garcia",
-      },
-      {
-        id: 3,
-        time: "1:00 PM",
-        name: "Ana Rodriguez",
-        service: "Kids Haircut",
-        barber: "Ramon Cruz",
-      },
-    ],
-  },
-  {
-    label: "Tuesday, April 21, 2026",
-    sortKey: "2026-04-21",
-    appointments: [
-      {
-        id: 4,
-        time: "10:00 AM",
-        name: "Roberto Cruz",
-        service: "Premium Haircut + Beard Trim",
-        barber: "Carlos Reyes",
-      },
-      {
-        id: 5,
-        time: "4:00 PM",
-        name: "Sofia Gonzales",
-        service: "Hair Color",
-        barber: "Miguel Santos",
-      },
-    ],
-  },
-];
+function formatTime(time24: string): string {
+  const [hours, minutes] = normalizeToHHmm(time24).split(":").map(Number);
+  const d = new Date();
+  d.setHours(hours, minutes, 0, 0);
+  return d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 
-const MOCK_PENDING: PendingRequest[] = [
-  {
-    id: 1,
-    name: "Juan Dela Cruz",
-    email: "juan.delacruz@gmail.com",
-    phone: "+63 917 123 4567",
-    service: "Premium Haircut",
-    barber: "Miguel Santos",
-    dateLabel: "Apr 22, 2026",
-    dateSortKey: "2026-04-22",
-    dateGroupLabel: "Wednesday, April 22, 2026",
-    time: "10:00 AM",
-  },
-  {
-    id: 2,
-    name: "Maria Garcia",
-    email: "maria.garcia@gmail.com",
-    phone: "+63 928 234 5678",
-    service: "Hair Color",
-    barber: "Carlos Reyes",
-    dateLabel: "Apr 23, 2026",
-    dateSortKey: "2026-04-23",
-    dateGroupLabel: "Thursday, April 23, 2026",
-    time: "2:00 PM",
-  },
-  {
-    id: 3,
-    name: "Rico Santos",
-    email: "rico.santos@gmail.com",
-    phone: "+63 939 345 6789",
-    service: "Beard Trim",
-    barber: "Ramon Cruz",
-    dateLabel: "Apr 22, 2026",
-    dateSortKey: "2026-04-22",
-    dateGroupLabel: "Wednesday, April 22, 2026",
-    time: "3:00 PM",
-  },
-];
+function normalizeToHHmm(time: string): string {
+  const match = time.match(/^(\d{2}):(\d{2})/);
+  if (match) {
+    return `${match[1]}:${match[2]}`;
+  }
 
-// ─── Action Menu ──────────────────────────────────────────────────────────────
+  const date = new Date(`1970-01-01T${time}`);
+  if (!Number.isNaN(date.getTime())) {
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+
+  return time;
+}
 
 function ActionMenu({
   onSelect,
 }: {
-  onSelect: (action: "completed" | "no-show") => void;
+  onSelect: (action: "completed" | "no_show") => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node))
+      if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
+      }
     }
+
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
@@ -173,7 +111,7 @@ function ActionMenu({
           </button>
           <button
             onClick={() => {
-              onSelect("no-show");
+              onSelect("no_show");
               setOpen(false);
             }}
             className="flex items-center gap-2 w-full px-3 py-2 hover:bg-gray-50 text-gray-700"
@@ -186,14 +124,12 @@ function ActionMenu({
   );
 }
 
-// ─── Appointment Row ──────────────────────────────────────────────────────────
-
 function AppointmentRow({
   appt,
-  onRemove,
+  onStatusChange,
 }: {
   appt: Appointment;
-  onRemove: (id: number) => void;
+  onStatusChange: (appt: Appointment, status: "completed" | "no_show") => void;
 }) {
   return (
     <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3">
@@ -202,68 +138,69 @@ function AppointmentRow({
           <div className="flex items-center gap-1.5">
             <Clock className="w-4 h-4 text-blue-500" />
             <span className="font-semibold text-gray-900 text-sm">
-              {appt.time}
+              {formatTime(appt.appointment_time)}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <User className="w-4 h-4 text-gray-400" />
             <span className="font-semibold text-gray-900 text-sm">
-              {appt.name}
+              {appt.customer.fullname}
             </span>
           </div>
         </div>
         <p className="text-xs text-gray-500">
-          Service: {appt.service}
+          Service: {appt.service.name}
           <span className="mx-2 text-gray-300">•</span>
-          Barber: {appt.barber}
+          Barber: {appt.barber.fullname}
         </p>
       </div>
-      <ActionMenu onSelect={() => onRemove(appt.id)} />
+      <ActionMenu onSelect={(status) => onStatusChange(appt, status)} />
     </div>
   );
 }
-
-// ─── Pending Card ─────────────────────────────────────────────────────────────
 
 function PendingCard({
   req,
   onApprove,
   onCancel,
 }: {
-  req: PendingRequest;
-  onApprove: (req: PendingRequest) => void;
-  onCancel: (id: number) => void;
+  req: Appointment;
+  onApprove: (appt: Appointment) => void;
+  onCancel: (appt: Appointment) => void;
 }) {
   return (
     <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
       <div className="flex items-center gap-1.5 mb-1">
         <User className="w-4 h-4 text-gray-400" />
-        <span className="font-semibold text-gray-900 text-sm">{req.name}</span>
+        <span className="font-semibold text-gray-900 text-sm">
+          {req.customer.fullname}
+        </span>
       </div>
       <div className="flex items-center gap-1.5 mb-0.5">
         <Mail className="w-3.5 h-3.5 text-gray-400" />
-        <span className="text-xs text-gray-500">{req.email}</span>
+        <span className="text-xs text-gray-500">{req.customer.email}</span>
       </div>
       <div className="flex items-center gap-1.5 mb-3">
         <Phone className="w-3.5 h-3.5 text-gray-400" />
-        <span className="text-xs text-gray-500">{req.phone}</span>
+        <span className="text-xs text-gray-500">{req.customer.contact_number}</span>
       </div>
       <div className="border-t border-yellow-200 mb-3" />
       <div className="text-xs text-gray-600 space-y-0.5 mb-4">
         <p>
           <span className="font-medium text-gray-800">Service:</span>{" "}
-          {req.service}
+          {req.service.name}
         </p>
         <p>
           <span className="font-medium text-gray-800">Barber:</span>{" "}
-          {req.barber}
+          {req.barber.fullname}
         </p>
         <p>
           <span className="font-medium text-gray-800">Date:</span>{" "}
-          {req.dateLabel}
+          {formatShortDate(req.appointment_date)}
         </p>
         <p>
-          <span className="font-medium text-gray-800">Time:</span> {req.time}
+          <span className="font-medium text-gray-800">Time:</span>{" "}
+          {formatTime(req.appointment_time)}
         </p>
       </div>
       <div className="grid grid-cols-2 gap-2">
@@ -274,7 +211,7 @@ function PendingCard({
           <Check className="w-4 h-4" /> Approve
         </Button>
         <Button
-          onClick={() => onCancel(req.id)}
+          onClick={() => onCancel(req)}
           className="bg-red-500 hover:bg-red-600 text-white gap-1.5 text-sm h-9"
         >
           <X className="w-4 h-4" /> Cancel
@@ -284,63 +221,95 @@ function PendingCard({
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+function toDateGroups(appointments: Appointment[]): DateGroup[] {
+  const grouped = appointments.reduce<Record<string, Appointment[]>>((acc, appt) => {
+    const key = appt.appointment_date;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(appt);
+    return acc;
+  }, {});
 
-let nextId = 100;
+  return Object.entries(grouped)
+    .map(([sortKey, appts]) => ({
+      label: formatDateLabel(sortKey),
+      sortKey,
+      appointments: [...appts].sort((a, b) =>
+        a.appointment_time.localeCompare(b.appointment_time),
+      ),
+    }))
+    .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+}
 
 export function Appointment() {
-  const [groups, setGroups] = useState<DateGroup[]>(INITIAL_APPROVED);
-  const [pending, setPending] = useState<PendingRequest[]>(MOCK_PENDING);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updatingIds, setUpdatingIds] = useState<number[]>([]);
 
-  // Remove appointment from group; also remove the group if it becomes empty
-  function handleRemove(apptId: number) {
-    setGroups((prev) =>
-      prev
-        .map((g) => ({
-          ...g,
-          appointments: g.appointments.filter((a) => a.id !== apptId),
-        }))
-        .filter((g) => g.appointments.length > 0),
-    );
-  }
+  const loadAppointments = async () => {
+    try {
+      const data = await getAppointments();
+      setAppointments(data);
+    } catch (error) {
+      console.error("Failed to load appointments:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Approve: remove from pending, add to correct date group (create if needed)
-  function handleApprove(req: PendingRequest) {
-    setPending((prev) => prev.filter((r) => r.id !== req.id));
-    setGroups((prev) => {
-      const newAppt: Appointment = {
-        id: nextId++,
-        time: req.time,
-        name: req.name,
-        service: req.service,
-        barber: req.barber,
+  useEffect(() => {
+    loadAppointments();
+  }, []);
+
+  const pending = useMemo(
+    () => appointments.filter((a) => a.status === "pending"),
+    [appointments],
+  );
+
+  const approvedGroups = useMemo(
+    () => toDateGroups(appointments.filter((a) => a.status === "approved")),
+    [appointments],
+  );
+
+  const runUpdate = async (
+    appt: Appointment,
+    status: "approved" | "cancelled" | "completed" | "no_show",
+  ) => {
+    try {
+      setUpdatingIds((prev) => [...prev, appt.id]);
+
+      const payload = {
+        user_id: appt.customer.id as number,
+        service_id: appt.service.id as number,
+        barber_user_id: appt.barber.id as number,
+        appointment_date: appt.appointment_date,
+        appointment_time: normalizeToHHmm(appt.appointment_time),
+        duration_minutes: appt.duration_minutes,
+        price: Number(appt.price),
+        notes: appt.notes,
+        cancellation_reason:
+          status === "cancelled" ? "Cancelled by manager" : appt.cancellation_reason,
+        status,
       };
-      const exists = prev.find((g) => g.sortKey === req.dateSortKey);
-      if (exists) {
-        return prev.map((g) =>
-          g.sortKey === req.dateSortKey
-            ? { ...g, appointments: [...g.appointments, newAppt] }
-            : g,
-        );
+
+      const validation = updateAppointmentSchema.safeParse(payload);
+      if (!validation.success) {
+        alert(validation.error.issues[0]?.message ?? "Invalid appointment update payload.");
+        return;
       }
-      const newGroup: DateGroup = {
-        label: req.dateGroupLabel,
-        sortKey: req.dateSortKey,
-        appointments: [newAppt],
-      };
-      return [...prev, newGroup].sort((a, b) =>
-        a.sortKey.localeCompare(b.sortKey),
-      );
-    });
-  }
 
-  function handleCancel(id: number) {
-    setPending((prev) => prev.filter((r) => r.id !== id));
-  }
+      await updateAppointment(appt.id, validation.data);
+
+      await loadAppointments();
+    } catch (error) {
+      console.error("Failed to update appointment:", error);
+      alert("Failed to update appointment status.");
+    } finally {
+      setUpdatingIds((prev) => prev.filter((id) => id !== appt.id));
+    }
+  };
 
   return (
     <div className="w-full bg-slate-100 p-4 sm:p-6 font-sans">
-      {/* Page Header */}
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
           Appointments
@@ -351,7 +320,6 @@ export function Appointment() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-4 items-start">
-        {/* ── Approved Appointments ── */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
           <h2 className="text-base font-bold text-gray-900">
             Approved Appointments
@@ -360,14 +328,18 @@ export function Appointment() {
             Scheduled appointments grouped by date
           </p>
 
-          {groups.length === 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-14 text-gray-400">
+              <p className="text-sm">Loading appointments...</p>
+            </div>
+          ) : approvedGroups.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-14 text-gray-400">
               <CalendarDays className="w-10 h-10 mb-2 opacity-20" />
               <p className="text-sm">No appointments scheduled.</p>
             </div>
           ) : (
             <div className="flex flex-col gap-6">
-              {groups.map((group) => (
+              {approvedGroups.map((group) => (
                 <div key={group.sortKey}>
                   <div className="flex items-center gap-3 mb-3">
                     <CalendarDays className="w-5 h-5 text-blue-500" />
@@ -381,11 +353,15 @@ export function Appointment() {
                   </div>
                   <div className="flex flex-col gap-2">
                     {group.appointments.map((appt) => (
-                      <AppointmentRow
+                      <div
                         key={appt.id}
-                        appt={appt}
-                        onRemove={handleRemove}
-                      />
+                        className={updatingIds.includes(appt.id) ? "opacity-60" : ""}
+                      >
+                        <AppointmentRow
+                          appt={appt}
+                          onStatusChange={(item, status) => runUpdate(item, status)}
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -394,14 +370,17 @@ export function Appointment() {
           )}
         </div>
 
-        {/* ── Pending Requests ── */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
           <h2 className="text-base font-bold text-gray-900">
             Pending Requests
           </h2>
           <p className="text-sm text-gray-400 mb-4">{pending.length} pending</p>
 
-          {pending.length === 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-14 text-gray-400">
+              <p className="text-sm">Loading requests...</p>
+            </div>
+          ) : pending.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-14 text-gray-400">
               <Check className="w-10 h-10 mb-2 opacity-20" />
               <p className="text-sm">All requests have been handled.</p>
@@ -409,12 +388,16 @@ export function Appointment() {
           ) : (
             <div className="flex flex-col gap-3">
               {pending.map((req) => (
-                <PendingCard
+                <div
                   key={req.id}
-                  req={req}
-                  onApprove={handleApprove}
-                  onCancel={handleCancel}
-                />
+                  className={updatingIds.includes(req.id) ? "opacity-60" : ""}
+                >
+                  <PendingCard
+                    req={req}
+                    onApprove={(appt) => runUpdate(appt, "approved")}
+                    onCancel={(appt) => runUpdate(appt, "cancelled")}
+                  />
+                </div>
               ))}
             </div>
           )}

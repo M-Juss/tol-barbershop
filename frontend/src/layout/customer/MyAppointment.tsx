@@ -1,12 +1,15 @@
-import { useState } from "react";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import {
   AppointmentCardCustomer,
   type AppointmentStatus,
 } from "@/components/common/AppointmentCardCustomer";
+import { getAppointments, type Appointment } from "@/services/customer/appointment.api";
 
 type Status = AppointmentStatus;
 
-interface Appointment {
+type UiAppointment = {
   id: number;
   service: string;
   barber: string;
@@ -14,87 +17,101 @@ interface Appointment {
   status: Status;
   date: string;
   time: string;
-}
+};
 
-const mockAppointments: Appointment[] = [
-  {
-    id: 1,
-    service: "Premium Haircut + Beard Trim",
-    barber: "Miguel Santos",
-    price: 350,
-    status: "Approved",
-    date: "Apr 20, 2026",
-    time: "10:00 AM",
-  },
-  {
-    id: 2,
-    service: "Classic Haircut",
-    barber: "Ramon Villanueva",
-    price: 200,
-    status: "Pending",
-    date: "Apr 22, 2026",
-    time: "2:00 PM",
-  },
-  {
-    id: 3,
-    service: "Hair Color + Treatment",
-    barber: "Miguel Santos",
-    price: 850,
-    status: "Completed",
-    date: "Mar 15, 2026",
-    time: "11:00 AM",
-  },
-  {
-    id: 4,
-    service: "Beard Styling",
-    barber: "Carlo Reyes",
-    price: 150,
-    status: "Completed",
-    date: "Feb 28, 2026",
-    time: "3:30 PM",
-  },
-  {
-    id: 5,
-    service: "Kids Haircut",
-    barber: "Ramon Villanueva",
-    price: 120,
-    status: "Completed",
-    date: "Jan 10, 2026",
-    time: "9:00 AM",
-  },
-  {
-    id: 6,
-    service: "Hot Towel Shave",
-    barber: "Carlo Reyes",
-    price: 250,
-    status: "Rejected",
-    date: "Apr 18, 2026",
-    time: "1:00 PM",
-  },
-];
-
-const tabs: Status[] = ["Pending", "Approved", "Completed", "Rejected"];
-
-function countByStatus(status: Status) {
-  return mockAppointments.filter((a) => a.status === status).length;
-}
+const tabs: Status[] = ["Pending", "Approved", "Completed", "Cancelled"];
 
 const emptyStatusMessage: Record<Status, string> = {
   Pending: "No pending appointments right now.",
   Approved: "No approved appointments right now.",
   Completed: "No completed appointments yet.",
-  Rejected: "No rejected appointments.",
+  Cancelled: "No cancelled appointments.",
 };
 
-// ── Root Component ─────────────────────────────────────────────────────────
+function toUiStatus(status: Appointment["status"]): Status {
+  if (status === "approved") return "Approved";
+  if (status === "completed") return "Completed";
+  if (status === "pending") return "Pending";
+  return "Cancelled";
+}
+
+function formatDate(date: string): string {
+  return new Date(date).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatTime(time24: string): string {
+  const [hours, minutes] = time24.split(":").map(Number);
+  const d = new Date();
+  d.setHours(hours, minutes, 0, 0);
+  return d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function getCurrentUserId(): number | null {
+  const raw = localStorage.getItem("auth_user");
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed?.id === "number" ? parsed.id : null;
+  } catch {
+    return null;
+  }
+}
+
 export function MyAppointment() {
   const [activeTab, setActiveTab] = useState<Status>("Pending");
+  const [appointments, setAppointments] = useState<UiAppointment[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = mockAppointments.filter((a) => a.status === activeTab);
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      try {
+        const currentUserId = getCurrentUserId();
+        const data = await getAppointments();
+
+        const mapped = data
+          .filter((appt) =>
+            currentUserId ? appt.customer.id === currentUserId : true,
+          )
+          .map((appt) => ({
+            id: appt.id,
+            service: appt.service.name ?? "Unknown service",
+            barber: appt.barber.fullname ?? "Unknown barber",
+            price: Number(appt.price) || 0,
+            status: toUiStatus(appt.status),
+            date: formatDate(appt.appointment_date),
+            time: formatTime(appt.appointment_time),
+          }));
+
+        setAppointments(mapped);
+      } catch (error) {
+        console.error("Failed to load appointments:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAppointments();
+  }, []);
+
+  const filtered = useMemo(
+    () => appointments.filter((a) => a.status === activeTab),
+    [appointments, activeTab],
+  );
+
+  const countByStatus = (status: Status) =>
+    appointments.filter((a) => a.status === status).length;
 
   return (
     <div className="w-full h-full bg-slate-100 p-6 font-sans">
-      {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">My Appointments</h1>
@@ -104,7 +121,6 @@ export function MyAppointment() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="bg-white rounded-xl flex p-1 gap-1 mb-4 shadow-sm border border-gray-100 w-fit">
         {tabs.map((tab) => (
           <button
@@ -121,9 +137,12 @@ export function MyAppointment() {
         ))}
       </div>
 
-      {/* Appointment Cards */}
       <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="rounded-lg p-10 text-center text-gray-400 border border-gray-100">
+            Loading appointments...
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="rounded-lg p-10 text-center text-gray-400 border border-gray-100">
             {emptyStatusMessage[activeTab]}
           </div>

@@ -1,12 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 
 import { Button } from "../ui/button";
 import { Calendar } from "../ui/calendar";
 import { Label } from "../ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { getClosedDates } from "@/services/manager/close.date.api";
+
+// Helper function to format date consistently (local timezone)
+const formatDateToLocal = (date: Date): string => {
+  return (
+    date.getFullYear() +
+    "-" +
+    String(date.getMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(date.getDate()).padStart(2, "0")
+  );
+};
 
 type DatePickerWithLabelProps = {
   id: string;
@@ -14,6 +26,10 @@ type DatePickerWithLabelProps = {
   placeholder?: string;
   date?: Date;
   onDateChange?: (date: Date | undefined) => void;
+  disablePastDates?: boolean;
+  maxDaysAhead?: number;
+  disableSundays?: boolean;
+  disabled?: boolean;
 };
 
 export function DatePickerWithLabel({
@@ -22,10 +38,14 @@ export function DatePickerWithLabel({
   placeholder = "Select date",
   date,
   onDateChange,
+  disablePastDates = false,
+  maxDaysAhead,
+  disableSundays = true,
+  disabled = false,
 }: DatePickerWithLabelProps) {
-  
   const [open, setOpen] = useState(false);
   const [internalDate, setInternalDate] = useState<Date | undefined>(undefined);
+  const [closedDates, setClosedDates] = useState<string[]>([]);
 
   const selectedDate = date ?? internalDate;
 
@@ -33,10 +53,31 @@ export function DatePickerWithLabel({
     const start = new Date();
     start.setHours(0, 0, 0, 0);
 
-    const max = new Date(start);
-    max.setDate(start.getDate() + 30);
+    const max = maxDaysAhead !== undefined ? new Date(start) : undefined;
+    if (max && maxDaysAhead !== undefined) {
+      max.setDate(start.getDate() + maxDaysAhead);
+    }
 
     return { today: start, maxDate: max };
+  }, [maxDaysAhead]);
+
+  // Fetch closed dates when component mounts
+  useEffect(() => {
+    const fetchClosedDates = async () => {
+      try {
+        const response = await getClosedDates(1, 100); // Get all closed dates
+        if (response && response.data) {
+          const dates = response.data.map(
+            (closedDate) => closedDate.date_closed,
+          );
+          setClosedDates(dates);
+        }
+      } catch (error) {
+        console.error("Error fetching closed dates:", error);
+      }
+    };
+
+    fetchClosedDates();
   }, []);
 
   function handleDateSelect(nextDate: Date | undefined) {
@@ -50,12 +91,22 @@ export function DatePickerWithLabel({
   return (
     <div className="grid w-full gap-2">
       <Label htmlFor={id}>{label}</Label>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={disabled ? false : open}
+        onOpenChange={(nextOpen) => {
+          if (disabled) {
+            setOpen(false);
+            return;
+          }
+          setOpen(nextOpen);
+        }}
+      >
         <PopoverTrigger asChild>
           <Button
             id={id}
             type="button"
             variant="outline"
+            disabled={disabled}
             className="w-full bg-white py-5 justify-between border-gray-300 px-3 font-normal"
           >
             <span
@@ -73,8 +124,19 @@ export function DatePickerWithLabel({
             mode="single"
             selected={selectedDate}
             onSelect={handleDateSelect}
-            disabled={(day) =>
-              day < today || day > maxDate || day.getDay() === 0
+            disabled={
+              disabled ||
+              ((day) => {
+                const isPast = disablePastDates && day < today;
+                const isAfterMax = maxDate && day > maxDate;
+                const isSunday = disableSundays && day.getDay() === 0;
+
+                // Check if the date is a closed date (using local timezone)
+                const dayString = formatDateToLocal(day);
+                const isClosedDate = closedDates.includes(dayString);
+
+                return isPast || isAfterMax || isSunday || isClosedDate;
+              })
             }
             initialFocus
           />

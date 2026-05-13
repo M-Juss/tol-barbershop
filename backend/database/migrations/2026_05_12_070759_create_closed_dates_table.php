@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->date('date_closed');
             $table->string('reason');
+            $table->boolean('is_removed')->default(false);
             $table->timestamps();
         });
     }

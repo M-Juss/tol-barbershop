@@ -9,5 +9,6 @@ class ClosedDates extends Model
     protected $fillable = [
         'date_closed',
         'reason',
+        'is_removed',
     ];
 }

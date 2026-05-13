@@ -3,7 +3,16 @@ import { useState, useEffect } from "react";
 import { Menu, X, LogOut } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 type NavItem = {
   key: string;
@@ -18,8 +27,10 @@ interface ResponsiveSidebarProps {
 
 export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   // Detect mobile screen size
   useEffect(() => {
@@ -79,6 +90,13 @@ export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
     if (isMobile) {
       setIsOpen(false);
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.clear();
+    setShowLogoutDialog(false);
+    setIsOpen(false);
+    router.push("/");
   };
 
   return (
@@ -155,15 +173,39 @@ export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
 
         {/* Logout Section */}
         <div className="p-3 border-t border-slate-600">
-          <Link
-            href="/"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-slate-800 hover:text-white transition-colors"
+          <button
+            type="button"
+            onClick={() => setShowLogoutDialog(true)}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-slate-800 hover:text-white transition-colors w-full  "
           >
             <LogOut className="w-5 h-5 shrink-0" />
             <span>Logout</span>
-          </Link>
+          </button>
         </div>
       </aside>
+
+      <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirm Logout</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to log out of your account?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowLogoutDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleLogout}>
+              Logout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -1,47 +1,53 @@
-import { useState } from "react";
-import { Plus, Clock, CalendarDays, Timer, Ban } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  Plus,
+  Clock,
+  CalendarDays,
+  Timer,
+  Ban,
+  Calendar,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
 import { TimeSlots } from "@/components/common/TimeSlots";
-import { CloseDates } from "@/components/common/ClosedDates";
 import { ActivityLog } from "@/components/common/ActivityLog";
 import { ClosedDateForm } from "@/forms/ClosedDateForm";
 import { ClosedDateSchemaFormValues } from "@/validations/closed.date.validation";
+import {
+  getClosedDates,
+  createClosedDate,
+  updateClosedDate,
+  getAllClosedDatesForActivityLog,
+  ClosedDate,
+} from "@/services/manager/close.date.api";
+
+// Helper function to format date consistently (local timezone)
+const formatDateToLocal = (date: Date): string => {
+  return (
+    date.getFullYear() +
+    "-" +
+    String(date.getMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(date.getDate()).padStart(2, "0")
+  );
+};
 
 export function Slots() {
   const [showClosedDateModal, setShowClosedDateModal] = useState(false);
-
-  const MOCK_CLOSED_DATES = [
-    { label: "April 17, 2026" },
-    { label: "April 18, 2026" },
-    { label: "April 19, 2026" },
-  ];
-
-  const MOCK_ACTIVITY_LOGS = [
-    {
-      action: "Closed date added",
-      details: "Manager marked April 17, 2026 as unavailable.",
-      time: "8:15 AM",
-    },
-    {
-      action: "Time slot removed",
-      details: "The 10:00 AM slot was removed from weekday schedule.",
-      time: "9:40 AM",
-    },
-    {
-      action: "Time slot added",
-      details: "Added a new 6:00 PM appointment slot.",
-      time: "11:05 AM",
-    },
-    {
-      action: "Closed date removed",
-      details: "April 19, 2026 was reopened for bookings.",
-      time: "1:20 PM",
-    },
-    {
-      action: "Schedule updated",
-      details: "Adjusted afternoon slots for weekend availability.",
-      time: "3:45 PM",
-    },
-  ];
+  const [closedDates, setClosedDates] = useState<ClosedDate[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [activityLogs, setActivityLogs] = useState<
+    Array<{
+      action: string;
+      details: string;
+      time: string;
+    }>
+  >([]);
+  const [activityCurrentPage, setActivityCurrentPage] = useState(1);
+  const [activityTotalPages, setActivityTotalPages] = useState(1);
+  const [activityLoading, setActivityLoading] = useState(true);
 
   const scheduleInfo = [
     {
@@ -54,7 +60,7 @@ export function Slots() {
     {
       icon: Clock,
       label: "Working Hours",
-      value: "9:00 AM – 5:00 PM",
+      value: "9:00 AM – 7:00 PM",
       accent: "bg-emerald-50 text-emerald-600",
       iconBg: "bg-emerald-100",
     },
@@ -74,6 +80,90 @@ export function Slots() {
     },
   ];
 
+  const fetchClosedDates = async (page: number = 1) => {
+    try {
+      setLoading(true);
+
+      // Fetch main closed dates (non-removed only)
+      const response = await getClosedDates(page, 5);
+
+      // Check if response and response.data exist before proceeding
+      if (!response || !response.data) {
+        console.error("Invalid response structure:", response);
+        setClosedDates([]);
+        setCurrentPage(1);
+        setTotalPages(1);
+        return;
+      }
+
+      // Set main closed dates (backend already filters out removed ones)
+      setClosedDates(response.data);
+      setCurrentPage(response.current_page || 1);
+      setTotalPages(response.last_page || 1);
+    } catch (error) {
+      console.error("Error fetching closed dates:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchActivityLogs = async (page: number = 1) => {
+    try {
+      setActivityLoading(true);
+
+      // Fetch all closed dates for activity log
+      const activityResponse = await getAllClosedDatesForActivityLog(page, 5);
+
+      // Generate activity logs from all closed dates (including removed ones)
+      if (activityResponse && activityResponse.data) {
+        const logs = activityResponse.data.map((date: ClosedDate) => {
+          const formattedDate = new Date(date.date_closed).toLocaleDateString(
+            "en-US",
+            {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            },
+          );
+
+          const timeField = date.is_removed ? date.updated_at : date.created_at;
+          const time = new Date(timeField).toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          });
+
+          return {
+            action: date.is_removed
+              ? `${formattedDate} has been re-opened`
+              : `${formattedDate} has been closed`,
+            details: date.reason,
+            time: time,
+          };
+        });
+
+        setActivityLogs(logs);
+        setActivityCurrentPage(activityResponse.current_page || 1);
+        setActivityTotalPages(activityResponse.last_page || 1);
+      }
+    } catch (error) {
+      console.error("Error fetching activity logs:", error);
+    } finally {
+      setActivityLoading(false);
+    }
+  };
+
+  const fetchAllData = async (page: number = 1) => {
+    await Promise.all([
+      fetchClosedDates(page),
+      fetchActivityLogs(activityCurrentPage),
+    ]);
+  };
+
+  useEffect(() => {
+    fetchAllData();
+  }, []);
+
   const openClosedDateModal = () => {
     setShowClosedDateModal(true);
   };
@@ -82,9 +172,50 @@ export function Slots() {
     setShowClosedDateModal(false);
   };
 
-  const handleClosedDateSubmit = async (_data: ClosedDateSchemaFormValues) => {
-    // TODO: connect closed-date create API when backend endpoint is ready.
-    closeClosedDateModal();
+  const handleClosedDateSubmit = async (data: ClosedDateSchemaFormValues) => {
+    try {
+      await createClosedDate({
+        date_closed: formatDateToLocal(data.date_closed!),
+        reason: data.reason,
+      });
+      await fetchAllData(currentPage);
+      closeClosedDateModal();
+
+      // Show success toast
+      const formattedDate = data.date_closed!.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      toast.success(`Closed date added successfully for ${formattedDate}`);
+    } catch (error) {
+      console.error("Error creating closed date:", error);
+      toast.error("Failed to add closed date");
+    }
+  };
+
+  const handleRemoveClosedDate = async (id: number, dateClosed: string) => {
+    try {
+      await updateClosedDate(id, {
+        date_closed: dateClosed,
+        reason: `${dateClosed} is now available to be booked`,
+        is_removed: true,
+      });
+      // Automatic refetch after update to refresh pagination and data
+      await fetchAllData(currentPage);
+
+      // Show success toast
+      const date = new Date(dateClosed);
+      const formattedDate = date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      toast.success(`${formattedDate} has been reopened successfully`);
+    } catch (error) {
+      console.error("Error removing closed date:", error);
+      toast.error("Failed to reopen closed date");
+    }
   };
 
   return (
@@ -110,17 +241,70 @@ export function Slots() {
             </div>
             <button
               onClick={openClosedDateModal}
-              className="flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white font-semibold rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 text-sm"
+              className="flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm rounded-lg px-4 py-2"
             >
-              <Plus className="w-4 h-4" strokeWidth={2.5} />
-              Close Dates
+              <Plus className="w-3 h-3" strokeWidth={2} />
+              Add Closed Date
             </button>
           </div>
           <div className="space-y-2">
-            {MOCK_CLOSED_DATES.map((date) => (
-              <CloseDates key={date.label} label={date.label} />
-            ))}
+            {loading ? (
+              <p className="text-gray-500 text-sm">Loading...</p>
+            ) : closedDates.length === 0 ? (
+              <p className="text-gray-500 text-sm">No closed dates found</p>
+            ) : (
+              closedDates.map((date) => {
+                const formattedDate = new Date(
+                  date.date_closed,
+                ).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                });
+                return (
+                  <div
+                    key={date.id}
+                    className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-md"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Calendar size={16} className="text-red-500" />
+                      <p className="text-sm text-gray-700">{formattedDate}</p>
+                    </div>
+                    <button
+                      onClick={() =>
+                        handleRemoveClosedDate(date.id, date.date_closed)
+                      }
+                      className="text-red-600 hover:text-red-700 hover:bg-red-100 p-1 rounded"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })
+            )}
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center mt-4">
+              <button
+                onClick={() => fetchClosedDates(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => fetchClosedDates(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Schedule Overview Card */}
@@ -133,27 +317,29 @@ export function Slots() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
-            {scheduleInfo.map(({ icon: Icon, label, value, accent, iconBg }) => (
-              <div
-                key={label}
-                className="flex items-center gap-3 rounded-xl border border-gray-100 bg-slate-50 px-4 py-3.5 hover:bg-slate-100 transition-colors"
-              >
-                <div className={`${iconBg} rounded-lg p-2 shrink-0`}>
-                  <Icon
-                    className={`w-4 h-4 ${accent.split(" ")[1]}`}
-                    strokeWidth={2}
-                  />
+            {scheduleInfo.map(
+              ({ icon: Icon, label, value, accent, iconBg }) => (
+                <div
+                  key={label}
+                  className="flex items-center gap-3 rounded-xl border border-gray-100 bg-slate-50 px-4 py-3.5 hover:bg-slate-100 transition-colors"
+                >
+                  <div className={`${iconBg} rounded-lg p-2 shrink-0`}>
+                    <Icon
+                      className={`w-4 h-4 ${accent.split(" ")[1]}`}
+                      strokeWidth={2}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide leading-none mb-1">
+                      {label}
+                    </p>
+                    <p className="text-sm font-semibold text-gray-800 truncate">
+                      {value}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide leading-none mb-1">
-                    {label}
-                  </p>
-                  <p className="text-sm font-semibold text-gray-800 truncate">
-                    {value}
-                  </p>
-                </div>
-              </div>
-            ))}
+              ),
+            )}
           </div>
 
           {/* Subtle divider + status pill */}
@@ -174,15 +360,44 @@ export function Slots() {
           Recent changes to appointment slots
         </p>
         <div className="space-y-3 overflow-y-auto">
-          {MOCK_ACTIVITY_LOGS.map((log, index) => (
-            <ActivityLog
-              key={`${log.action}-${index}`}
-              action={log.action}
-              details={log.details}
-              time={log.time}
-            />
-          ))}
+          {activityLoading ? (
+            <p className="text-gray-500 text-sm">Loading activity logs...</p>
+          ) : activityLogs.length === 0 ? (
+            <p className="text-gray-500 text-sm">No activity logs found</p>
+          ) : (
+            activityLogs.map((log, index) => (
+              <ActivityLog
+                key={`${log.action}-${index}`}
+                action={log.action}
+                details={log.details}
+                time={log.time}
+              />
+            ))
+          )}
         </div>
+
+        {/* Activity Log Pagination */}
+        {activityTotalPages > 1 && (
+          <div className="flex justify-between items-center mt-4">
+            <button
+              onClick={() => fetchActivityLogs(activityCurrentPage - 1)}
+              disabled={activityCurrentPage === 1}
+              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-600">
+              Page {activityCurrentPage} of {activityTotalPages}
+            </span>
+            <button
+              onClick={() => fetchActivityLogs(activityCurrentPage + 1)}
+              disabled={activityCurrentPage === activityTotalPages}
+              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
       <ClosedDateForm

@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class ClosedDatesRequest extends FormRequest
+class ChangePasswordRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -23,20 +23,16 @@ class ClosedDatesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'date_closed' => 'required|date',
-            'reason' => 'required|string',
-            'is_removed' => 'boolean',
+            'current_password' => ['required', 'string', 'current_password'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password_confirmation' => ['required', 'string'],
         ];
     }
-    
+
     public function messages(): array
     {
         return [
-            'date_closed.required' => 'Date is required',
-            'date_closed.date' => 'Date must be a valid date',
-            'reason.required' => 'Reason is required',
-            'reason.string' => 'Reason must be a string',
-            'is_removed.boolean' => 'Is removed must be a boolean',
+            'current_password.current_password' => 'Your current password is incorrect.',
         ];
     }
 }

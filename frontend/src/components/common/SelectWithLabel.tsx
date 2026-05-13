@@ -10,6 +10,7 @@ import {
 type SelectOption = {
   value: string;
   label: string;
+  disabled?: boolean;
 };
 
 type SelectWithLabelProps = {
@@ -50,7 +51,11 @@ export function SelectWithLabel({
         </SelectTrigger>
         <SelectContent align="start" className="w-[var(--radix-select-trigger-width)]">
           {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              disabled={option.disabled}
+            >
               {option.label}
             </SelectItem>
           ))}

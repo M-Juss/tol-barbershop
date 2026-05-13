@@ -3,6 +3,8 @@ import { Lock, Trash2 } from "lucide-react";
 
 import { ChangePasswordForm } from "@/forms/ChangePasswordForm";
 import { AccountInformationForm } from "@/forms/AccountInformationForm";
+import { changePassword } from "@/services/customer/user.api";
+import { toast } from "sonner";
 
 export function Profile() {
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -79,6 +81,19 @@ export function Profile() {
       <ChangePasswordForm
         open={showChangePassword}
         onClose={() => setShowChangePassword(false)}
+        onSubmit={async (payload) => {
+          try {
+            await changePassword(payload);
+            toast.success("Password updated successfully");
+          } catch (error) {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Failed to update password",
+            );
+            throw error;
+          }
+        }}
       />
     </div>
   );

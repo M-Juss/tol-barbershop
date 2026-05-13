@@ -161,9 +161,17 @@ export function Barber() {
               <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden mb-3 sm:mb-4 bg-gray-200 shrink-0">
                 {barber.image ? (
                   <img
-                    src={barber.image}
+                    src={
+                      barber.image.startsWith("http")
+                        ? barber.image
+                        : `/storage/${barber.image}`
+                    }
                     alt={barber.fullname}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = "";
+                      e.currentTarget.style.backgroundColor = "#f3f4f";
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">

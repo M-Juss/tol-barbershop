@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
+import { Toaster } from "@/components/ui/sonner";
 
 const navItems = [
   {
@@ -52,6 +53,7 @@ export default function ManagerLayout({
       <main className="flex-1 overflow-y-auto bg-gray-100 md:pl-0 pt-16 md:pt-0">
         {children}
       </main>
+      <Toaster />
     </div>
   );
 }

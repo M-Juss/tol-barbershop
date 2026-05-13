@@ -4,6 +4,8 @@ import { Lock, Trash2 } from "lucide-react";
 
 import { ChangePasswordForm } from "@/forms/ChangePasswordForm";
 import { AccountInformationForm } from "@/forms/AccountInformationForm";
+import { changePassword } from "@/services/customer/user.api";
+import { toast } from "sonner";
 
 export default function Profile() {
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -12,7 +14,9 @@ export default function Profile() {
     <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Profile</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+          Profile
+        </h1>
         <p className="text-gray-500 mt-1">
           Manage your account settings and preferences
         </p>
@@ -80,6 +84,19 @@ export default function Profile() {
       <ChangePasswordForm
         open={showChangePassword}
         onClose={() => setShowChangePassword(false)}
+        onSubmit={async (payload) => {
+          try {
+            await changePassword(payload);
+            toast.success("Password updated successfully");
+          } catch (error) {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Failed to update password",
+            );
+            throw error;
+          }
+        }}
       />
     </div>
   );
