@@ -81,8 +81,8 @@ export function ClosedDateForm({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
-          <div className="space-y-1.5">
+        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-5">
+          <div className="relative ">
             <DatePickerWithLabel
               id="date_closed"
               label="Closed Date"
@@ -95,13 +95,13 @@ export function ClosedDateForm({
               }
             />
             {errors.date_closed && (
-              <p className="text-red-500 text-xs">
-                {errors.date_closed.message}
+              <p className="absolute left-0 top-full  text-red-500 text-xs">
+                Date is required
               </p>
             )}
           </div>
 
-          <div className="space-y-1.5">
+          <div className="relative ">
             <TextAreaWithLabel
               id="reason"
               label="Reason"
@@ -110,7 +110,7 @@ export function ClosedDateForm({
               {...register("reason")}
             />
             {errors.reason && (
-              <p className="text-red-500 text-xs">{errors.reason.message}</p>
+              <p className="absolute left-0 top-full mt-1 text-red-500 text-xs">{errors.reason.message}</p>
             )}
           </div>
 

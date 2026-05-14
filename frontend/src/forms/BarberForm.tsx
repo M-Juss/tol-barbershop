@@ -33,6 +33,15 @@ const statusOptions = [
   { value: "false", label: "Inactive" },
 ];
 
+const getImageUrl = (image: string | null | undefined): string => {
+  if (!image) return "";
+  if (image.startsWith("http://") || image.startsWith("https://")) return image;
+
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/api\/?$/, "");
+  const normalizedPath = image.startsWith("/") ? image : `/${image}`;
+  return `${apiBase}${normalizedPath}`;
+};
+
 export function BarberForm({
   open,
   onClose,
@@ -62,7 +71,7 @@ export function BarberForm({
   const [imagePreview, setImagePreview] = useState<string>("");
 
   useEffect(() => {
-    const newImagePreview = initialData?.image || "";
+    const newImagePreview = getImageUrl(initialData?.image);
     setImagePreview(newImagePreview);
     setImageFile(null);
 
@@ -108,15 +117,8 @@ export function BarberForm({
     await onSubmit?.(submitData);
   };
 
-  const onFormInvalid: SubmitErrorHandler<BarberSchemaFormValues> = (
-    formErrors,
-  ) => {
-    const firstMessage = Object.values(formErrors)[0]?.message;
-    toast.error(
-      typeof firstMessage === "string"
-        ? firstMessage
-        : "Please check the form fields.",
-    );
+  const onFormInvalid: SubmitErrorHandler<BarberSchemaFormValues> = () => {
+    toast.error("Failed to save barber");
   };
 
   return (
@@ -168,44 +170,50 @@ export function BarberForm({
           </div>
 
           {/* Full Name */}
-          <InputWithLabel
-            id="fullname"
-            label="Full Name"
-            placeholder="John Doe"
-            className="border-gray-300 focus:border-gray-400 h-10"
-            {...formRegister("fullname")}
-          />
-          {errors.fullname && (
-            <p className="text-red-500 text-xs">{errors.fullname.message}</p>
-          )}
+          <div className="relative ">
+            <InputWithLabel
+              id="fullname"
+              label="Full Name"
+              placeholder="John Doe"
+              className="border-gray-300 focus:border-gray-400 h-10"
+              {...formRegister("fullname")}
+            />
+            {errors.fullname && (
+              <p className="absolute left-0 top-full  text-red-500 text-xs">{errors.fullname.message}</p>
+            )}
+          </div>
 
           {/* Email */}
-          <InputWithLabel
-            id="email"
-            label="Email"
-            placeholder="john@example.com"
-            type="email"
-            className="border-gray-300 focus:border-gray-400 h-10"
-            {...formRegister("email")}
-          />
-          {errors.email && (
-            <p className="text-red-500 text-xs">{errors.email.message}</p>
-          )}
+          <div className="relative ">
+            <InputWithLabel
+              id="email"
+              label="Email"
+              placeholder="john@example.com"
+              type="email"
+              className="border-gray-300 focus:border-gray-400 h-10"
+              {...formRegister("email")}
+            />
+            {errors.email && (
+              <p className="absolute left-0 top-full  text-red-500 text-xs">{errors.email.message}</p>
+            )}
+          </div>
 
           {/* Contact Number */}
-          <InputWithLabel
-            id="contact_number"
-            label="Contact Number"
-            placeholder="09123456789"
-            type="tel"
-            className="border-gray-300 focus:border-gray-400 h-10"
-            {...formRegister("contact_number")}
-          />
-          {errors.contact_number && (
-            <p className="text-red-500 text-xs">
-              {errors.contact_number.message}
-            </p>
-          )}
+          <div className="relative ">
+            <InputWithLabel
+              id="contact_number"
+              label="Contact Number"
+              placeholder="09123456789"
+              type="tel"
+              className="border-gray-300 focus:border-gray-400 h-10"
+              {...formRegister("contact_number")}
+            />
+            {errors.contact_number && (
+              <p className="absolute left-0 top-full  text-red-500 text-xs">
+                {errors.contact_number.message}
+              </p>
+            )}
+          </div>
 
           {/* Status */}
           <SelectWithLabel

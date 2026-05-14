@@ -38,6 +38,15 @@ const isActiveValue = (value: unknown): boolean => {
   return false;
 };
 
+const getImageUrl = (image: string | null | undefined): string => {
+  if (!image) return "";
+  if (image.startsWith("http://") || image.startsWith("https://")) return image;
+
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/api\/?$/, "");
+  const normalizedPath = image.startsWith("/") ? image : `/${image}`;
+  return `${apiBase}${normalizedPath}`;
+};
+
 export function Admin() {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
@@ -166,16 +175,12 @@ export function Admin() {
               <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden mb-3 sm:mb-4 bg-gray-200 shrink-0">
                 {admin.image ? (
                   <img
-                    src={
-                      admin.image.startsWith("http")
-                        ? admin.image
-                        : `/storage/${admin.image}`
-                    }
+                    src={getImageUrl(admin.image)}
                     alt={admin.fullname}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.currentTarget.src = "";
-                      e.currentTarget.style.backgroundColor = "#f3f4f";
+                      e.currentTarget.style.backgroundColor = "#f3f4f6";
                     }}
                   />
                 ) : (

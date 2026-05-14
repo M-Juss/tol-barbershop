@@ -257,7 +257,7 @@ export function NewAppointmentForm() {
 
       await createAppointment(validation.data);
 
-      toast.success("Appointment booked successfully!");
+      toast.success("Booked successfully");
       setSelectedBarber("");
       setSelectedService("");
       setSelectedDate(new Date());
@@ -266,9 +266,8 @@ export function NewAppointmentForm() {
       setFormError("");
     } catch (error) {
       console.error("Failed to book appointment:", error);
-      setFormError(
-        error instanceof Error ? error.message : "Failed to book appointment",
-      );
+      setFormError("Failed to book appointment");
+      toast.error("Failed to book appointment");
     } finally {
       setLoading(false);
     }
@@ -372,17 +371,11 @@ export function NewAppointmentForm() {
           </div>
 
           <div className="col-span-2 border-t border-gray-200 pt-4">
-            <div className="space-y-2 text-gray-700">
-              <div className="flex items-center justify-between text-2xl">
-                <span className="font-semibold">Subtotal:</span>
-                <span className="font-semibold">{formatCurrency(subtotal)}</span>
-              </div>
-              <div className="flex items-center justify-between text-4xl pt-1">
-                <span className="font-extrabold text-black">Total:</span>
-                <span className="font-extrabold text-amber-600">
-                  {formatCurrency(subtotal)}
-                </span>
-              </div>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between">
+              <span className="text-base font-semibold text-gray-800">Total</span>
+              <span className="text-2xl font-extrabold text-amber-600">
+                {formatCurrency(subtotal)}
+              </span>
             </div>
           </div>
         </form>

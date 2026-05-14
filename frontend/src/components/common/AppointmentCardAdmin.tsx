@@ -4,7 +4,8 @@ export type AppointmentStatus =
   | "Approved"
   | "Pending"
   | "Completed"
-  | "Rejected";
+  | "Cancelled"
+  | "No-show";
 
 interface AppointmentCardProps {
   service: string;
@@ -14,6 +15,7 @@ interface AppointmentCardProps {
   date: string;
   time: string;
   customer: string;
+  cancellation_reason?: string | null;
   className?: string;
 }
 
@@ -21,7 +23,8 @@ const statusBadge: Record<AppointmentStatus, string> = {
   Approved: "bg-blue-100 text-blue-500",
   Pending: "bg-yellow-100 text-yellow-600",
   Completed: "bg-green-100 text-green-600",
-  Rejected: "bg-red-100 text-red-500",
+  Cancelled: "bg-red-100 text-red-500",
+  "No-show": "bg-gray-200 text-gray-600",
 };
 
 export function AppointmentCard({
@@ -32,6 +35,7 @@ export function AppointmentCard({
   date,
   time,
   customer,
+  cancellation_reason,
   className = "",
 }: AppointmentCardProps) {
   return (
@@ -50,6 +54,11 @@ export function AppointmentCard({
             <p className="text-gray-500 text-sm">
               Date & time: {date} at {time}
             </p>
+            {status === "Cancelled" && cancellation_reason && (
+              <p className="text-red-400 text-sm font-medium">
+                Reason: {cancellation_reason}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5">

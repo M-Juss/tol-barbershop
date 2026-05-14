@@ -20,6 +20,9 @@ import {
   type Appointment,
 } from "@/services/customer/appointment.api";
 import { updateAppointmentSchema } from "@/validations/appointment.validation";
+import { CancellationForm } from "@/forms/CancellationForm";
+import { type CancellationReasonSchemaFormValues } from "@/validations/appointment.validation";
+import { toast } from "sonner";
 
 type DateGroup = {
   label: string;
@@ -182,7 +185,9 @@ function PendingCard({
       </div>
       <div className="flex items-center gap-1.5 mb-3">
         <Phone className="w-3.5 h-3.5 text-gray-400" />
-        <span className="text-xs text-gray-500">{req.customer.contact_number}</span>
+        <span className="text-xs text-gray-500">
+          {req.customer.contact_number}
+        </span>
       </div>
       <div className="border-t border-yellow-200 mb-3" />
       <div className="text-xs text-gray-600 space-y-0.5 mb-4">
@@ -222,12 +227,15 @@ function PendingCard({
 }
 
 function toDateGroups(appointments: Appointment[]): DateGroup[] {
-  const grouped = appointments.reduce<Record<string, Appointment[]>>((acc, appt) => {
-    const key = appt.appointment_date;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(appt);
-    return acc;
-  }, {});
+  const grouped = appointments.reduce<Record<string, Appointment[]>>(
+    (acc, appt) => {
+      const key = appt.appointment_date;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(appt);
+      return acc;
+    },
+    {},
+  );
 
   return Object.entries(grouped)
     .map(([sortKey, appts]) => ({
@@ -244,6 +252,9 @@ export function Appointment() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingIds, setUpdatingIds] = useState<number[]>([]);
+  const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<Appointment | null>(null);
 
   const loadAppointments = async () => {
     try {
@@ -273,9 +284,15 @@ export function Appointment() {
   const runUpdate = async (
     appt: Appointment,
     status: "approved" | "cancelled" | "completed" | "no_show",
+    cancellationReason?: string,
   ) => {
     try {
       setUpdatingIds((prev) => [...prev, appt.id]);
+
+      const normalizedCancellationReason =
+        status === "cancelled" && cancellationReason?.trim()
+          ? cancellationReason.trim()
+          : null;
 
       const payload = {
         user_id: appt.customer.id as number,
@@ -286,25 +303,44 @@ export function Appointment() {
         duration_minutes: appt.duration_minutes,
         price: Number(appt.price),
         notes: appt.notes,
-        cancellation_reason:
-          status === "cancelled" ? "Cancelled by manager" : appt.cancellation_reason,
+        cancellation_reason: normalizedCancellationReason,
         status,
       };
 
       const validation = updateAppointmentSchema.safeParse(payload);
       if (!validation.success) {
-        alert(validation.error.issues[0]?.message ?? "Invalid appointment update payload.");
+        toast.error("Failed to update appointment");
         return;
       }
 
       await updateAppointment(appt.id, validation.data);
+      toast.success("Appointment updated successfully");
 
       await loadAppointments();
     } catch (error) {
       console.error("Failed to update appointment:", error);
-      alert("Failed to update appointment status.");
+      toast.error("Failed to update appointment");
     } finally {
       setUpdatingIds((prev) => prev.filter((id) => id !== appt.id));
+    }
+  };
+
+  const handleCancelClick = (appt: Appointment) => {
+    setSelectedAppointment(appt);
+    setCancellationDialogOpen(true);
+  };
+
+  const handleCancellationSubmit = async (
+    data: CancellationReasonSchemaFormValues,
+  ) => {
+    if (selectedAppointment) {
+      await runUpdate(
+        selectedAppointment,
+        "cancelled",
+        data.cancellation_reason,
+      );
+      setCancellationDialogOpen(false);
+      setSelectedAppointment(null);
     }
   };
 
@@ -355,11 +391,15 @@ export function Appointment() {
                     {group.appointments.map((appt) => (
                       <div
                         key={appt.id}
-                        className={updatingIds.includes(appt.id) ? "opacity-60" : ""}
+                        className={
+                          updatingIds.includes(appt.id) ? "opacity-60" : ""
+                        }
                       >
                         <AppointmentRow
                           appt={appt}
-                          onStatusChange={(item, status) => runUpdate(item, status)}
+                          onStatusChange={(item, status) =>
+                            runUpdate(item, status)
+                          }
                         />
                       </div>
                     ))}
@@ -395,7 +435,7 @@ export function Appointment() {
                   <PendingCard
                     req={req}
                     onApprove={(appt) => runUpdate(appt, "approved")}
-                    onCancel={(appt) => runUpdate(appt, "cancelled")}
+                    onCancel={handleCancelClick}
                   />
                 </div>
               ))}
@@ -403,6 +443,18 @@ export function Appointment() {
           )}
         </div>
       </div>
+
+      {selectedAppointment && (
+        <CancellationForm
+          open={cancellationDialogOpen}
+          onClose={() => {
+            setCancellationDialogOpen(false);
+            setSelectedAppointment(null);
+          }}
+          onSubmit={handleCancellationSubmit}
+          appointment={selectedAppointment}
+        />
+      )}
     </div>
   );
 }

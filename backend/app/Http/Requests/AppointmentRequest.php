@@ -22,7 +22,7 @@ class AppointmentRequest extends FormRequest
     {
         return [
             'user_id' => [
-                'required',
+                'required_without:is_walkin',
                 'exists:users,id',
             ],
 
@@ -39,13 +39,13 @@ class AppointmentRequest extends FormRequest
             ],
 
             'appointment_date' => [
-                'required',
+                'required_without:is_walkin',
                 'date',
                 'after_or_equal:today',
             ],
 
             'appointment_time' => [
-                'required',
+                'required_without:is_walkin',
                 'date_format:H:i',
             ],
 
@@ -72,9 +72,28 @@ class AppointmentRequest extends FormRequest
                 ]),
             ],
 
+            'is_walkin' => [
+                'nullable',
+                'boolean',
+            ],
+
+            'walkin_customer_name' => [
+                'required_if:is_walkin,true',
+                'string',
+                'max:255',
+            ],
+
+            'walkin_customer_contact_number' => [
+                'required_if:is_walkin,true',
+                'string',
+                'min:7',
+                'max:50',
+            ],
+
             'notes' => [
                 'nullable',
                 'string',
+                'max:500',
             ],
 
             'cancellation_reason' => [

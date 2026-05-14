@@ -52,15 +52,8 @@ export function ChangePasswordForm({
     }
   }, [open, reset]);
 
-  const onFormInvalid: SubmitErrorHandler<ChangePasswordSchemaFormValues> = (
-    formErrors,
-  ) => {
-    const firstMessage = Object.values(formErrors)[0]?.message;
-    toast.error(
-      typeof firstMessage === "string"
-        ? firstMessage
-        : "Please check the form fields.",
-    );
+  const onFormInvalid: SubmitErrorHandler<ChangePasswordSchemaFormValues> = () => {
+    toast.error("Failed to update password");
   };
 
   const onFormSubmit = async (data: ChangePasswordSchemaFormValues) => {
@@ -89,7 +82,7 @@ export function ChangePasswordForm({
           onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
           className="space-y-4"
         >
-          <div>
+          <div className="relative ">
             <InputWithLabel
               id="current_password"
               label="Current Password"
@@ -99,13 +92,13 @@ export function ChangePasswordForm({
               {...register("current_password")}
             />
             {errors.current_password && (
-              <p className="text-red-500 text-xs mt-1">
+              <p className="absolute left-0 top-full  text-red-500 text-xs">
                 {errors.current_password.message}
               </p>
             )}
           </div>
 
-          <div>
+          <div className="relative ">
             <InputWithLabel
               id="password"
               label="New Password"
@@ -115,11 +108,11 @@ export function ChangePasswordForm({
               {...register("password")}
             />
             {errors.password && (
-              <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>
+              <p className="absolute left-0 top-full  text-red-500 text-xs">{errors.password.message}</p>
             )}
           </div>
 
-          <div>
+          <div className="relative ">
             <InputWithLabel
               id="password_confirmation"
               label="Confirm Password"
@@ -129,7 +122,7 @@ export function ChangePasswordForm({
               {...register("password_confirmation")}
             />
             {errors.password_confirmation && (
-              <p className="text-red-500 text-xs mt-1">
+              <p className="absolute left-0 top-full  text-red-500 text-xs">
                 {errors.password_confirmation.message}
               </p>
             )}

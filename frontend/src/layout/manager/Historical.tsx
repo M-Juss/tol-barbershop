@@ -5,7 +5,10 @@ import {
   AppointmentCard,
   type AppointmentStatus,
 } from "@/components/common/AppointmentCardAdmin";
-import { getAppointments, type Appointment } from "@/services/customer/appointment.api";
+import {
+  getAppointments,
+  type Appointment,
+} from "@/services/customer/appointment.api";
 
 type Status = AppointmentStatus;
 
@@ -18,15 +21,23 @@ type UiAppointment = {
   date: string;
   time: string;
   customer: string;
+  cancellation_reason?: string | null;
 };
 
-const tabs: Status[] = ["Pending", "Approved", "Completed", "Rejected"];
+const tabs: Status[] = [
+  "Pending",
+  "Approved",
+  "Completed",
+  "Cancelled",
+  "No-show",
+];
 
 function toUiStatus(status: Appointment["status"]): Status {
   if (status === "approved") return "Approved";
   if (status === "completed") return "Completed";
   if (status === "pending") return "Pending";
-  return "Rejected";
+  if (status === "no_show") return "No-show";
+  return "Cancelled";
 }
 
 function formatDate(date: string): string {
@@ -66,6 +77,7 @@ export function Historical() {
           status: toUiStatus(appt.status),
           date: formatDate(appt.appointment_date),
           time: formatTime(appt.appointment_time),
+          cancellation_reason: appt.cancellation_reason,
         }));
 
         setAppointments(mapped);
@@ -136,6 +148,7 @@ export function Historical() {
               date={apt.date}
               time={apt.time}
               customer={apt.customer}
+              cancellation_reason={apt.cancellation_reason}
             />
           ))
         )}

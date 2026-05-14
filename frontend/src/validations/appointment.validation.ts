@@ -23,13 +23,16 @@ const baseAppointmentSchema = z.object({
     .refine((value) => !Number.isNaN(new Date(value).getTime()), {
       message: "Appointment date must be a valid date.",
     })
-    .refine((value) => {
-      const date = new Date(value);
-      date.setHours(0, 0, 0, 0);
-      return date >= today;
-    }, {
-      message: "Appointment date must be today or a future date.",
-    }),
+    .refine(
+      (value) => {
+        const date = new Date(value);
+        date.setHours(0, 0, 0, 0);
+        return date >= today;
+      },
+      {
+        message: "Appointment date must be today or a future date.",
+      },
+    ),
   appointment_time: z
     .string()
     .regex(time24Pattern, "Appointment time must use 24-hour format (HH:mm)."),
@@ -44,5 +47,20 @@ export const createAppointmentSchema = baseAppointmentSchema;
 
 export const updateAppointmentSchema = baseAppointmentSchema;
 
-export type CreateAppointmentSchemaValues = z.infer<typeof createAppointmentSchema>;
-export type UpdateAppointmentSchemaValues = z.infer<typeof updateAppointmentSchema>;
+export const cancellationReasonSchema = z.object({
+  cancellation_reason: z
+    .string()
+    .trim()
+    .max(500, "Cancellation reason must not exceed 500 characters.")
+    .optional(),
+});
+
+export type CreateAppointmentSchemaValues = z.infer<
+  typeof createAppointmentSchema
+>;
+export type UpdateAppointmentSchemaValues = z.infer<
+  typeof updateAppointmentSchema
+>;
+export type CancellationReasonSchemaFormValues = z.infer<
+  typeof cancellationReasonSchema
+>;

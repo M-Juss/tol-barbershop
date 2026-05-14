@@ -16,6 +16,7 @@ class Appointment extends Model
         'duration_minutes',
         'price',
         'status',
+        'is_walkin',
         'notes',
         'cancellation_reason',
         'approved_at',
@@ -30,6 +31,7 @@ class Appointment extends Model
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'price' => 'decimal:2',
+        'is_walkin' => 'boolean',
     ];
 
     /*

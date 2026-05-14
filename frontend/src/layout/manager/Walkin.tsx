@@ -1,94 +1,17 @@
+import { useEffect, useState } from "react";
+import { CalendarDays, Phone, User } from "lucide-react";
+import { WalkinForm } from "@/forms/WalkinForm";
 import {
-  UserPlus,
-  Phone,
-  User,
-  CalendarDays,
-  CircleCheckBig,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { SelectWithLabel } from "@/components/common/SelectWithLabel";
-import { InputWithLabel } from "@/components/common/InputWithLabel";
+  getAppointments,
+  type Appointment,
+} from "@/services/admin/appointment.api";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type WalkIn = {
-  id: number;
-  name: string;
-  phone: string;
-  service: string;
-  barber: string;
-  price: string;
-  completedAt: Date;
+type WalkinAppointment = Appointment & {
+  is_walkin: boolean;
 };
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const SERVICES = [
-  { label: "Regular Haircut", price: "₱200" },
-  { label: "Premium Haircut", price: "₱350" },
-  { label: "Beard Trim", price: "₱150" },
-  { label: "Hair + Beard", price: "₱450" },
-  { label: "Kids Haircut", price: "₱150" },
-];
-
-const BARBERS = [
-  "Miguel Santos",
-  "Carlos Reyes",
-  "Ramon Cruz",
-  "Jose Dela Cruz",
-];
-
-const MOCK_HISTORY: WalkIn[] = [
-  {
-    id: 1,
-    name: "Michael Reyes",
-    phone: "+63 912 345 6789",
-    service: "Regular Haircut",
-    barber: "Miguel Santos",
-    price: "₱200",
-    completedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-  },
-  {
-    id: 2,
-    name: "John Santos",
-    phone: "+63 923 456 7890",
-    service: "Premium Haircut",
-    barber: "Carlos Reyes",
-    price: "₱350",
-    completedAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
-  },
-  {
-    id: 3,
-    name: "Ramon Villanueva",
-    phone: "+63 934 567 8901",
-    service: "Beard Trim",
-    barber: "Ramon Cruz",
-    price: "₱150",
-    completedAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
-  },
-  {
-    id: 4,
-    name: "Carlo Mendoza",
-    phone: "+63 945 678 9012",
-    service: "Hair + Beard",
-    barber: "Miguel Santos",
-    price: "₱450",
-    completedAt: new Date(Date.now() - 7 * 60 * 60 * 1000),
-  },
-  {
-    id: 5,
-    name: "Luis Garcia",
-    phone: "+63 956 789 0123",
-    service: "Kids Haircut",
-    barber: "Jose Dela Cruz",
-    price: "₱150",
-    completedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-  },
-];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function timeAgo(date: Date): string {
+function timeAgo(value: string): string {
+  const date = new Date(value);
   const diff = Math.floor((Date.now() - date.getTime()) / 1000);
   if (diff < 60) return "just now";
   if (diff < 3600) return `about ${Math.floor(diff / 60)} minutes ago`;
@@ -96,9 +19,9 @@ function timeAgo(date: Date): string {
   return `${Math.floor(diff / 86400)} days ago`;
 }
 
-// ─── Walk-in History Card ─────────────────────────────────────────────────────
+function WalkInCard({ walkin }: { walkin: WalkinAppointment }) {
+  const price = Number(walkin.price || 0);
 
-function WalkInCard({ walkin }: { walkin: WalkIn }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white px-5 py-4">
       <div className="flex items-start justify-between gap-4">
@@ -107,40 +30,75 @@ function WalkInCard({ walkin }: { walkin: WalkIn }) {
             <div className="flex items-center gap-1.5">
               <User className="w-4 h-4 text-gray-400" />
               <span className="font-semibold text-gray-900 text-sm">
-                {walkin.name}
+                {walkin.customer.fullname ?? "Walk-in Customer"}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <Phone className="w-3.5 h-3.5 text-gray-400" />
-              <span className="text-sm text-gray-500">{walkin.phone}</span>
+              <span className="text-sm text-gray-500">
+                {walkin.customer.contact_number ?? "N/A"}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
-            <span>Service: {walkin.service}</span>
+            <span>Service: {walkin.service.name ?? "Unknown"}</span>
             <span className="text-gray-300">•</span>
-            <span>Barber: {walkin.barber}</span>
-            <span className="text-gray-300">•</span>
-            <span>$ {walkin.price}</span>
+            <span>Barber: {walkin.barber.fullname ?? "Unknown"}</span>
           </div>
+          {walkin.notes ? (
+            <p className="text-xs text-gray-500 mt-1">Notes: {walkin.notes}</p>
+          ) : null}
           <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-0.5">
             <CalendarDays className="w-3.5 h-3.5" />
-            <span>Completed {timeAgo(walkin.completedAt)}</span>
+            <span>
+              Completed {timeAgo(walkin.completed_at ?? walkin.created_at)}
+            </span>
           </div>
         </div>
-        <span className="flex-shrink-0 text-xs font-medium px-3 py-1 rounded-full bg-green-100 text-green-600">
-          Completed
-        </span>
+
+        <div className="flex flex-col items-end gap-2">
+          <p className="text-sm font-semibold text-gray-900">
+            ₱
+            {price.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </p>
+          <span className="flex-shrink-0 text-xs font-medium px-3 py-1 rounded-full bg-green-100 text-green-600 capitalize">
+            {walkin.status.replace("_", " ")}
+          </span>
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
 export function Walkin() {
+  const [walkins, setWalkins] = useState<WalkinAppointment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadWalkins = async () => {
+    try {
+      setLoading(true);
+      const appointments = (await getAppointments()) as WalkinAppointment[];
+      const walkinData = appointments.filter(
+        (appointment) => appointment.is_walkin,
+      );
+      setWalkins(walkinData);
+    } catch (error) {
+      console.error("Failed to load walk-ins:", error);
+      setWalkins([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadWalkins();
+  }, []);
+
   return (
     <div className="w-full bg-slate-100 p-4 sm:p-6 font-sans">
-      {/* Page Header */}
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
           Walk-ins
@@ -150,85 +108,27 @@ export function Walkin() {
         </p>
       </div>
 
-      {/* ── New Walk-in Form ── */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-4">
-        <div className="flex items-center gap-2 mb-1">
-          <UserPlus className="w-5 h-5 text-gray-700" />
-          <h2 className="text-base font-bold text-gray-900">
-            New Walk-in Appointment
-          </h2>
-        </div>
-        <p className="text-sm text-gray-400 mb-6">
-          Create a walk-in appointment with auto-completed status
-        </p>
+      <WalkinForm onSuccess={loadWalkins} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-          {/* Client Name */}
-          <div className="col-span-2">
-            <InputWithLabel
-              id="customer-name"
-              label="Customer Name *"
-              placeholder="Enter customer name"
-            />
-          </div>
-
-          {/* Email */}
-          <InputWithLabel
-            id="email"
-            type="email"
-            label="Email *"
-            placeholder="name@example.com"
-          />
-
-          {/* Phone */}
-          <InputWithLabel
-            id="phone"
-            label="Phone Number *"
-            placeholder="+63 XXX XXX XXXX"
-          />
-
-          {/* Service */}
-          <SelectWithLabel
-            id="service"
-            label="Service *"
-            placeholder="Select a service"
-            options={SERVICES.map((service) => ({
-              value: service.label,
-              label: `${service.label} — ${service.price}`,
-            }))}
-          />
-
-          {/* Barber */}
-          <SelectWithLabel
-            id="barber"
-            label="Barber *"
-            placeholder="Select a barber"
-            options={BARBERS.map((barber) => ({
-              value: barber,
-              label: barber,
-            }))}
-          />
-        </div>
-
-        <div className="flex justify-stretch sm:justify-end mt-6">
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-5 gap-2">
-            <CircleCheckBig className="w-4 h-4" />
-            Complete Walk-in
-          </Button>
-        </div>
-      </div>
-
-      {/* ── Walk-in History ── */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
         <h2 className="text-base font-bold text-gray-900">Walk-in History</h2>
         <p className="text-sm text-gray-400 mb-4">
-          Recent walk-in appointments ({MOCK_HISTORY.length} total)
+          Recent walk-in appointments ({walkins.length} total)
         </p>
-        <div className="flex flex-col gap-3">
-          {MOCK_HISTORY.map((w) => (
-            <WalkInCard key={w.id} walkin={w} />
-          ))}
-        </div>
+
+        {loading ? (
+          <p className="text-sm text-gray-500">Loading walk-in history...</p>
+        ) : walkins.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No walk-in appointments found.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {walkins.map((walkin) => (
+              <WalkInCard key={walkin.id} walkin={walkin} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

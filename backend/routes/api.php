@@ -16,6 +16,12 @@ Route::post('/login', [LoginController::class, 'login']);
 
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/appointments/overview/stats', [AppointmentController::class, 'overviewStats']);
+    Route::get('/appointments/overview/monthly-revenue', [AppointmentController::class, 'monthlyRevenue']);
+    Route::get('/appointments/overview/service-stats', [AppointmentController::class, 'serviceStats']);
+    Route::get('/appointments/overview/time-slots', [AppointmentController::class, 'timeSlots']);
+    Route::get('/appointments/overview/export-summary', [AppointmentController::class, 'exportSummary']);
+
     Route::apiResource('/services', ServiceController::class);
     Route::apiResource('/admin', AdminController::class);
     Route::apiResource('/barber', BarberController::class);

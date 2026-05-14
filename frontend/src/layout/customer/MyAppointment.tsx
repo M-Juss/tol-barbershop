@@ -5,7 +5,10 @@ import {
   AppointmentCardCustomer,
   type AppointmentStatus,
 } from "@/components/common/AppointmentCardCustomer";
-import { getAppointments, type Appointment } from "@/services/customer/appointment.api";
+import {
+  getAppointments,
+  type Appointment,
+} from "@/services/customer/appointment.api";
 
 type Status = AppointmentStatus;
 
@@ -17,21 +20,30 @@ type UiAppointment = {
   status: Status;
   date: string;
   time: string;
+  cancellation_reason?: string | null;
 };
 
-const tabs: Status[] = ["Pending", "Approved", "Completed", "Cancelled"];
+const tabs: Status[] = [
+  "Pending",
+  "Approved",
+  "Completed",
+  "Cancelled",
+  "No-show",
+];
 
 const emptyStatusMessage: Record<Status, string> = {
   Pending: "No pending appointments right now.",
   Approved: "No approved appointments right now.",
   Completed: "No completed appointments yet.",
   Cancelled: "No cancelled appointments.",
+  "No-show": "No no-show appointments.",
 };
 
 function toUiStatus(status: Appointment["status"]): Status {
   if (status === "approved") return "Approved";
   if (status === "completed") return "Completed";
   if (status === "pending") return "Pending";
+  if (status === "no_show") return "No-show";
   return "Cancelled";
 }
 
@@ -89,6 +101,7 @@ export function MyAppointment() {
             status: toUiStatus(appt.status),
             date: formatDate(appt.appointment_date),
             time: formatTime(appt.appointment_time),
+            cancellation_reason: appt.cancellation_reason,
           }));
 
         setAppointments(mapped);
@@ -157,6 +170,7 @@ export function MyAppointment() {
                 status={apt.status}
                 date={apt.date}
                 time={apt.time}
+                cancellation_reason={apt.cancellation_reason}
               />
             ))}
           </div>

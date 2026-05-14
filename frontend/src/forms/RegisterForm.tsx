@@ -1,6 +1,6 @@
 "use client";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
-import { useForm } from "react-hook-form";
+import { SubmitErrorHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   registerSchema,
@@ -25,92 +25,103 @@ export function RegisterForm() {
     try {
       const response = await registerCustomerRequest(data);
       if (response.success == true) {
-        toast.success("Registration successful! ");
+        toast.success("Registered successfully");
         router.push("/login");
       }
-    } catch (error: any) {
-      const errorMessage =
-        error?.message || "Registration failed. Please try again.";
-
-      toast.error(errorMessage);
+    } catch {
+      toast.error("Failed to register");
     }
+  };
+
+  const onFormInvalid: SubmitErrorHandler<RegisterSchemaFormValues> = () => {
+    toast.error("Failed to register");
   };
 
   return (
     <form
       action=""
-      className="w-full space-y-7 relative"
-      onSubmit={handleSubmit(onSubmit)}
+      className="w-full space-y-6"
+      onSubmit={handleSubmit(onSubmit, onFormInvalid)}
     >
-      <InputWithLabel
-        id="fullname"
-        type="text"
-        label="Full Name"
-        placeholder="Enter your full name"
-        className="h-10 border-gray-300 focus-visible:ring-accent/40"
-        {...formRegister("fullname")}
-      />
-      {errors.fullname && (
-        <p className="text-red-500 text-xs absolute top-16">
-          {errors.fullname.message}
-        </p>
-      )}
+      <div className="relative ">
+        <InputWithLabel
+          id="fullname"
+          type="text"
+          label="Full Name"
+          placeholder="Enter your full name"
+          className="h-10 border-gray-300 focus-visible:ring-accent/40"
+          {...formRegister("fullname")}
+        />
+        {errors.fullname && (
+          <p className="absolute left-0 top-full  text-red-500 text-xs">
+            {errors.fullname.message}
+          </p>
+        )}
+      </div>
 
-      <InputWithLabel
-        id="contact_number"
-        type="text"
-        label="Contact Number"
-        placeholder="Enter your contact number"
-        className="h-10 border-gray-300 focus-visible:ring-accent/40"
-        {...formRegister("contact_number")}
-      />
-      {errors.contact_number && (
-        <p className="text-red-500 text-xs absolute top-39">
-          {errors.contact_number.message}
-        </p>
-      )}
+      <div className="relative ">
+        <InputWithLabel
+          id="contact_number"
+          type="text"
+          label="Contact Number"
+          placeholder="Enter your contact number"
+          className="h-10 border-gray-300 focus-visible:ring-accent/40"
+          {...formRegister("contact_number")}
+        />
+        {errors.contact_number && (
+          <p className="absolute left-0 top-full  text-red-500 text-xs">
+            {errors.contact_number.message}
+          </p>
+        )}
+      </div>
 
-      <InputWithLabel
-        id="email"
-        type="email"
-        label="Email"
-        placeholder="Enter your email"
-        className="h-10 border-gray-300 focus-visible:ring-accent/40"
-        {...formRegister("email")}
-      />
-      {errors.email && (
-        <p className="text-red-500 text-xs absolute top-61">
-          {errors.email.message}
-        </p>
-      )}
+      <div className="relative ">
+        <InputWithLabel
+          id="email"
+          type="email"
+          label="Email"
+          placeholder="Enter your email"
+          className="h-10 border-gray-300 focus-visible:ring-accent/40"
+          {...formRegister("email")}
+        />
+        {errors.email && (
+          <p className="absolute left-0 top-full  text-red-500 text-xs">
+            {errors.email.message}
+          </p>
+        )}
+      </div>
 
-      <InputWithLabel
-        id="password"
-        type="password"
-        label="Password"
-        placeholder="Enter your password"
-        className="h-10 border-gray-300 focus-visible:ring-accent/40"
-        {...formRegister("password")}
-      />
-      {errors.password && (
-        <p className="text-red-500 text-xs absolute top-83">
-          {errors.password.message}
-        </p>
-      )}
+      <div className="relative ">
+        <InputWithLabel
+          id="password"
+          type="password"
+          label="Password"
+          placeholder="Enter your password"
+          className="h-10 border-gray-300 focus-visible:ring-accent/40"
+          {...formRegister("password")}
+        />
+        {errors.password && (
+          <p className="absolute left-0 top-full  text-red-500 text-xs">
+            {errors.password.message}
+          </p>
+        )}
+      </div>
 
-      <InputWithLabel
-        id="password_confirmation"
-        type="password"
-        label="Confirm Password"
-        placeholder="Enter your password"
-        className="h-10 border-gray-300 focus-visible:ring-accent/40"
-        {...formRegister("password_confirmation")}
-      />
-      {errors.password_confirmation && (
-        <p className="text-red-500 text-xs absolute top-106">
-          {errors.password_confirmation.message}
-        </p>
-      )}
+      <div className="relative ">
+        <InputWithLabel
+          id="password_confirmation"
+          type="password"
+          label="Confirm Password"
+          placeholder="Enter your password"
+          className="h-10 border-gray-300 focus-visible:ring-accent/40"
+          {...formRegister("password_confirmation")}
+        />
+        {errors.password_confirmation && (
+          <p className="absolute left-0 top-full  text-red-500 text-xs">
+            {errors.password_confirmation.message}
+          </p>
+        )}
+      </div>
 
       <button
         type="submit"

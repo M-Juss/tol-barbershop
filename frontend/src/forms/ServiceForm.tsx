@@ -1,6 +1,7 @@
 "use client";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/SelectWithLabel";
+import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -92,32 +93,33 @@ export function ServiceForm({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-5">
           {/* Service Name */}
-          <InputWithLabel
-            id="name"
-            label="Service Name"
-            placeholder="e.g., Premium Haircut"
-            className="border-gray-300 focus:border-gray-400 h-10"
-            {...formRegister("name")}
-          />
-          {errors.name && (
-            <p className="text-red-500 text-xs">{errors.name.message}</p>
-          )}
+          <div className="relative ">
+            <InputWithLabel
+              id="name"
+              label="Service Name"
+              placeholder="e.g., Premium Haircut"
+              className="border-gray-300 focus:border-gray-400 h-10"
+              {...formRegister("name")}
+            />
+            {errors.name && (
+              <p className="absolute left-0 top-full  text-red-500 text-xs">{errors.name.message}</p>
+            )}
+          </div>
 
           {/* Description */}
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-1.5">
-              Description
-            </label>
-            <textarea
+          <div className="relative ">
+            <TextAreaWithLabel
+              id="description"
+              label="Description"
               placeholder="Describe the service..."
               rows={3}
-              className="w-full rounded-lg px-3 py-2.5 text-sm text-gray-700 outline-none resize-none focus:border-gray-400 transition-colors border border-gray-300"
+              className="border border-gray-300 focus:border-gray-400"
               {...formRegister("description")}
             />
             {errors.description && (
-              <p className="text-red-500 text-xs">
+              <p className="absolute left-0 top-full  text-red-500 text-xs">
                 {errors.description.message}
               </p>
             )}
@@ -125,7 +127,7 @@ export function ServiceForm({
 
           {/* Duration & Price */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
+            <div className="relative ">
               <InputWithLabel
                 id="duration"
                 label="Duration (minutes)"
@@ -134,12 +136,12 @@ export function ServiceForm({
                 {...formRegister("duration", { valueAsNumber: true })}
               />
               {errors.duration && (
-                <p className="text-red-500 text-xs">
+                <p className="absolute left-0 top-full  text-red-500 text-xs">
                   {errors.duration.message}
                 </p>
               )}
             </div>
-            <div className="space-y-1.5">
+            <div className="relative ">
               <InputWithLabel
                 id="price"
                 label="Price (₱)"
@@ -148,7 +150,7 @@ export function ServiceForm({
                 {...formRegister("price", { valueAsNumber: true })}
               />
               {errors.price && (
-                <p className="text-red-500 text-xs">{errors.price.message}</p>
+                <p className="absolute left-0 top-full  text-red-500 text-xs">{errors.price.message}</p>
               )}
             </div>
           </div>

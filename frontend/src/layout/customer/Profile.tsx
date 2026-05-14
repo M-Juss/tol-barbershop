@@ -86,11 +86,7 @@ export function Profile() {
             await changePassword(payload);
             toast.success("Password updated successfully");
           } catch (error) {
-            toast.error(
-              error instanceof Error
-                ? error.message
-                : "Failed to update password",
-            );
+            toast.error("Failed to update password");
             throw error;
           }
         }}

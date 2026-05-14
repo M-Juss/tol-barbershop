@@ -66,13 +66,8 @@ export function AccountInformationForm() {
 
   const onFormInvalid: SubmitErrorHandler<
     AccountInformationSchemaFormValues
-  > = (formErrors) => {
-    const firstMessage = Object.values(formErrors)[0]?.message;
-    toast.error(
-      typeof firstMessage === "string"
-        ? firstMessage
-        : "Please check the form fields.",
-    );
+  > = () => {
+    toast.error("Failed to update account information");
   };
 
   const onFormSubmit = async (data: AccountInformationSchemaFormValues) => {
@@ -93,12 +88,8 @@ export function AccountInformationForm() {
       });
       setIsEditing(false);
       toast.success("Account information updated successfully");
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to update account information",
-      );
+    } catch {
+      toast.error("Failed to update account information");
     }
   };
 
@@ -122,7 +113,7 @@ export function AccountInformationForm() {
   return (
     <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 mb-4">
       <div className="flex items-start justify-between mb-6">
-        <div>
+        <div className="relative ">
           <h2 className="text-base font-bold text-gray-900">
             Account Information
           </h2>
@@ -153,13 +144,13 @@ export function AccountInformationForm() {
             {...register("fullname")}
           />
           {errors.fullname && (
-            <p className="text-red-500 text-xs mt-1">
+            <p className="absolute left-0 top-full  text-red-500 text-xs">
               {errors.fullname.message}
             </p>
           )}
         </div>
 
-        <div>
+        <div className="relative ">
           <InputWithLabel
             id="email"
             type="email"
@@ -169,11 +160,11 @@ export function AccountInformationForm() {
             {...register("email")}
           />
           {errors.email && (
-            <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
+            <p className="absolute left-0 top-full  text-red-500 text-xs">{errors.email.message}</p>
           )}
         </div>
 
-        <div>
+        <div className="relative ">
           <InputWithLabel
             id="contact_number"
             label="Contact Number"
@@ -182,7 +173,7 @@ export function AccountInformationForm() {
             {...register("contact_number")}
           />
           {errors.contact_number && (
-            <p className="text-red-500 text-xs mt-1">
+            <p className="absolute left-0 top-full  text-red-500 text-xs">
               {errors.contact_number.message}
             </p>
           )}

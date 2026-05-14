@@ -1,6 +1,11 @@
 import { CalendarDays, Clock } from "lucide-react";
 
-export type AppointmentStatus = "Approved" | "Pending" | "Completed" | "Cancelled";
+export type AppointmentStatus =
+  | "Approved"
+  | "Pending"
+  | "Completed"
+  | "Cancelled"
+  | "No-show";
 
 type AppointmentCardCustomerProps = {
   service: string;
@@ -9,6 +14,7 @@ type AppointmentCardCustomerProps = {
   status: AppointmentStatus;
   date: string;
   time: string;
+  cancellation_reason?: string | null;
   className?: string;
 };
 
@@ -17,6 +23,7 @@ const statusBadge: Record<AppointmentStatus, string> = {
   Pending: "bg-yellow-100 text-yellow-600",
   Completed: "bg-green-100 text-green-600",
   Cancelled: "bg-red-100 text-red-500",
+  "No-show": "bg-gray-200 text-gray-600",
 };
 
 export function AppointmentCardCustomer({
@@ -26,6 +33,7 @@ export function AppointmentCardCustomer({
   status,
   date,
   time,
+  cancellation_reason,
   className = "",
 }: AppointmentCardCustomerProps) {
   return (
@@ -42,6 +50,11 @@ export function AppointmentCardCustomer({
           <span className="flex items-center gap-1.5 text-gray-500 text-sm mt-0.5">
             Date & Time: {date} at {time}
           </span>
+          {status === "Cancelled" && cancellation_reason && (
+            <p className="text-red-500 text-xs mt-1.5">
+              Reason: {cancellation_reason}
+            </p>
+          )}
         </div>
       </div>
       <div className="flex flex-col items-end gap-2">

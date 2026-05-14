@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const isActiveValue = (value: unknown): boolean => {
   if (typeof value === "boolean") return value;
@@ -118,13 +119,16 @@ export function Service() {
     try {
       if (editingService) {
         await updateService(editingService.id, data);
+        toast.success("Service updated successfully");
       } else {
         await createService(data);
+        toast.success("Service created successfully");
       }
       await loadServices();
       closeModal();
     } catch (error) {
       console.error("Failed to save service:", error);
+      toast.error("Failed to save service");
     }
   };
 
@@ -140,8 +144,10 @@ export function Service() {
       await loadServices();
       setDeleteConfirmOpen(false);
       setServiceToDelete(null);
+      toast.success("Service deleted successfully");
     } catch (error) {
       console.error("Failed to delete service:", error);
+      toast.error("Failed to delete service");
     }
   };
 

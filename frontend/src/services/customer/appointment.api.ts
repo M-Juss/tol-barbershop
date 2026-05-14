@@ -52,6 +52,7 @@ export interface Appointment {
   duration_minutes: number | null;
   price: number | string;
   status: AppointmentStatus;
+  is_walkin: boolean;
   notes: string | null;
   cancellation_reason: string | null;
   approved_at: string | null;
@@ -62,15 +63,18 @@ export interface Appointment {
 }
 
 export interface CreateAppointmentData {
-  user_id: number;
+  user_id?: number;
   service_id: number;
   barber_user_id: number;
-  appointment_date: string;
-  appointment_time: string;
+  appointment_date?: string;
+  appointment_time?: string;
   duration_minutes?: number;
   price: number;
   status?: AppointmentStatus;
-  notes?: string;
+  notes?: string | null;
+  is_walkin?: boolean;
+  walkin_customer_name?: string;
+  walkin_customer_contact_number?: string;
 }
 
 export interface UpdateAppointmentData {

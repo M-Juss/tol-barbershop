@@ -39,6 +39,7 @@ return new class extends Migration
             'cancelled',
             'no_show',
         ])->default('pending');
+        $table->boolean('is_walkin')->default(false);
 
         // Optional Notes
         $table->text('notes')->nullable();

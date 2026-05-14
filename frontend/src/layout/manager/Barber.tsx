@@ -38,6 +38,15 @@ const isActiveValue = (value: unknown): boolean => {
   return false;
 };
 
+const getImageUrl = (image: string | null | undefined): string => {
+  if (!image) return "";
+  if (image.startsWith("http://") || image.startsWith("https://")) return image;
+
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/api\/?$/, "");
+  const normalizedPath = image.startsWith("/") ? image : `/${image}`;
+  return `${apiBase}${normalizedPath}`;
+};
+
 export function Barber() {
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +99,7 @@ export function Barber() {
       }
       await loadBarbers();
       closeModal();
-    } catch (error) {
+    } catch {
       toast.error("Failed to save barber");
     }
   };
@@ -108,7 +117,7 @@ export function Barber() {
       setDeleteConfirmOpen(false);
       setBarberToDelete(null);
       toast.success("Barber deleted successfully");
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete barber");
     }
   };
@@ -161,16 +170,12 @@ export function Barber() {
               <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden mb-3 sm:mb-4 bg-gray-200 shrink-0">
                 {barber.image ? (
                   <img
-                    src={
-                      barber.image.startsWith("http")
-                        ? barber.image
-                        : `/storage/${barber.image}`
-                    }
+                    src={getImageUrl(barber.image)}
                     alt={barber.fullname}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.currentTarget.src = "";
-                      e.currentTarget.style.backgroundColor = "#f3f4f";
+                      e.currentTarget.style.backgroundColor = "#f3f4f6";
                     }}
                   />
                 ) : (
