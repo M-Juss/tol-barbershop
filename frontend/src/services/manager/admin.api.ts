@@ -13,6 +13,8 @@ export interface CreateAdminData {
   fullname: string;
   email: string;
   contact_number: string;
+  password?: string;
+  confirm_password?: string;
   image?: File;
   is_active?: boolean;
 }
@@ -27,6 +29,12 @@ export const createAdmin = async (data: CreateAdminData): Promise<void> => {
   formData.append("fullname", data.fullname);
   formData.append("email", data.email);
   formData.append("contact_number", data.contact_number);
+  if (data.password) {
+    formData.append("password", data.password);
+  }
+  if (data.confirm_password) {
+    formData.append("password_confirmation", data.confirm_password);
+  }
   formData.append("is_active", data.is_active ? "1" : "0");
   if (data.image) {
     formData.append("image", data.image);
@@ -46,6 +54,12 @@ export const updateAdmin = async (
   formData.append("fullname", data.fullname);
   formData.append("email", data.email);
   formData.append("contact_number", data.contact_number);
+  if (data.password) {
+    formData.append("password", data.password);
+  }
+  if (data.confirm_password) {
+    formData.append("password_confirmation", data.confirm_password);
+  }
   formData.append("is_active", data.is_active ? "1" : "0");
   if (data.image) {
     formData.append("image", data.image);

@@ -7,8 +7,6 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use App\Models\User;
 
-use Override;
-
 class StaffRequest extends FormRequest
 {
     /**
@@ -25,19 +23,10 @@ class StaffRequest extends FormRequest
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     
-    #[Override]
-protected function prepareForValidation()
-{
-    // If password is empty or missing, set a default one
-    if (!$this->filled('password')) {
-        $this->merge([
-            'password' => 'Staff123!', 
-        ]);
-    }
-}
     public function rules(): array
     {
         $currentId = $this->route('admin') ?? $this->route('barber') ?? $this->route('id');
+        $isAdminStore = $this->routeIs('admin.store');
         $currentUser = $currentId ? User::find($currentId) : null;
         $emailUnchanged =
             $currentUser &&
@@ -54,7 +43,9 @@ protected function prepareForValidation()
             'fullname' => 'required|string|max:255',
             'email' => $emailRules,
             'contact_number' => 'required|string|max:255',
-            'password' => 'nullable|string',
+            'password' => $isAdminStore
+                ? 'required|string|min:8|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d]).+$/|confirmed'
+                : 'nullable|string|min:8|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d]).+$/|confirmed',
             'is_active' => 'nullable|boolean',
         ];
     }
@@ -65,6 +56,7 @@ protected function prepareForValidation()
             'email.required' => 'Email is required',
             'contact_number.required' => 'Contact number is required',
             'password.required' => 'Password is required',
+            'password.regex' => 'Password must contain at least one lowercase, uppercase , number, and  special character.',
             'is_active.required' => 'Status is required',
         ];
     }

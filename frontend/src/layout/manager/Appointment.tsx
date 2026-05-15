@@ -30,6 +30,10 @@ type DateGroup = {
   appointments: Appointment[];
 };
 
+const EMAILJS_SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID;
+const EMAILJS_PUBLIC_KEY = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
+
 function formatDateLabel(date: string): string {
   return new Date(date).toLocaleDateString("en-US", {
     weekday: "long",
@@ -72,6 +76,57 @@ function normalizeToHHmm(time: string): string {
   }
 
   return time;
+}
+
+async function sendAppointmentStatusEmail(
+  appt: Appointment,
+  status: "approved" | "cancelled",
+  cancellationReason?: string,
+) {
+  if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+    console.warn(
+      "EmailJS env vars are incomplete. Expected NEXT_PUBLIC_EMAILJS_SERVICE_ID, NEXT_PUBLIC_EMAILJS_TEMPLATE_ID, and NEXT_PUBLIC_EMAILJS_PUBLIC_KEY.",
+    );
+    return;
+  }
+
+  const isApproved = status === "approved";
+  const message = isApproved
+    ? "Please arrive 5 minutes before the said time."
+    : cancellationReason?.trim() || appt.cancellation_reason || "Cancelled by the manager.";
+
+  const templateParams = {
+    title: isApproved
+      ? "Appointment Approved"
+      : "Appointment Cancelled",
+    customer_name: appt.customer.fullname || "Customer",
+    service: appt.service.name || "N/A",
+    barber: appt.barber.fullname || "N/A",
+    appointment_date: formatShortDate(appt.appointment_date),
+    appointment_time: formatTime(appt.appointment_time),
+    booking_id: String(appt.id),
+    message,
+    status,
+    email: appt.customer.email || "",
+  };
+
+  const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      service_id: EMAILJS_SERVICE_ID,
+      template_id: EMAILJS_TEMPLATE_ID,
+      user_id: EMAILJS_PUBLIC_KEY,
+      template_params: templateParams,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Email send failed: ${errorText}`);
+  }
 }
 
 function ActionMenu({
@@ -315,6 +370,19 @@ export function Appointment() {
 
       await updateAppointment(appt.id, validation.data);
       toast.success("Appointment updated successfully");
+
+      if (status === "approved" || status === "cancelled") {
+        try {
+          await sendAppointmentStatusEmail(
+            appt,
+            status,
+            normalizedCancellationReason ?? undefined,
+          );
+        } catch (emailError) {
+          console.error("Failed to send appointment status email:", emailError);
+          toast.error("Appointment updated, but email notification failed");
+        }
+      }
 
       await loadAppointments();
     } catch (error) {

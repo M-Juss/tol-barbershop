@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
 
 const navItems = [
   {
@@ -47,6 +48,8 @@ export default function ManagerLayout({
 }: {
   children: React.ReactNode;
 }) {
+  useRoleRoutePersistence("/manager");
+
   return (
     <div className="flex h-screen overflow-hidden">
       <ResponsiveSidebar navItems={navItems} />

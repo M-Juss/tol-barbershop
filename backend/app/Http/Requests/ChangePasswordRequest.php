@@ -24,7 +24,7 @@ class ChangePasswordRequest extends FormRequest
     {
         return [
             'current_password' => ['required', 'string', 'current_password'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/', 'confirmed'],
             'password_confirmation' => ['required', 'string'],
         ];
     }
@@ -33,6 +33,7 @@ class ChangePasswordRequest extends FormRequest
     {
         return [
             'current_password.current_password' => 'Your current password is incorrect.',
+            'password.regex' => 'Password must contain at least one lowercase, uppercase , number, and  special character.',
         ];
     }
 }

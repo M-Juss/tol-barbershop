@@ -1,6 +1,7 @@
 "use client";
 import { Calendar, CalendarPlus, LayoutDashboard, User } from "lucide-react";
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
+import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
 
 const navItems = [
   {
@@ -29,6 +30,8 @@ export default function CustomerLayout({
 }: {
   children: React.ReactNode;
 }) {
+  useRoleRoutePersistence("/customer");
+
   return (
     <div className="flex h-screen overflow-hidden">
       <ResponsiveSidebar navItems={navItems} />

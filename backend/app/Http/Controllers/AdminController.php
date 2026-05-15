@@ -46,7 +46,7 @@ class AdminController extends Controller
                 'fullname' => $validated['fullname'],
                 'email' => $validated['email'],
                 'contact_number' => $validated['contact_number'],
-                'password' => bcrypt($validated['password'] ?? 'Staff123!'),
+                'password' => bcrypt($validated['password']),
                 'role' => 'admin',
                 'is_active' => $validated['is_active'] ?? true,
                 'image' => $imagePath ? Storage::url($imagePath) : null,
@@ -130,6 +130,9 @@ class AdminController extends Controller
                 'contact_number' => $validated['contact_number'],
                 'is_active' => $validated['is_active'] ?? $admin->is_active,
                 'image' => $validated['image'],
+                'password' => !empty($validated['password'])
+                    ? bcrypt($validated['password'])
+                    : $admin->password,
             ]);
             
             return $this->success('Admin updated successfully');

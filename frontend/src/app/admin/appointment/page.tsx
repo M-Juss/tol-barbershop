@@ -1,6 +1,6 @@
 "use client";
 
-import { Appointment } from "@/layout/admin/Appointment";
+import { Appointment } from "@/layout/manager/Appointment";
 
 export default function AdminAppointmentPage() {
   return <Appointment />;

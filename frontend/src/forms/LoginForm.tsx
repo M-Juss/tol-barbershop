@@ -10,6 +10,7 @@ import {
 import { loginRequest } from "@/services/auth.api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { getSavedRoleRoute } from "@/hooks/useRoleRoutePersistence";
 
 export function LoginForm() {
 
@@ -29,11 +30,11 @@ export function LoginForm() {
       if (response.success == true) {
         toast.success("Logged in successfully");
         if (response.data.user.role === "customer") {
-          router.push("/customer");
+          router.push(getSavedRoleRoute("/customer") ?? "/customer");
         } else if (response.data.user.role === "admin"){
-          router.push("/admin");
+          router.push(getSavedRoleRoute("/admin") ?? "/admin");
         } else if (response.data.user.role === "manager"){
-          router.push("/manager");
+          router.push(getSavedRoleRoute("/manager") ?? "/manager");
         }
       }
     } catch {

@@ -295,7 +295,7 @@ export function Overview() {
               const isClosedDate = closedDates.includes(formatDateToLocal(day));
               return isSunday || isClosedDate;
             }}
-            className="rounded-lg"
+            className="rounded-lg sm:w-full"
           />
         </div>
 

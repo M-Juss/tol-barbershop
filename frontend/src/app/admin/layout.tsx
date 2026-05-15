@@ -2,6 +2,7 @@
 
 import { Calendar, LayoutDashboard, History, UserPlus } from "lucide-react";
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
+import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
 
 const navItems = [
   {
@@ -35,6 +36,8 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  useRoleRoutePersistence("/admin");
+
   return (
     <div className="flex h-screen overflow-hidden">
       <ResponsiveSidebar navItems={navItems} />

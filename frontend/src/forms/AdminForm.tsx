@@ -4,7 +4,8 @@ import { SelectWithLabel } from "@/components/common/SelectWithLabel";
 import { SubmitErrorHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  adminSchema,
+  adminCreateSchema,
+  adminUpdateSchema,
   AdminSchemaFormValues,
 } from "@/validations/staff.validation";
 import { useEffect, useState } from "react";
@@ -49,6 +50,7 @@ export function AdminForm({
   initialData,
   title = "Add New Admin",
 }: AdminFormProps) {
+  const isEditMode = Boolean(initialData);
   const {
     register: formRegister,
     handleSubmit,
@@ -57,12 +59,14 @@ export function AdminForm({
     setValue,
     watch,
   } = useForm<AdminSchemaFormValues>({
-    resolver: zodResolver(adminSchema),
+    resolver: zodResolver(isEditMode ? adminUpdateSchema : adminCreateSchema),
     defaultValues: {
       fullname: "",
       email: "",
       contact_number: "",
       image: "",
+      password: "",
+      confirm_password: "",
       is_active: true,
     },
   });
@@ -81,6 +85,8 @@ export function AdminForm({
         email: initialData.email ?? "",
         contact_number: String(initialData.contact_number ?? ""),
         image: initialData.image ?? "",
+        password: "",
+        confirm_password: "",
         is_active: Boolean(initialData.is_active),
       });
     } else {
@@ -89,6 +95,8 @@ export function AdminForm({
         email: "",
         contact_number: "",
         image: "",
+        password: "",
+        confirm_password: "",
         is_active: true,
       });
     }
@@ -211,6 +219,48 @@ export function AdminForm({
             {errors.contact_number && (
               <p className="absolute left-0 top-full  text-red-500 text-xs">
                 {errors.contact_number.message}
+              </p>
+            )}
+          </div>
+
+          {isEditMode ? (
+            <p className="text-xs text-gray-500">
+              Leave this blank if you don&apos;t want to change password.
+            </p>
+          ) : null}
+
+          <div className="relative ">
+            <InputWithLabel
+              id="password"
+              label={isEditMode ? "Change Password" : "Password"}
+              placeholder={
+                isEditMode ? "Enter new password (optional)" : "Enter password"
+              }
+              type="password"
+              className="border-gray-300 focus:border-gray-400 h-10"
+              {...formRegister("password")}
+            />
+            {errors.password && (
+              <p className="absolute left-0 top-full text-red-500 text-xs">
+                {errors.password.message}
+              </p>
+            )}
+          </div>
+
+          <div className="relative ">
+            <InputWithLabel
+              id="confirm_password"
+              label={
+                isEditMode ? "Confirm New Password" : "Confirm Password"
+              }
+              placeholder="Confirm password"
+              type="password"
+              className="border-gray-300 focus:border-gray-400 h-10"
+              {...formRegister("confirm_password")}
+            />
+            {errors.confirm_password && (
+              <p className="absolute left-0 top-full text-red-500 text-xs">
+                {errors.confirm_password.message}
               </p>
             )}
           </div>
