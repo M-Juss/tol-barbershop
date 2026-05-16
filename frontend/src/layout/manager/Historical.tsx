@@ -2,43 +2,52 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  AppointmentCard,
-  type AppointmentStatus,
-} from "@/components/common/AppointmentCardAdmin";
-import {
   getAppointments,
   type Appointment,
+  type AppointmentStatus,
 } from "@/services/customer/appointment.api";
+import { Input } from "@/components/ui/input";
+import { SectionCard } from "@/components/common/SectionCard";
+import { AppointmentStatusBadge } from "@/components/common/AppointmentStatusBadge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-type Status = AppointmentStatus;
+type StatusFilter = "all" | "walkin" | AppointmentStatus;
 
-type UiAppointment = {
+type Row = {
   id: number;
+  customer: string;
   service: string;
   barber: string;
-  price: number;
-  status: Status;
   date: string;
   time: string;
-  customer: string;
-  cancellation_reason?: string | null;
+  status: AppointmentStatus;
+  price: number;
+  created_at: string;
+  cancellation_reason: string | null;
+  is_walkin: boolean;
 };
-
-const tabs: Status[] = [
-  "Pending",
-  "Approved",
-  "Completed",
-  "Cancelled",
-  "No-show",
-];
-
-function toUiStatus(status: Appointment["status"]): Status {
-  if (status === "approved") return "Approved";
-  if (status === "completed") return "Completed";
-  if (status === "pending") return "Pending";
-  if (status === "no_show") return "No-show";
-  return "Cancelled";
-}
 
 function formatDate(date: string): string {
   return new Date(date).toLocaleDateString("en-US", {
@@ -60,27 +69,37 @@ function formatTime(time24: string): string {
 }
 
 export function Historical() {
-  const [activeTab, setActiveTab] = useState<Status>("Pending");
-  const [appointments, setAppointments] = useState<UiAppointment[]>([]);
+  const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
         const data = await getAppointments();
-        const mapped = data.map((appt) => ({
-          id: appt.id,
-          service: appt.service.name ?? "Unknown service",
-          barber: appt.barber.fullname ?? "Unknown barber",
-          customer: appt.customer.fullname ?? "Unknown customer",
-          price: Number(appt.price) || 0,
-          status: toUiStatus(appt.status),
-          date: formatDate(appt.appointment_date),
-          time: formatTime(appt.appointment_time),
-          cancellation_reason: appt.cancellation_reason,
-        }));
+        const mapped = data
+          .map((appt: Appointment) => ({
+            id: appt.id,
+            customer: appt.customer.fullname ?? "Unknown customer",
+            service: appt.service.name ?? "Unknown service",
+            barber: appt.barber.fullname ?? "Unknown barber",
+            date: formatDate(appt.appointment_date),
+            time: formatTime(appt.appointment_time),
+            status: appt.status,
+            price: Number(appt.price) || 0,
+            created_at: appt.created_at,
+            cancellation_reason: appt.cancellation_reason,
+            is_walkin: appt.is_walkin,
+          }))
+          .sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+          );
 
-        setAppointments(mapped);
+        setRows(mapped);
       } catch (error) {
         console.error("Failed to load appointments:", error);
       } finally {
@@ -91,67 +110,165 @@ export function Historical() {
     fetchAppointments();
   }, []);
 
-  const filtered = useMemo(
-    () => appointments.filter((a) => a.status === activeTab),
-    [appointments, activeTab],
-  );
+  const filteredRows = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
 
-  const countByStatus = (status: Status) =>
-    appointments.filter((a) => a.status === status).length;
+    return rows.filter((row) => {
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "walkin" ? row.is_walkin : row.status === statusFilter);
+      const matchesSearch =
+        !keyword ||
+        row.customer.toLowerCase().includes(keyword) ||
+        row.service.toLowerCase().includes(keyword) ||
+        row.barber.toLowerCase().includes(keyword) ||
+        String(row.id).includes(keyword);
+
+      return matchesStatus && matchesSearch;
+    });
+  }, [rows, search, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter]);
 
   return (
     <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Appointment History
-          </h1>
-          <p className="text-gray-500 mt-1">
-            View appointment according to its status
-          </p>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Appointment History</h1>
+        <p className="text-gray-500 mt-1">
+          Table view of current appointments (sorted by created date)
+        </p>
       </div>
 
-      <div className="bg-white rounded-xl flex flex-wrap p-1 gap-1 mb-4 shadow-sm border border-gray-100 w-full sm:w-fit">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors ${
-              activeTab === tab
-                ? "bg-gray-100 text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
+      <SectionCard title="Filters" className="mb-4 p-4">
+        <div className="flex gap-3">
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search by booking ID, customer, service, barber"
+            className="w-3/4"
+          />
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => setStatusFilter(value as StatusFilter)}
           >
-            {tab} ({countByStatus(tab)})
-          </button>
-        ))}
-      </div>
+            <SelectTrigger className="w-1/4 border-gray-300">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="no_show">No-show</SelectItem>
+              <SelectItem value="walkin">Walk-in</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </SectionCard>
 
-      <div className="flex flex-col gap-3">
-        {loading ? (
-          <div className="bg-white rounded-xl p-10 text-center text-gray-400 border border-gray-100 shadow-sm">
-            Loading appointments...
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-xl p-10 text-center text-gray-400 border border-gray-100 shadow-sm">
-            No {activeTab.toLowerCase()} appointments.
-          </div>
-        ) : (
-          filtered.map((apt) => (
-            <AppointmentCard
-              key={apt.id}
-              service={apt.service}
-              barber={apt.barber}
-              price={apt.price}
-              status={apt.status}
-              date={apt.date}
-              time={apt.time}
-              customer={apt.customer}
-              cancellation_reason={apt.cancellation_reason}
-            />
-          ))
-        )}
+      <div className="space-y-3">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          <Table>
+            <TableHeader className="bg-gray-50">
+              <TableRow>
+                <TableHead>Booking ID</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Service</TableHead>
+                <TableHead>Barber</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Time</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell className="text-gray-500" colSpan={8}>
+                    Loading appointments...
+                  </TableCell>
+                </TableRow>
+              ) : paginatedRows.length === 0 ? (
+                <TableRow>
+                  <TableCell className="text-gray-500" colSpan={8}>
+                    No appointments found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedRows.map((row) => (
+                  <TableRow key={row.id} className="group relative">
+                    <TableCell>#{row.id}</TableCell>
+                    <TableCell>{row.customer}</TableCell>
+                    <TableCell>{row.service}</TableCell>
+                    <TableCell>{row.barber}</TableCell>
+                    <TableCell>{row.date}</TableCell>
+                    <TableCell>{row.time}</TableCell>
+                    <TableCell>₱{row.price.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <div className="relative inline-block">
+                        <AppointmentStatusBadge status={row.status} />
+                        {row.cancellation_reason ? (
+                          <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-max max-w-64 -translate-x-1/2 rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs text-red-600 shadow-md group-hover:block">
+                            Reason: {row.cancellation_reason}
+                          </div>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {filteredRows.length > pageSize ? (
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setPage((prev) => Math.max(1, prev - 1));
+                  }}
+                />
+              </PaginationItem>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNo) => (
+                <PaginationItem key={pageNo}>
+                  <PaginationLink
+                    href="#"
+                    isActive={pageNo === page}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setPage(pageNo);
+                    }}
+                  >
+                    {pageNo}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setPage((prev) => Math.min(totalPages, prev + 1));
+                  }}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        ) : null}
       </div>
     </div>
   );

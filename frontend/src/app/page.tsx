@@ -3,6 +3,7 @@ import { Clock, Mail, MapPin, Phone, Scissors, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { getLandingServices, type LandingService } from "@/services/landing.api";
 
 const navLinks = [
   { name: "Home", href: "#home" },
@@ -11,33 +12,6 @@ const navLinks = [
   { name: "Gallery", href: "#gallery" },
   { name: "Testimonials", href: "#testimonial" },
   { name: "Contact", href: "#contact" },
-];
-
-const cardServices = [
-  {
-    title: "Classic Haircuts",
-    price: "P200",
-    description: "Traditional scissor cut with styling and finishing",
-    duration: "45 min",
-  },
-  {
-    title: "Hot Towel Shave",
-    price: "P450",
-    description: "Luxurious straight razor shave with premium products",
-    duration: "30 min",
-  },
-  {
-    title: "Beard Trim & Shape",
-    price: "P300",
-    description: "Precision beard sculpting and conditioning treatment",
-    duration: "30 min",
-  },
-  {
-    title: "Full Service",
-    price: "P700",
-    description: "Complete grooming experience - cut, shave, and styling",
-    duration: "90 min",
-  },
 ];
 
 const testimonials = [
@@ -130,6 +104,7 @@ export default function Home() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [services, setServices] = useState<LandingService[]>([]);
 
   useEffect(() => {
     if (!isAutoPlaying) return;
@@ -140,6 +115,21 @@ export default function Home() {
 
     return () => clearInterval(interval);
   }, [isAutoPlaying]);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const data = await getLandingServices();
+        setServices(data);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        console.error("Failed to load services:", message);
+      }
+    };
+
+    fetchServices();
+  }, []);
 
   const goToSlide = (index: number) => {
     setCurrentIndex(index);
@@ -227,21 +217,23 @@ export default function Home() {
 
           <div className="grid lg:grid-cols-2 grid-cols-1 gap-8 lg:gap-14 w-full">
             <div className="flex-col space-y-5">
-              {cardServices.map((service, index) => (
+              {services.map((service) => (
                 <div
-                  key={index}
+                  key={service.id}
                   className="flex-col px-6 py-8 justify-between items-center  border border-white/10 p-6 text-white shadow-lg rounded-lg hover:scale-105 transition duration-300"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-xl font-semibold">{service.title}</h2>
+                    <h2 className="text-xl font-semibold">{service.name}</h2>
                     <p className="text-accent font-semibold text-2xl">
-                      {service.price}
+                      {service.price ? `P${service.price}` : "N/A"}
                     </p>
                   </div>
                   <p className="text-neutral-landing text-md mb-2">
-                    {service.description}
+                    {service.description || "No description available."}
                   </p>
-                  <p className="text-gray-400 text-sm">{service.duration}</p>
+                  <p className="text-gray-400 text-sm">
+                    {service.duration ? `${service.duration} min` : "N/A"}
+                  </p>
                 </div>
               ))}
             </div>
@@ -454,17 +446,13 @@ export default function Home() {
             </div>
 
             <div className="flex border-b border-white/10 pb-4 justify-between items-center">
-              <p className="text-sm">Monday - Friday </p>
-              <p className="text-sm">9:00 AM - 8:00 PM</p>
-            </div>
-            <div className="flex border-b border-white/10 pb-4 justify-between items-center">
-              <p className="text-sm pt-4">Saturday</p>
-              <p className="text-sm">9:00 AM - 6:00 PM</p>
+              <p className="text-sm">Monday - Saturday </p>
+              <p className="text-sm">9:00 AM - 7:00 PM</p>
             </div>
 
             <div className="flex border-b border-white/10 pb-4 justify-between items-center">
               <p className="text-sm pt-4">Sunday</p>
-              <p className="text-sm">10:00 AM - 4:00 PM</p>
+              <p className="text-sm pt-4">Closed</p>
             </div>
           </div>
         </div>

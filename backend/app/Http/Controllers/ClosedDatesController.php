@@ -6,6 +6,8 @@ use App\Http\Requests\ClosedDatesRequest;
 use App\Http\Resources\ClosedDatesResource;
 use App\Traits\ApiResponseTrait;
 use App\Models\ClosedDates;
+use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class ClosedDatesController extends Controller
@@ -46,8 +48,28 @@ class ClosedDatesController extends Controller
         try {
             $validated = $request->validated();
             
-            ClosedDates::create($validated);
-    
+            $closedDate = ClosedDates::create($validated);
+
+            $customers = User::where('role', 'customer')->where('is_active', true)->get(['id']);
+            foreach ($customers as $customer) {
+                Notification::create([
+                    'user_id' => $customer->id,
+                    'type' => 'closed_date',
+                    'title' => 'Shop Closed Date Announced',
+                    'message' => sprintf(
+                        'The shop will be closed on %s. Reason: %s',
+                        $closedDate->date_closed,
+                        $closedDate->reason
+                    ),
+                    'payload' => [
+                        'closed_date_id' => $closedDate->id,
+                        'date_closed' => $closedDate->date_closed,
+                        'reason' => $closedDate->reason,
+                    ],
+                    'created_by_user_id' => $request->user()?->id,
+                ]);
+            }
+
             return $this->created('Closed date succescfully inserted');
         
             

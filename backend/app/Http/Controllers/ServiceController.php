@@ -13,6 +13,21 @@ class ServiceController extends Controller
 {
     use ApiResponseTrait;
 
+    public function publicIndex()
+    {
+        try {
+            $services = Service::where('is_active', true)->get();
+
+            $data = [
+                "services" => ServiceResource::collection($services),
+            ];
+
+            return $this->success('Public services retrieved successfully', $data);
+        } catch (\Exception $e) {
+            return $this->error('Could not fetch public services', [], 500);
+        }
+    }
+
     public function index()
     {
     try {

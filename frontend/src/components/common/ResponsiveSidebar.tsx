@@ -19,6 +19,7 @@ type NavItem = {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
+  badgeCount?: number;
 };
 
 interface ResponsiveSidebarProps {
@@ -94,6 +95,7 @@ export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
 
   const handleLogout = () => {
     localStorage.clear();
+    document.cookie = "auth_role=; path=/; max-age=0; samesite=lax";
     setShowLogoutDialog(false);
     setIsOpen(false);
     router.push("/");
@@ -125,7 +127,7 @@ export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
         id="mobile-sidebar"
         className={`
           fixed md:sticky top-0 left-0 z-50 md:z-10
-          h-screen w-64 shrink-0 bg-primary text-sm
+          h-dvh w-64 shrink-0 bg-primary text-sm
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
           flex flex-col
@@ -150,7 +152,7 @@ export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 p-4 space-y-2 overflow-hidden">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto overscroll-contain">
           {navItems.map((item) => (
             <Link
               key={item.key}
@@ -166,7 +168,12 @@ export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
               `}
             >
               <item.icon className="w-5 h-5 shrink-0" />
-              <span>{item.label}</span>
+              <span className="flex-1">{item.label}</span>
+              {item.badgeCount && item.badgeCount > 0 ? (
+                <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                  {item.badgeCount > 99 ? "99+" : item.badgeCount}
+                </span>
+              ) : null}
             </Link>
           ))}
         </nav>

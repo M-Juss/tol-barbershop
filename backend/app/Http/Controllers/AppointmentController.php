@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\Notification;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -127,6 +128,7 @@ class AppointmentController extends Controller
     public function update(AppointmentRequest $request, string $id)
     {
         $appointment = Appointment::findOrFail($id);
+        $originalStatus = $appointment->status;
         $validated = $request->validated();
 
         if (($validated['status'] ?? null) === 'cancelled') {
@@ -139,6 +141,24 @@ class AppointmentController extends Controller
         }
 
         $appointment->update($validated);
+
+        if (($validated['status'] ?? null) && $validated['status'] !== $originalStatus) {
+            Notification::create([
+                'user_id' => $appointment->user_id,
+                'type' => 'appointment_status',
+                'title' => 'Appointment Status Updated',
+                'message' => sprintf(
+                    'Your appointment #%d is now %s.',
+                    $appointment->id,
+                    str_replace('_', ' ', $validated['status'])
+                ),
+                'payload' => [
+                    'appointment_id' => $appointment->id,
+                    'status' => $validated['status'],
+                ],
+                'created_by_user_id' => $request->user()?->id,
+            ]);
+        }
 
         $appointment->load([
             'user',
