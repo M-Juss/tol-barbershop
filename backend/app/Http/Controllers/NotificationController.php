@@ -22,13 +22,21 @@ class NotificationController extends Controller
 
         $notifications = Notification::where('user_id', $authUser->id)
             ->latest()
-            ->get();
+            ->paginate(5);
 
-        $unreadCount = $notifications->where('is_read', false)->count();
+        $unreadCount = Notification::where('user_id', $authUser->id)
+            ->where('is_read', false)
+            ->count();
 
         return $this->success('Notifications fetched successfully', [
             'unread_count' => $unreadCount,
             'notifications' => NotificationResource::collection($notifications),
+            'pagination' => [
+                'current_page' => $notifications->currentPage(),
+                'last_page' => $notifications->lastPage(),
+                'per_page' => $notifications->perPage(),
+                'total' => $notifications->total(),
+            ],
         ]);
     }
 

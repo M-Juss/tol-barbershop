@@ -3,26 +3,38 @@ import { ManagerRevenueChart } from "@/components/common/ManagerRevenueChart";
 import { ManagerServiceChart } from "@/components/common/ManagerServiceChart";
 import { StatCard } from "@/components/common/StatCard";
 import { Calendar } from "@/components/ui/calendar";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import * as XLSX from "xlsx";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AppointmentStatusBadge } from "@/components/common/AppointmentStatusBadge";
+import { formatBookingId } from "@/lib/booking";
 import {
   CheckCircle2,
   User,
-  PhilippinePeso,
   Clock,
   AlertCircle,
-  Download,
+  Mail,
+  Phone,
+  Tag,
+  StickyNote,
+  Star,
 } from "lucide-react";
 import {
   getOverviewStats,
   getMonthlyRevenue,
   getServiceStats,
   getTimeSlotsForDate,
-  getOverviewExportSummary,
   type TimeSlotAppointment,
+  type OverviewStats,
 } from "@/services/manager/overview.api";
 import { getClosedDates } from "@/services/manager/close.date.api";
+import {
+  getAnalyticsKPI,
+  type AnalyticsKPI,
+} from "@/services/manager/analytics.api";
 
 function formatDateToLocal(date: Date): string {
   return (
@@ -42,66 +54,203 @@ function formatDisplayDate(date: Date) {
   });
 }
 
+function formatTime(time: string | null): string {
+  if (!time) return "—";
+  const [hours, minutes] = time.split(":").map(Number);
+  const d = new Date();
+  d.setHours(hours, minutes, 0, 0);
+  return d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function formatDate(date: string | null): string {
+  if (!date) return "—";
+  return new Date(date).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function getStatusColor(status: string): string {
   switch (status) {
     case "completed":
-      return "bg-green-100 border-green-200 text-green-700";
+      return "bg-green-100 border-green-200";
     case "approved":
-      return "bg-blue-100 border-blue-200 text-blue-700";
+      return "bg-blue-100 border-blue-200";
     case "pending":
-      return "bg-yellow-100 border-yellow-200 text-yellow-700";
+      return "bg-yellow-100 border-yellow-200";
     case "no_show":
-      return "bg-gray-200 border-gray-300 text-gray-700";
+      return "bg-gray-200 border-gray-300";
     default:
-      return "bg-white border-gray-200 text-gray-600";
+      return "bg-white border-gray-200";
   }
 }
 
-function getStatusBadgeColor(status: string): string {
-  switch (status) {
-    case "completed":
-      return "bg-green-100 text-green-600";
-    case "approved":
-      return "bg-blue-100 text-blue-600";
-    case "pending":
-      return "bg-yellow-100 text-yellow-600";
-    case "no_show":
-      return "bg-gray-200 text-gray-600";
-    default:
-      return "bg-green-100 text-green-600";
-  }
-}
+function AppointmentDetailModal({
+  appt,
+  open,
+  onClose,
+}: {
+  appt: TimeSlotAppointment | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  if (!appt) return null;
 
-function TimeSlotCard({ appt }: { appt: TimeSlotAppointment }) {
-  const isAvailable = appt.status === "available";
   return (
-    <div
-      className={`flex items-center gap-3 rounded-xl border p-3 ${getStatusColor(appt.status)}`}
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Tag className="w-5 h-5 text-blue-500" />
+            {formatBookingId(appt.id)}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-500">Status</span>
+            <AppointmentStatusBadge status={appt.status as any} />
+          </div>
+
+          <div className="border-t border-gray-100" />
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <User className="w-4 h-4 text-gray-400 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  {appt.customer || "—"}
+                </p>
+                <p className="text-xs text-gray-500">Customer</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+              <div>
+                <p className="text-sm text-gray-900">
+                  {appt.customer_email || "—"}
+                </p>
+                <p className="text-xs text-gray-500">Email</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Phone className="w-4 h-4 text-gray-400 shrink-0" />
+              <div>
+                <p className="text-sm text-gray-900">
+                  {appt.customer_contact || "—"}
+                </p>
+                <p className="text-xs text-gray-500">Contact</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100" />
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs text-gray-500">Service</p>
+              <p className="text-sm font-medium text-gray-900">
+                {appt.service || "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Barber</p>
+              <p className="text-sm font-medium text-gray-900">
+                {appt.barber || "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Date</p>
+              <p className="text-sm font-medium text-gray-900">
+                {formatDate(appt.appointment_date)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Time</p>
+              <p className="text-sm font-medium text-gray-900">
+                {formatTime(appt.appointment_time)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Price</p>
+              <p className="text-sm font-medium text-gray-900">
+                {appt.price != null ? `₱${appt.price.toLocaleString()}` : "—"}
+              </p>
+            </div>
+          </div>
+
+          {appt.notes && (
+            <>
+              <div className="border-t border-gray-100" />
+              <div className="flex items-start gap-3">
+                <StickyNote className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs text-gray-500">Notes</p>
+                  <p className="text-sm text-gray-900">{appt.notes}</p>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TimeSlotCard({
+  appt,
+  onClick,
+}: {
+  appt: TimeSlotAppointment;
+  onClick: () => void;
+}) {
+  const isAvailable = appt.status === "available";
+
+  if (isAvailable) {
+    return (
+      <div
+        className={`flex items-center gap-3 rounded-xl border p-3 ${getStatusColor(appt.status)}`}
+      >
+        <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-white/50">
+          <Clock className="w-4 h-4 text-gray-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-gray-900 text-sm">{appt.time}</p>
+          <p className="text-xs text-gray-400">Available</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-3 rounded-xl border p-3 text-left w-full transition-shadow hover:shadow-md cursor-pointer ${getStatusColor(appt.status)}`}
     >
       <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-white/50">
         <Clock className="w-4 h-4 text-gray-600" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-gray-900 text-sm">{appt.time}</p>
-        {isAvailable ? (
-          <p className="text-xs text-gray-500">Available</p>
-        ) : (
-          <>
-            <p className="text-xs text-gray-700 truncate">{appt.customer}</p>
-            <p className="text-xs text-gray-500 truncate">
-              {appt.service} · {appt.barber}
-            </p>
-          </>
-        )}
+        <div className="sm:hidden">
+          <p className="font-semibold text-gray-900 text-sm">{appt.time}</p>
+          <p className="text-xs text-gray-500 mt-0.5 capitalize">
+            {appt.status.replace("_", " ")}
+          </p>
+        </div>
+        <div className="hidden sm:flex items-center gap-2">
+          <p className="font-semibold text-gray-900 text-sm">{appt.time}</p>
+          <AppointmentStatusBadge status={appt.status as any} />
+        </div>
       </div>
-      <span
-        className={`flex-shrink-0 text-xs font-medium px-2 py-1 rounded-full capitalize ${getStatusBadgeColor(appt.status)}`}
-      >
-        {appt.status === "available"
-          ? "Available"
-          : appt.status.replace("_", " ")}
-      </span>
-    </div>
+    </button>
   );
 }
 
@@ -109,9 +258,10 @@ export function Overview() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date(),
   );
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<OverviewStats>({
     completed_appointments: 0,
     pending_appointments: 0,
+    approved_appointments: 0,
     total_customers: 0,
     total_revenue: 0,
   });
@@ -123,20 +273,24 @@ export function Overview() {
   >([]);
   const [timeSlots, setTimeSlots] = useState<TimeSlotAppointment[]>([]);
   const [closedDates, setClosedDates] = useState<string[]>([]);
+  const [kpi, setKpi] = useState<AnalyticsKPI | null>(null);
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
+  const [detailAppointment, setDetailAppointment] =
+    useState<TimeSlotAppointment | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [statsData, revenueData, serviceData] = await Promise.all([
+        const [statsData, revenueData, serviceData, kpiData] = await Promise.all([
           getOverviewStats(),
           getMonthlyRevenue(),
           getServiceStats(),
+          getAnalyticsKPI("monthly"),
         ]);
         setStats(statsData);
         setMonthlyRevenue(revenueData);
         setServiceStats(serviceData);
+        setKpi(kpiData);
       } catch (error) {
         console.error("Failed to load overview data:", error);
       } finally {
@@ -145,44 +299,6 @@ export function Overview() {
     };
     loadData();
   }, []);
-
-  const handleExportSummary = async () => {
-    try {
-      setExporting(true);
-      const summary = await getOverviewExportSummary();
-
-      const workbook = XLSX.utils.book_new();
-
-      const summarySheet = XLSX.utils.json_to_sheet([
-        {
-          completed_appointments: summary.stats.completed_appointments,
-          cancelled_appointments: summary.stats.cancelled_appointments,
-          no_show_appointments: summary.stats.no_show_appointments,
-          walkin_appointments: summary.stats.walkin_appointments,
-          total_customers: summary.stats.total_customers,
-          total_revenue: summary.stats.total_revenue,
-        },
-      ]);
-
-      const revenueSheet = XLSX.utils.json_to_sheet(summary.daily_revenue);
-      const serviceSheet = XLSX.utils.json_to_sheet(summary.service_stats);
-      const appointmentsSheet = XLSX.utils.json_to_sheet(summary.appointments);
-
-      XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
-      XLSX.utils.book_append_sheet(workbook, revenueSheet, "Daily Revenue");
-      XLSX.utils.book_append_sheet(workbook, serviceSheet, "Service Stats");
-      XLSX.utils.book_append_sheet(workbook, appointmentsSheet, "Appointments");
-
-      const dateTag = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(workbook, `tols-summary-${dateTag}.xlsx`);
-      toast.success("Export summary successfully");
-    } catch (error) {
-      console.error("Export failed:", error);
-      toast.error("Failed to export summary");
-    } finally {
-      setExporting(false);
-    }
-  };
 
   useEffect(() => {
     const loadTimeSlots = async () => {
@@ -214,53 +330,43 @@ export function Overview() {
 
   return (
     <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
-      <div className="mb-6 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Manager Overview
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Welcome back! Here&apos;s what is happening on your barbershop!
-          </p>
-        </div>
-        <Button
-          onClick={handleExportSummary}
-          disabled={exporting}
-          className="shrink-0"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          {exporting ? "Exporting..." : "Export Summary"}
-        </Button>
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+          Dashboard
+        </h1>
+        <p className="text-gray-500 mt-1">
+          Welcome back! Here&apos;s what is happening on your barbershop!
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <StatCard
-          label="Completed Appointments"
+          label="Completed"
           value={loading ? "..." : stats.completed_appointments.toString()}
           icon={CheckCircle2}
           iconContainerClassName="bg-green-100"
           iconClassName="text-green-500"
         />
         <StatCard
-          label="Pending Appointments"
+          label="Approved"
+          value={loading ? "..." : stats.approved_appointments.toString()}
+          icon={CheckCircle2}
+          iconContainerClassName="bg-blue-100"
+          iconClassName="text-blue-500"
+        />
+        <StatCard
+          label="Pending"
           value={loading ? "..." : stats.pending_appointments.toString()}
           icon={AlertCircle}
           iconContainerClassName="bg-yellow-100"
           iconClassName="text-yellow-500"
         />
         <StatCard
-          label="Total Customers"
-          value={loading ? "..." : stats.total_customers.toString()}
-          icon={User}
-          iconContainerClassName="bg-blue-100"
-          iconClassName="text-blue-500"
-        />
-        <StatCard
-          label="Revenue"
-          value={loading ? "..." : `₱ ${stats.total_revenue.toLocaleString()}`}
-          icon={PhilippinePeso}
-          iconContainerClassName="bg-orange-100"
-          iconClassName="text-orange-500"
+          label="Avg Rating"
+          value={loading ? "..." : (kpi?.average_rating ?? 0).toString()}
+          icon={Star}
+          iconContainerClassName="bg-purple-100"
+          iconClassName="text-purple-500"
         />
       </div>
 
@@ -280,8 +386,8 @@ export function Overview() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[auto_1fr] gap-4 items-start">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 w-fit">
+      <div className="grid grid-cols-1 xl:grid-cols-[auto_1fr] gap-4 items-start ">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 w-full xl:w-fit">
           <h2 className="text-base font-bold text-gray-900">Calendar</h2>
           <p className="text-sm text-gray-400 mb-3">
             Select a date to view time slots
@@ -295,7 +401,8 @@ export function Overview() {
               const isClosedDate = closedDates.includes(formatDateToLocal(day));
               return isSunday || isClosedDate;
             }}
-            className="rounded-lg sm:w-full"
+            className="rounded-lg"
+            classNames={{ root: "w-full xl:w-fit" }}
           />
         </div>
 
@@ -316,12 +423,24 @@ export function Overview() {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {timeSlots.map((appt, i) => (
-                <TimeSlotCard key={i} appt={appt} />
+                <TimeSlotCard
+                  key={i}
+                  appt={appt}
+                  onClick={() => setDetailAppointment(appt)}
+                />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      <div className="h-8" ></div>
+
+      <AppointmentDetailModal
+        appt={detailAppointment}
+        open={detailAppointment !== null}
+        onClose={() => setDetailAppointment(null)}
+      />
     </div>
   );
 }

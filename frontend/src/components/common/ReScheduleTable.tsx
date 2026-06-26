@@ -36,7 +36,39 @@ export function ReScheduleTable({ items, formatShortDate, formatTime }: ReSchedu
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-gray-200">
+      {/* Mobile card view */}
+      <div className="block md:hidden space-y-3">
+        {paginatedItems.length === 0 ? (
+          <div className="rounded-lg border border-gray-200 p-6 text-center text-sm text-gray-500">
+            No re-schedule suggestions yet.
+          </div>
+        ) : (
+          paginatedItems.map((item) => (
+            <div
+              key={item.id}
+              className="rounded-lg border border-gray-200 bg-white p-4 space-y-2"
+            >
+              <p className="text-sm font-medium text-gray-900">
+                {item.customer_name ?? "-"}
+              </p>
+              <p className="text-xs text-gray-500">
+                {item.service_name ?? "-"} · {item.barber_name ?? "-"}
+              </p>
+              <p className="text-xs text-gray-500">
+                {formatShortDate(item.appointment_date)} · {formatTime(item.appointment_time)}
+              </p>
+              <div className="pt-1 border-t border-gray-100">
+                <span className="text-xs font-medium capitalize text-gray-700">
+                  Decision: {item.decision}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop table view */}
+      <div className="hidden md:block rounded-lg border border-gray-200 overflow-x-auto">
         <Table>
           <TableHeader className="bg-gray-50">
             <TableRow>

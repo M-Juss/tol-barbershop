@@ -14,13 +14,21 @@ class UserResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return[
+        $permissions = null;
+
+        if ($this->role === 'admin' && $this->roleModel) {
+            $this->roleModel->load('modules');
+            $permissions = $this->roleModel->modules->pluck('key')->toArray();
+        }
+
+        return [
             'id' => $this->id,
             'fullname' => $this->fullname,
             'contact_number' => $this->contact_number,
             'email' => $this->email,
             'role' => $this->role,
             'created_at' => $this->created_at,
+            'permissions' => $permissions,
         ];
     }
 }

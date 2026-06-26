@@ -5,6 +5,7 @@ export type AppointmentStatus =
   | "Pending"
   | "Completed"
   | "Cancelled"
+  | "Rejected"
   | "No-show";
 
 type AppointmentCardCustomerProps = {
@@ -23,6 +24,7 @@ const statusBadge: Record<AppointmentStatus, string> = {
   Pending: "bg-yellow-100 text-yellow-600",
   Completed: "bg-green-100 text-green-600",
   Cancelled: "bg-red-100 text-red-500",
+  Rejected: "bg-orange-100 text-orange-600",
   "No-show": "bg-gray-200 text-gray-600",
 };
 
@@ -50,7 +52,7 @@ export function AppointmentCardCustomer({
           <span className="flex items-center gap-1.5 text-gray-500 text-sm mt-0.5">
             Date & Time: {date} at {time}
           </span>
-          {status === "Cancelled" && cancellation_reason && (
+          {(status === "Cancelled" || status === "Rejected") && cancellation_reason && (
             <p className="text-red-500 text-xs mt-1.5">
               Reason: {cancellation_reason}
             </p>

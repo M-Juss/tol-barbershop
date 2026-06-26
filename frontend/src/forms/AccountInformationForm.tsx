@@ -11,36 +11,10 @@ import {
 } from "@/validations/user.validation";
 import { changeInformation } from "@/services/customer/user.api";
 import { toast } from "sonner";
-
-interface StoredUser {
-  id: number;
-  fullname: string;
-  email: string;
-  contact_number: string;
-  role: string;
-  created_at?: string;
-}
-
-const STORAGE_KEY = "auth_user";
-
-function getStoredUser(): StoredUser | null {
-  if (typeof window === "undefined") return null;
-
-  const rawUser = localStorage.getItem(STORAGE_KEY);
-  if (!rawUser) return null;
-
-  try {
-    return JSON.parse(rawUser) as StoredUser;
-  } catch {
-    return null;
-  }
-}
+import { useAuth } from "@/contexts/AuthContext";
 
 export function AccountInformationForm() {
-  const [isEditing, setIsEditing] = useState(false);
-  const [storedUser, setStoredUser] = useState<StoredUser | null>(() =>
-    getStoredUser(),
-  );
+  const { user, refreshUser } = useAuth();
 
   const {
     register,
@@ -57,35 +31,28 @@ export function AccountInformationForm() {
   });
 
   useEffect(() => {
-    reset({
-      fullname: storedUser?.fullname ?? "",
-      email: storedUser?.email ?? "",
-      contact_number: storedUser?.contact_number ?? "",
-    });
-  }, [reset, storedUser]);
+    if (user) {
+      reset({
+        fullname: user.fullname ?? "",
+        email: user.email ?? "",
+        contact_number: user.contact_number ?? "",
+      });
+    }
+  }, [reset, user]);
+
+  const [isEditing, setIsEditing] = useState(false);
 
   const onFormInvalid: SubmitErrorHandler<
     AccountInformationSchemaFormValues
   > = () => {
-    toast.error("Failed to update account information");
+    toast.error("All fields are required");
   };
 
   const onFormSubmit = async (data: AccountInformationSchemaFormValues) => {
     try {
-      const updatedUser = await changeInformation(data);
+      await changeInformation(data);
 
-      const mergedUser = {
-        ...storedUser,
-        ...updatedUser,
-      } as StoredUser;
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedUser));
-      setStoredUser(mergedUser);
-      reset({
-        fullname: mergedUser.fullname,
-        email: mergedUser.email,
-        contact_number: mergedUser.contact_number,
-      });
+      await refreshUser();
       setIsEditing(false);
       toast.success("Account information updated successfully");
     } catch {
@@ -94,16 +61,18 @@ export function AccountInformationForm() {
   };
 
   const handleCancel = () => {
-    reset({
-      fullname: storedUser?.fullname ?? "",
-      email: storedUser?.email ?? "",
-      contact_number: storedUser?.contact_number ?? "",
-    });
+    if (user) {
+      reset({
+        fullname: user.fullname ?? "",
+        email: user.email ?? "",
+        contact_number: user.contact_number ?? "",
+      });
+    }
     setIsEditing(false);
   };
 
-  const memberSinceValue = storedUser?.created_at
-    ? new Date(storedUser.created_at).toLocaleDateString("en-US", {
+  const memberSinceValue = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString("en-US", {
         month: "long",
         day: "numeric",
         year: "numeric",

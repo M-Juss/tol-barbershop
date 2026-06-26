@@ -78,7 +78,7 @@ export default function CustomerLayout({
   return (
     <div className="flex h-dvh overflow-hidden">
       <ResponsiveSidebar navItems={navItems} />
-      <main className="min-h-0 flex-1 overflow-y-auto bg-gray-100 md:pl-0 pt-16 md:pt-0 overscroll-contain">
+      <main className="min-h-0 flex-1 overflow-y-auto bg-gray-100 md:pl-0 pt-16 md:pt-0 pb-20 overscroll-contain">
         {children}
       </main>
     </div>

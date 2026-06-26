@@ -1,10 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Phone, User } from "lucide-react";
 import { WalkinForm } from "@/forms/WalkinForm";
 import {
   getAppointments,
   type Appointment,
 } from "@/services/admin/appointment.api";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 type WalkinAppointment = Appointment & {
   is_walkin: boolean;
@@ -76,6 +84,15 @@ function WalkInCard({ walkin }: { walkin: WalkinAppointment }) {
 export function Walkin() {
   const [walkins, setWalkins] = useState<WalkinAppointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  const totalPages = Math.max(1, Math.ceil(walkins.length / pageSize));
+
+  const paginatedWalkins = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return walkins.slice(start, start + pageSize);
+  }, [walkins, page]);
 
   const loadWalkins = async () => {
     try {
@@ -96,6 +113,10 @@ export function Walkin() {
   useEffect(() => {
     loadWalkins();
   }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [walkins.length]);
 
   return (
     <div className="w-full bg-slate-100 p-4 sm:p-6 font-sans">
@@ -124,11 +145,50 @@ export function Walkin() {
           </p>
         ) : (
           <div className="flex flex-col gap-3">
-            {walkins.map((walkin) => (
+            {paginatedWalkins.map((walkin) => (
               <WalkInCard key={walkin.id} walkin={walkin} />
             ))}
           </div>
         )}
+
+        {walkins.length > pageSize ? (
+          <Pagination className="mt-4">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setPage((prev) => Math.max(1, prev - 1));
+                  }}
+                />
+              </PaginationItem>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNo) => (
+                <PaginationItem key={pageNo}>
+                  <PaginationLink
+                    href="#"
+                    isActive={pageNo === page}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setPage(pageNo);
+                    }}
+                  >
+                    {pageNo}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setPage((prev) => Math.min(totalPages, prev + 1));
+                  }}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        ) : null}
       </div>
     </div>
   );

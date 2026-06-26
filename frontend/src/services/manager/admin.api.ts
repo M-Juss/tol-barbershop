@@ -1,5 +1,12 @@
 import { authFetch } from "@/lib/api";
 
+const API = process.env.NEXT_PUBLIC_API_URL;
+
+export const getPendingAppointmentCount = async (): Promise<number> => {
+  const res = await authFetch(`${API}/appointments/pending-count`);
+  return res.data?.count ?? 0;
+};
+
 export interface Admin {
   id: number;
   fullname: string;
@@ -7,6 +14,8 @@ export interface Admin {
   contact_number: string;
   image: string;
   is_active?: boolean;
+  role_id?: number | null;
+  role_name?: string | null;
 }
 
 export interface CreateAdminData {
@@ -17,6 +26,7 @@ export interface CreateAdminData {
   confirm_password?: string;
   image?: File;
   is_active?: boolean;
+  role_id?: number | null;
 }
 
 export const getAdmins = async (): Promise<Admin[]> => {
@@ -36,6 +46,9 @@ export const createAdmin = async (data: CreateAdminData): Promise<void> => {
     formData.append("password_confirmation", data.confirm_password);
   }
   formData.append("is_active", data.is_active ? "1" : "0");
+  if (data.role_id != null) {
+    formData.append("role_id", String(data.role_id));
+  }
   if (data.image) {
     formData.append("image", data.image);
   }
@@ -61,6 +74,9 @@ export const updateAdmin = async (
     formData.append("password_confirmation", data.confirm_password);
   }
   formData.append("is_active", data.is_active ? "1" : "0");
+  if (data.role_id != null) {
+    formData.append("role_id", String(data.role_id));
+  }
   if (data.image) {
     formData.append("image", data.image);
   }

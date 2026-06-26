@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\SanitizesInput;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class RegisterRequest extends FormRequest
 {
+    use SanitizesInput;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -15,13 +18,20 @@ class RegisterRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->sanitizeStringFields(['fullname']);
+        $this->normalizeEmailFields(['email']);
+        $this->normalizePhoneFields(['contact_number']);
+    }
+
     public function rules(): array
     {
         return [
-            'fullname' => ['required', 'string', 'max:255'],
-            'contact_number' => ['required', 'string', 'max:11'],
+            'fullname' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z\s]+$/'],
+            'contact_number' => ['required', 'string', 'max:11', 'regex:/^09\d{9}$/'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', 'string', 'min:8', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/'],
+            'password' => ['required', 'confirmed', 'string', 'min:8', 'max:255', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/'],
         ];
     }
     
@@ -31,9 +41,11 @@ class RegisterRequest extends FormRequest
             'fullname.required' => 'Full name is required.',
             'fullname.string' => 'Full name must be a string.',
             'fullname.max' => 'Full name must not exceed 255 characters.',
+            'fullname.regex' => 'Full name must only contain letters and spaces.',
             'contact_number.required' => 'Contact number is required.',
             'contact_number.string' => 'Contact number must be a string.',
-            'contact_number.max' => 'Contact number must not exceed 11 characters.',
+            'contact_number.max' => 'Contact number must not exceed 11 digits.',
+            'contact_number.regex' => 'Contact number must be a valid PH mobile number.',
             'email.required' => 'Email is required.',
             'email.string' => 'Email must be a string.',
             'email.email' => 'Email must be a valid email address.',

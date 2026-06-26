@@ -53,7 +53,7 @@ export function ChangePasswordForm({
   }, [open, reset]);
 
   const onFormInvalid: SubmitErrorHandler<ChangePasswordSchemaFormValues> = () => {
-    toast.error("Failed to update password");
+    toast.error("All fields are required");
   };
 
   const onFormSubmit = async (data: ChangePasswordSchemaFormValues) => {

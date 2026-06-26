@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\Notification;
+use App\Models\Service;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -18,13 +19,22 @@ class AppointmentController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $appointments = Appointment::with([
+        $query = Appointment::with([
             'user',
             'barber',
             'service',
-        ])->latest()->get();
+        ])->latest();
+
+        $user = $request->user();
+        if ($user?->role === 'customer') {
+            $query->where('user_id', $user->id);
+        } elseif (!in_array($user?->role, ['admin', 'manager'], true)) {
+            abort(403, 'Forbidden.');
+        }
+
+        $appointments = $query->get();
 
         return AppointmentResource::collection($appointments);
     }
@@ -36,6 +46,21 @@ class AppointmentController extends Controller
     {
         $validated = $request->validated();
         $isWalkin = (bool) ($validated['is_walkin'] ?? false);
+        $authUser = $request->user();
+        $canManage = in_array($authUser?->role, ['admin', 'manager'], true);
+        $service = Service::findOrFail($validated['service_id']);
+
+        if (!$canManage) {
+            if ($isWalkin) {
+                abort(403, 'Customers cannot create walk-in appointments.');
+            }
+
+            if ((int) $validated['user_id'] !== (int) $authUser->id) {
+                abort(403, 'Customers can only create their own appointments.');
+            }
+
+            $validated['status'] = 'pending';
+        }
 
         if ($isWalkin) {
             $now = Carbon::now();
@@ -57,8 +82,8 @@ class AppointmentController extends Controller
                 'barber_user_id' => $validated['barber_user_id'],
                 'appointment_date' => $now->toDateString(),
                 'appointment_time' => $now->format('H:i'),
-                'duration_minutes' => $validated['duration_minutes'] ?? null,
-                'price' => $validated['price'],
+                'duration_minutes' => $service->duration,
+                'price' => $service->price,
                 'status' => 'completed',
                 'is_walkin' => true,
                 'notes' => $validated['notes'] ?? null,
@@ -70,9 +95,9 @@ class AppointmentController extends Controller
         }
 
         // Prevent double booking
-        $existingAppointment = Appointment::where('barber_user_id', $request->barber_user_id)
-            ->where('appointment_date', $request->appointment_date)
-            ->where('appointment_time', $request->appointment_time)
+        $existingAppointment = Appointment::where('barber_user_id', $validated['barber_user_id'])
+            ->where('appointment_date', $validated['appointment_date'])
+            ->where('appointment_time', $validated['appointment_time'])
             ->whereIn('status', ['pending', 'approved'])
             ->exists();
 
@@ -89,9 +114,9 @@ class AppointmentController extends Controller
 
             'appointment_date' => $validated['appointment_date'],
             'appointment_time' => $validated['appointment_time'],
-            'duration_minutes' => $validated['duration_minutes'] ?? null,
+            'duration_minutes' => $service->duration,
 
-            'price' => $validated['price'],
+            'price' => $service->price,
 
             'status' => $validated['status'] ?? 'pending',
             'is_walkin' => (bool) ($validated['is_walkin'] ?? false),
@@ -111,13 +136,22 @@ class AppointmentController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
-        $appointment = Appointment::with([
+        $query = Appointment::with([
             'user',
             'barber',
             'service',
-        ])->findOrFail($id);
+        ]);
+
+        $user = $request->user();
+        if ($user?->role === 'customer') {
+            $query->where('user_id', $user->id);
+        } elseif (!in_array($user?->role, ['admin', 'manager'], true)) {
+            abort(403, 'Forbidden.');
+        }
+
+        $appointment = $query->findOrFail($id);
 
         return new AppointmentResource($appointment);
     }
@@ -127,11 +161,19 @@ class AppointmentController extends Controller
      */
     public function update(AppointmentRequest $request, string $id)
     {
+        if (!in_array($request->user()?->role, ['admin', 'manager'], true)) {
+            abort(403, 'Forbidden.');
+        }
+
         $appointment = Appointment::findOrFail($id);
         $originalStatus = $appointment->status;
         $validated = $request->validated();
+        $nextStatus = $validated['status'] ?? null;
+        $service = Service::findOrFail($validated['service_id']);
+        $validated['duration_minutes'] = $service->duration;
+        $validated['price'] = $service->price;
 
-        if (($validated['status'] ?? null) === 'cancelled') {
+        if ($nextStatus === 'cancelled' || $nextStatus === 'rejected') {
             $reason = $validated['cancellation_reason'] ?? null;
             $validated['cancellation_reason'] = is_string($reason) && trim($reason) !== ''
                 ? trim($reason)
@@ -140,24 +182,64 @@ class AppointmentController extends Controller
             $validated['cancellation_reason'] = null;
         }
 
+        if ($nextStatus === 'completed' && $originalStatus !== 'completed' && !$appointment->completed_at) {
+            $validated['completed_at'] = Carbon::now();
+        }
+
+        if ($nextStatus === 'rejected' && $originalStatus !== 'rejected') {
+            $validated['rejected_at'] = Carbon::now();
+        }
+
         $appointment->update($validated);
 
-        if (($validated['status'] ?? null) && $validated['status'] !== $originalStatus) {
-            Notification::create([
-                'user_id' => $appointment->user_id,
-                'type' => 'appointment_status',
-                'title' => 'Appointment Status Updated',
-                'message' => sprintf(
-                    'Your appointment #%d is now %s.',
-                    $appointment->id,
-                    str_replace('_', ' ', $validated['status'])
-                ),
-                'payload' => [
-                    'appointment_id' => $appointment->id,
-                    'status' => $validated['status'],
-                ],
-                'created_by_user_id' => $request->user()?->id,
-            ]);
+        if ($nextStatus && $nextStatus !== $originalStatus) {
+            $appointment->loadMissing(['service:id,name', 'barber:id,fullname']);
+
+            if ($nextStatus === 'completed') {
+                $exists = Notification::where('user_id', $appointment->user_id)
+                    ->where('type', 'appointment_feedback_request')
+                    ->where('payload->appointment_id', $appointment->id)
+                    ->exists();
+
+                if (!$exists) {
+                    Notification::create([
+                        'user_id' => $appointment->user_id,
+                        'type' => 'appointment_feedback_request',
+                        'title' => 'Your TOLS Barbershop booking is completed',
+                        'message' => sprintf(
+                            'Your %s booking #%d is completed. Tap to rate the service and share your feedback.',
+                            $appointment->service?->name ?? 'barbershop service',
+                            $appointment->id
+                        ),
+                        'payload' => [
+                            'appointment_id' => $appointment->id,
+                            'status' => $nextStatus,
+                            'service_name' => $appointment->service?->name,
+                        ],
+                        'created_by_user_id' => $request->user()?->id,
+                    ]);
+                }
+            } else {
+                Notification::create([
+                    'user_id' => $appointment->user_id,
+                    'type' => 'appointment_status',
+                    'title' => 'Appointment Status Updated',
+                    'message' => sprintf(
+                        'Your booking is now %s.',
+                        str_replace('_', ' ', $nextStatus)
+                    ),
+                    'payload' => [
+                        'appointment_id' => $appointment->id,
+                        'status' => $nextStatus,
+                        'service_name' => $appointment->service?->name,
+                        'barber_name'   => $appointment->barber?->fullname,
+                        'appointment_date' => $appointment->appointment_date,
+                        'appointment_time' => $appointment->appointment_time,
+                        'price' => $appointment->price,
+                    ],
+                    'created_by_user_id' => $request->user()?->id,
+                ]);
+            }
         }
 
         $appointment->load([
@@ -187,14 +269,28 @@ class AppointmentController extends Controller
     {
         $completedAppointments = Appointment::where('status', 'completed')->count();
         $pendingAppointments = Appointment::where('status', 'pending')->count();
+        $approvedAppointments = Appointment::where('status', 'approved')->count();
         $totalCustomers = User::where('role', 'customer')->count();
         $totalRevenue = (float) Appointment::where('status', 'completed')->sum('price');
 
         return response()->json([
             'completed_appointments' => $completedAppointments,
             'pending_appointments' => $pendingAppointments,
+            'approved_appointments' => $approvedAppointments,
             'total_customers' => $totalCustomers,
             'total_revenue' => $totalRevenue,
+        ]);
+    }
+
+    public function pendingCount()
+    {
+        $count = Appointment::where('status', 'pending')->count();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'count' => $count,
+            ],
         ]);
     }
 
@@ -259,7 +355,7 @@ class AppointmentController extends Controller
 
         $date = $validated['date'];
 
-        $appointments = Appointment::with(['user:id,fullname', 'barber:id,fullname', 'service:id,name'])
+        $appointments = Appointment::with(['user:id,fullname,email,contact_number', 'barber:id,fullname', 'service:id,name'])
             ->whereDate('appointment_date', $date)
             ->whereIn('status', self::DASHBOARD_SLOT_STATUSES)
             ->get();
@@ -270,10 +366,17 @@ class AppointmentController extends Controller
             $time12 = Carbon::createFromFormat('H:i', $time24)->format('g:i A');
 
             $slotMap[$time12] = [
+                'id' => $appointment->id,
                 'time' => $time12,
                 'customer' => $appointment->user?->fullname,
+                'customer_email' => $appointment->user?->email,
+                'customer_contact' => $appointment->user?->contact_number,
                 'service' => $appointment->service?->name,
                 'barber' => $appointment->barber?->fullname,
+                'price' => (float) $appointment->price,
+                'notes' => $appointment->notes,
+                'appointment_date' => $appointment->appointment_date,
+                'appointment_time' => $appointment->appointment_time,
                 'status' => $appointment->status,
             ];
         }
@@ -282,10 +385,17 @@ class AppointmentController extends Controller
         for ($hour = 9; $hour <= 19; $hour++) {
             $time12 = Carbon::createFromTime($hour, 0)->format('g:i A');
             $slots[] = $slotMap[$time12] ?? [
+                'id' => null,
                 'time' => $time12,
                 'customer' => null,
+                'customer_email' => null,
+                'customer_contact' => null,
                 'service' => null,
                 'barber' => null,
+                'price' => null,
+                'notes' => null,
+                'appointment_date' => null,
+                'appointment_time' => null,
                 'status' => 'available',
             ];
         }

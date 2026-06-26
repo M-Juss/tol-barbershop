@@ -9,6 +9,7 @@ function getStatusBadgeClass(status: AppointmentStatus): string {
   if (status === "approved") return "bg-blue-100 text-blue-700";
   if (status === "completed") return "bg-green-100 text-green-700";
   if (status === "cancelled") return "bg-red-100 text-red-700";
+  if (status === "rejected") return "bg-orange-100 text-orange-700";
   return "bg-gray-200 text-gray-700";
 }
 

@@ -4,7 +4,8 @@ export const registerSchema = z.object({
     fullname: z
     .string()
     .trim()
-    .nonempty("Fullname is required"),
+    .nonempty("Fullname is required")
+    .regex(/^[A-Za-z\s]+$/, "Full name must only contain letters and spaces"),
 
     email: z
     .string()
@@ -16,7 +17,8 @@ export const registerSchema = z.object({
     .string()
     .trim()
     .nonempty("Contact Number is required.")
-    .regex(/^(09|\+639|639)\d{9}$/, "Invalid Contact Number"),
+    .regex(/^09\d{9}$/, "Contact number must be a valid PH mobile number (09XXXXXXXXX)")
+    .max(11, "Contact number must not exceed 11 digits"),
 
     password: z
     .string()
@@ -71,12 +73,6 @@ export type ForgotPasswordSchemaFormValues = z.infer<typeof forgotPasswordSchema
 
 export const resetPasswordSchema = z
   .object({
-    email: z
-      .string()
-      .trim()
-      .email("Invalid email address")
-      .nonempty("Email is required."),
-    token: z.string().trim().nonempty("Reset token is required."),
     password: z
       .string()
       .trim()

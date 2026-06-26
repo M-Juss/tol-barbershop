@@ -6,6 +6,7 @@ use App\Traits\ApiResponseTrait;
 use App\Http\Requests\StaffRequest;
 use App\Models\User;
 use App\Http\Resources\StaffResource;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class BarberController extends Controller
@@ -14,10 +15,16 @@ class BarberController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $barber = User::where("role","barber")->get();
+            $query = User::where("role","barber");
+
+            if ($request->user()?->role !== 'manager') {
+                $query->where('is_active', true);
+            }
+
+            $barber = $query->get();
             $data = StaffResource::collection($barber);
             
             return $this->success('Barber fetched successfully', $data);

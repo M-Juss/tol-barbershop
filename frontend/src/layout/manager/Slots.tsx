@@ -220,31 +220,19 @@ export function Slots() {
 
   return (
     <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Appointment Slots
-          </h1>
-          <p className="text-gray-700 mt-1 text-sm sm:text-base">
-            Manage your calendar availability and time slots
-          </p>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Closed Dates Card */}
         <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col">
-          <div className="flex justify-between mb-6">
-            <div className="flex flex-col">
-              <p className="font-semibold">Closed Dates</p>
-              <p className="text-gray-700">Mark days when the shop is closed</p>
-            </div>
+          <div className="relative mb-4">
+            <p className="font-semibold">Closed Dates</p>
+            <p className="text-gray-700 text-sm">Mark days when the shop is closed</p>
             <button
               onClick={openClosedDateModal}
-              className="flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white text-sm rounded-lg px-4 py-2"
+              className="absolute top-0 right-0 flex items-center gap-1.5 bg-red-500 hover:bg-red-600 transition-colors text-white font-semibold rounded-lg px-3 py-1.5 text-xs whitespace-nowrap"
             >
-              <Plus className="w-3 h-3" strokeWidth={2} />
-              Add Closed Date
+              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+              <span className="hidden xs:inline">Add Closed Date</span>
+              <span className="xs:hidden">Add</span>
             </button>
           </div>
           <div className="space-y-2">

@@ -6,6 +6,7 @@ export const appointmentStatusSchema = z.enum([
   "completed",
   "cancelled",
   "no_show",
+  "rejected",
 ]);
 
 const time24Pattern = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -37,7 +38,7 @@ const baseAppointmentSchema = z.object({
     .string()
     .regex(time24Pattern, "Appointment time must use 24-hour format (HH:mm)."),
   duration_minutes: z.number().int().min(1).nullable().optional(),
-  price: z.number().min(0),
+  price: z.number().int("Price must be a whole number").min(0),
   status: appointmentStatusSchema.optional(),
   notes: z.string().nullable().optional(),
   cancellation_reason: z.string().nullable().optional(),
@@ -45,7 +46,27 @@ const baseAppointmentSchema = z.object({
 
 export const createAppointmentSchema = baseAppointmentSchema;
 
-export const updateAppointmentSchema = baseAppointmentSchema;
+const updateBaseSchema = z.object({
+  user_id: z.number().int().positive(),
+  service_id: z.number().int().positive(),
+  barber_user_id: z.number().int().positive(),
+  appointment_date: z
+    .string()
+    .min(1)
+    .refine((value) => !Number.isNaN(new Date(value).getTime()), {
+      message: "Appointment date must be a valid date.",
+    }),
+  appointment_time: z
+    .string()
+    .regex(time24Pattern, "Appointment time must use 24-hour format (HH:mm)."),
+  duration_minutes: z.number().int().min(1).nullable().optional(),
+  price: z.number().int("Price must be a whole number").min(0),
+  status: appointmentStatusSchema.optional(),
+  notes: z.string().nullable().optional(),
+  cancellation_reason: z.string().nullable().optional(),
+});
+
+export const updateAppointmentSchema = updateBaseSchema;
 
 export const cancellationReasonSchema = z.object({
   cancellation_reason: z

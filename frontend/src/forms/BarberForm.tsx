@@ -19,6 +19,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import {
+  sanitizeString,
+  normalizeEmail,
+  normalizePhone,
+} from "@/lib/sanitizer";
 
 interface BarberFormProps {
   open: boolean;
@@ -94,31 +99,51 @@ export function BarberForm({
     }
   }, [initialData, open, reset]);
 
+  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif"];
+  const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3MB
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setImagePreview(result);
-        setValue("image", result);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      toast.error("Only JPG, PNG, and HEIC images are allowed");
+      e.target.value = "";
+      return;
     }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.error("Image must be less than 3MB");
+      e.target.value = "";
+      return;
+    }
+
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      setImagePreview(result);
+      setValue("image", result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const onFormSubmit = async (data: BarberSchemaFormValues) => {
-    // Include the image file if selected
-    const submitData: BarberSchemaFormValues & { image?: File } = {
+    const sanitized = {
       ...data,
+      fullname: sanitizeString(data.fullname),
+      email: normalizeEmail(data.email),
+      contact_number: normalizePhone(data.contact_number),
+    };
+    const submitData: BarberSchemaFormValues & { image?: File } = {
+      ...sanitized,
       image: imageFile || undefined,
     };
     await onSubmit?.(submitData);
   };
 
   const onFormInvalid: SubmitErrorHandler<BarberSchemaFormValues> = () => {
-    toast.error("Failed to save barber");
+    toast.error("All fields are required");
   };
 
   return (
@@ -155,7 +180,7 @@ export function BarberForm({
             <div>
               <input
                 type="file"
-                accept="image/*"
+                accept=".jpg,.jpeg,.png,.heic,.heif"
                 onChange={handleImageChange}
                 className="hidden"
                 id="image-upload"

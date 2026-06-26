@@ -28,11 +28,16 @@ class ServiceController extends Controller
         }
     }
 
-    public function index()
+    public function index(Request $request)
     {
     try {
-       
-        $services = Service::all();
+        $query = Service::query();
+
+        if ($request->user()?->role !== 'manager') {
+            $query->where('is_active', true);
+        }
+
+        $services = $query->get();
         
         $data = [
             "services" => ServiceResource::collection($services),

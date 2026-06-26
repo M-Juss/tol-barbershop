@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { DatePickerWithLabel } from "@/components/common/DatePickerWithLabel";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/SelectWithLabel";
@@ -15,6 +16,9 @@ import {
 } from "@/services/customer/appointment.api";
 import { createAppointmentSchema } from "@/validations/appointment.validation";
 import { toast } from "sonner";
+import { useRateLimit } from "@/hooks/useRateLimit";
+import { sanitizeText } from "@/lib/sanitizer";
+import { useAuth } from "@/contexts/AuthContext";
 
 const timeOptions = [
   { value: "9:00 AM", label: "9:00 AM" },
@@ -73,12 +77,7 @@ function normalizeApiDate(value: string): string {
   return formatDateForApi(parsed);
 }
 
-type AuthUser = {
-  id: number;
-  fullname: string;
-  email: string;
-  contact_number: string;
-};
+
 
 type BarberWithFallbackId = Barber & {
   user_id?: number | string | null;
@@ -92,6 +91,8 @@ function resolveBarberUserId(barber: BarberWithFallbackId): number | null {
 }
 
 export function NewAppointmentForm() {
+  const router = useRouter();
+  const { user: authUser, isLoading: authLoading } = useAuth();
   const [barbers, setBarbers] = useState<BarberWithFallbackId[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [selectedBarber, setSelectedBarber] = useState<string>("");
@@ -99,24 +100,27 @@ export function NewAppointmentForm() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [notes, setNotes] = useState("");
-  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState("");
   const [unavailableTimes, setUnavailableTimes] = useState<string[]>([]);
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  const rateLimit = useRateLimit({
+    maxAttempts: 10,
+    cooldownMinutes: 5,
+    storageKey: "appointment_booking_rate_limit",
+  });
 
   const selectedServiceData = services.find(
     (s) => s.id.toString() === selectedService,
   );
   const selectedServicePrice = Number(selectedServiceData?.price);
-  const subtotal = Number.isFinite(selectedServicePrice) ? selectedServicePrice : 0;
+  const subtotal = Number.isFinite(selectedServicePrice)
+    ? selectedServicePrice
+    : 0;
   const formatCurrency = (amount: number) => `₱${amount.toFixed(2)}`;
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("auth_user");
-    if (storedUser) {
-      setAuthUser(JSON.parse(storedUser));
-    }
+    if (authLoading) return;
 
     const fetchData = async () => {
       try {
@@ -149,11 +153,12 @@ export function NewAppointmentForm() {
         setServices(servicesData.filter((service) => service.is_active));
       } catch (error) {
         console.error("Failed to fetch data:", error);
+        toast.error("Failed to load booking data");
       }
     };
 
     fetchData();
-  }, []);
+  }, [authLoading]);
 
   useEffect(() => {
     const fetchUnavailableTimes = async () => {
@@ -185,6 +190,7 @@ export function NewAppointmentForm() {
         setUnavailableTimes(blocked);
       } catch (error) {
         console.error("Failed to check appointment availability:", error);
+        toast.error("Failed to check availability");
         setUnavailableTimes([]);
       } finally {
         setIsCheckingAvailability(false);
@@ -207,12 +213,16 @@ export function NewAppointmentForm() {
     setFormError("");
 
     if (!isFormValid) {
-      alert("Please fill in all required fields");
+      setFormError("All fields are required");
       return;
     }
 
     if (!authUser) {
       alert("User profile not found. Please login again.");
+      return;
+    }
+
+    if (!rateLimit.attempt()) {
       return;
     }
 
@@ -243,27 +253,60 @@ export function NewAppointmentForm() {
         barber_user_id: barberUserId,
         appointment_date: formatDateForApi(selectedDate!),
         appointment_time: convert12HourTo24Hour(selectedTime),
-        duration_minutes: selectedServiceData.duration,
+        duration_minutes: selectedServiceData.duration
+          ? Number(selectedServiceData.duration)
+          : undefined,
         price: subtotal,
-        status: "pending",
-        notes: notes || null,
+        status: "pending" as const,
+        notes: notes ? sanitizeText(notes) : undefined,
       };
 
       const validation = createAppointmentSchema.safeParse(payload);
       if (!validation.success) {
-        setFormError(validation.error.issues[0]?.message ?? "Invalid appointment details.");
+        setFormError(
+          validation.error.issues[0]?.message ?? "Invalid appointment details.",
+        );
         return;
       }
 
-      await createAppointment(validation.data);
+      // Extract only the fields needed for the API call
+      const apiPayload = {
+        user_id: validation.data.user_id,
+        service_id: validation.data.service_id,
+        barber_user_id: validation.data.barber_user_id,
+        appointment_date: validation.data.appointment_date,
+        appointment_time: validation.data.appointment_time,
+        duration_minutes:
+          validation.data.duration_minutes === null
+            ? undefined
+            : validation.data.duration_minutes,
+        price: validation.data.price,
+        status: validation.data.status,
+        notes:
+          validation.data.notes === null ? undefined : validation.data.notes,
+      } as {
+        user_id: number;
+        service_id: number;
+        barber_user_id: number;
+        appointment_date: string;
+        appointment_time: string;
+        duration_minutes?: number;
+        price: number;
+        status: "pending";
+        notes?: string;
+      };
+
+      await createAppointment(apiPayload);
 
       toast.success("Booked successfully");
+      rateLimit.reset();
       setSelectedBarber("");
       setSelectedService("");
       setSelectedDate(new Date());
       setSelectedTime("");
       setNotes("");
       setFormError("");
+      router.push("/customer/history");
     } catch (error) {
       console.error("Failed to book appointment:", error);
       setFormError("Failed to book appointment");
@@ -350,7 +393,9 @@ export function NewAppointmentForm() {
             }))}
             value={selectedTime}
             onValueChange={(value) => setSelectedTime(value)}
-            disabled={!selectedBarber || !selectedDate || isCheckingAvailability}
+            disabled={
+              !selectedBarber || !selectedDate || isCheckingAvailability
+            }
           />
 
           <div className="col-span-2">
@@ -372,7 +417,9 @@ export function NewAppointmentForm() {
 
           <div className="col-span-2 border-t border-gray-200 pt-4">
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between">
-              <span className="text-base font-semibold text-gray-800">Total</span>
+              <span className="text-base font-semibold text-gray-800">
+                Total
+              </span>
               <span className="text-2xl font-extrabold text-amber-600">
                 {formatCurrency(subtotal)}
               </span>

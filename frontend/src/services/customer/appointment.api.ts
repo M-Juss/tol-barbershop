@@ -27,7 +27,8 @@ export type AppointmentStatus =
   | "approved"
   | "completed"
   | "cancelled"
-  | "no_show";
+  | "no_show"
+  | "rejected";
 
 export interface Appointment {
   id: number;
@@ -93,7 +94,7 @@ export interface UpdateAppointmentData {
 // Fetch active barbers
 export const getActiveBarbers = async (): Promise<Barber[]> => {
   const response = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/barber`);
-  return response.data;
+  return response.data?.data ?? response.data;
 };
 
 // Fetch active services

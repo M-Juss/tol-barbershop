@@ -153,20 +153,14 @@ export function Service() {
 
   return (
     <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Services
-          </h1>
-          <p className="text-gray-500 mt-1">Manage your barbershop services</p>
-        </div>
+      <div className="flex justify-end mb-4">
         <button
           onClick={openAddModal}
-          className="flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white font-semibold rounded-xl px-4 sm:px-5 py-2.5 sm:py-3 text-sm"
+          className="flex items-center gap-1.5 bg-red-500 hover:bg-red-600 transition-colors text-white font-semibold rounded-lg px-3 py-1.5 text-xs whitespace-nowrap"
         >
-          <Plus className="w-4 h-4" strokeWidth={2.5} />
-          Add Service
+          <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+          <span className="hidden xs:inline">Add Service</span>
+          <span className="xs:hidden">Add</span>
         </button>
       </div>
 

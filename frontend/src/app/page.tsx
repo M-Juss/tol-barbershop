@@ -3,7 +3,12 @@ import { Clock, Mail, MapPin, Phone, Scissors, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getLandingServices, type LandingService } from "@/services/landing.api";
+import {
+  getLandingFeedback,
+  getLandingServices,
+  type LandingFeedback,
+  type LandingService,
+} from "@/services/landing.api";
 
 const navLinks = [
   { name: "Home", href: "#home" },
@@ -12,44 +17,6 @@ const navLinks = [
   { name: "Gallery", href: "#gallery" },
   { name: "Testimonials", href: "#testimonial" },
   { name: "Contact", href: "#contact" },
-];
-
-const testimonials = [
-  {
-    name: "David Thompson",
-    role: "Business Executive",
-    rating: 5,
-    text: '" Limang taon na akong bumabalik sa Tols Barbershop. Alam na agad ni Marcus kung anong style ang babagay sa akin. Iba talaga ang attention to detail at napaka-professional ng atmosphere dito. "',
-    image: "DT",
-  },
-  {
-    name: "Michael Chen",
-    role: "Software Engineer",
-    rating: 5,
-    text: '" Pinakamagandang barbershop sa siyudad! Perpekto lagi ang fades ni Jake. Ang ganda ng kombinasyon ng modern vibe at classic na serbisyo—kaya dito na talaga ako palagi. "',
-    image: "MC",
-  },
-  {
-    name: "Robert Martinez",
-    role: "Restaurant Owner",
-    rating: 5,
-    text: '" Sobrang nag-level up ang beard ko dahil kay Rico. Kitang-kita ang husay at attention to detail niya sa beard grooming. Highly recommended para sa mga seryoso sa kanilang style. "',
-    image: "RM",
-  },
-  {
-    name: "James Wilson",
-    role: "Marketing Director",
-    rating: 5,
-    text: '" Legendary ang hot towel shave experience dito. Hindi lang ito simpleng gupit—kumpletong gentleman’s grooming experience talaga. Sulit na sulit bawat bayad. "',
-    image: "JW",
-  },
-  {
-    name: "Anthony Brown",
-    role: "Photographer",
-    rating: 5,
-    text: '" Marami na akong napuntahang barbershop, pero iba talaga ang Tols Barbershop. Consistent ang quality, maayos ang serbisyo, at sobrang professional. Dito na ako forever. "',
-    image: "AB",
-  },
 ];
 
 const cardAbout = [
@@ -105,16 +72,17 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [services, setServices] = useState<LandingService[]>([]);
+  const [testimonials, setTestimonials] = useState<LandingFeedback[]>([]);
 
   useEffect(() => {
-    if (!isAutoPlaying) return;
+    if (!isAutoPlaying || testimonials.length <= 1) return;
 
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % testimonials.length);
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [isAutoPlaying]);
+  }, [isAutoPlaying, testimonials.length]);
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -131,10 +99,29 @@ export default function Home() {
     fetchServices();
   }, []);
 
+  useEffect(() => {
+    const fetchFeedback = async () => {
+      try {
+        const data = await getLandingFeedback();
+        setTestimonials(data);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        console.error("Failed to load feedback:", message);
+      }
+    };
+
+    fetchFeedback();
+  }, []);
+
   const goToSlide = (index: number) => {
     setCurrentIndex(index);
     setIsAutoPlaying(false);
   };
+
+  const safeCurrentIndex =
+    testimonials.length > 0 ? Math.min(currentIndex, testimonials.length - 1) : 0;
+  const currentTestimonial = testimonials[safeCurrentIndex] ?? null;
 
   return (
     <div className="w-full">
@@ -173,7 +160,7 @@ export default function Home() {
           className="relative min-h-screen w-full overflow-hidden"
         >
           <Image
-            src="/Tols.png"
+            src="/Tols-Hero-Image.png"
             alt="Barber shop"
             fill
             sizes="100vw"
@@ -271,14 +258,14 @@ export default function Home() {
             </p>
 
             <p className="text-neutral-landing">
-              Since 2009, Tols Barbershop has been the cornestone of gentleman's
+              Since 2009, Tols Barbershop has been the cornestone of gentleman&apos;s
               grooming in the city. Our master barbers combine time-honord
               techniques with contemporary styles to deliver an unparalleled
               experience.
             </p>
 
             <p className="text-neutral-landing">
-              We believe every man deserves to look and feel his best. That's
+              We believe every man deserves to look and feel his best. That&apos;s
               why we use only premium products and tools, ensuring each cut isa
               masterpiece and every shave is an indulgece.
             </p>
@@ -354,46 +341,62 @@ export default function Home() {
             What Our Customer Say
           </p>
           <p className="text-sm text-neutral-landing mb-8">
-            Don't just take our word for it - hear from our satisfied clients
+            Don&apos;t just take our word for it - hear from our satisfied clients
           </p>
 
           <div className="px-5 sm:px-8 lg:px-12 py-8 sm:py-12 border border-white/12 relative flex flex-col items-center rounded-xl hover:scale-105 transition duration-300">
-            <div className="flex gap-1 mb-8">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  size={50}
-                  className={`w-7 h-7 ${
-                    i < testimonials[currentIndex].rating
-                      ? "text-accent fill-accent"
-                      : "text-gray-400"
-                  }`}
-                />
-              ))}
-            </div>
+            {currentTestimonial ? (
+              <>
+                <div className="flex gap-1 mb-8">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      size={50}
+                      className={`w-7 h-7 ${
+                        i < currentTestimonial.rating
+                          ? "text-accent fill-accent"
+                          : "text-gray-400"
+                      }`}
+                    />
+                  ))}
+                </div>
 
-            <p className="text-lg sm:text-xl lg:text-2xl mb-8">
-              {testimonials[currentIndex].text}
-            </p>
+                <p className="text-lg sm:text-xl lg:text-2xl mb-8">
+                  &quot;{currentTestimonial.comment}&quot;
+                </p>
 
-            <div className="flex items-center space-x-3 mb-1">
-              <p className="px-4 py-3 bg-accent rounded-full font-bold">
-                {testimonials[currentIndex].image}
-              </p>
-              <p>{testimonials[currentIndex].name}</p>
-            </div>
+                <div className="flex items-center space-x-3 mb-1">
+                  <p className="px-4 py-3 bg-accent rounded-full font-bold">
+                    {currentTestimonial.customer_initials || "C"}
+                  </p>
+                  <div className="text-left">
+                    <p>{currentTestimonial.customer_name}</p>
+                    <p className="text-xs text-neutral-landing">
+                      {currentTestimonial.service_name ?? "TOLS Barbershop Customer"}
+                    </p>
+                  </div>
+                </div>
 
-            <div className="flex justify-between space-x-3 mt-8">
-              {testimonials.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => goToSlide(index)}
-                  className={`w-3 h-3 transition-all duration-300 rounded-full ${
-                    currentIndex === index ? "w-10 bg-accent " : "bg-white"
-                  }`}
-                ></button>
-              ))}
-            </div>
+                {testimonials.length > 1 ? (
+                  <div className="flex justify-between space-x-3 mt-8">
+                    {testimonials.map((item, index) => (
+                      <button
+                        key={item.id}
+                        onClick={() => goToSlide(index)}
+                        className={`w-3 h-3 transition-all duration-300 rounded-full ${
+                          safeCurrentIndex === index ? "w-10 bg-accent " : "bg-white"
+                        }`}
+                        aria-label={`Show feedback ${index + 1}`}
+                      ></button>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="py-8 text-neutral-landing">
+                Customer feedback will appear here after completed bookings.
+              </div>
+            )}
           </div>
         </section>
       </main>
@@ -411,7 +414,7 @@ export default function Home() {
             </div>
             <p className="text-sm">
               Where traditional barbering meets modern style. Experience the
-              finest in gentleman's grooming since 2009.
+              finest in gentleman&apos;s grooming since 2009.
             </p>
           </div>
 
@@ -438,12 +441,9 @@ export default function Home() {
 
           {/*Column 3*/}
           <div className="flex flex-col">
-            <div className="flex space-x-3 ">
-              <p className="text-accent">
-                <Clock className="text-white" size={28} />
-              </p>
+
               <p className="text-xl mb-5">Opening Hours</p>
-            </div>
+  
 
             <div className="flex border-b border-white/10 pb-4 justify-between items-center">
               <p className="text-sm">Monday - Saturday </p>
@@ -471,6 +471,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-    </div>
+     </div>
   );
 }

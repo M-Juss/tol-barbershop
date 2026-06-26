@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { resetPasswordRequest } from "@/services/auth.api";
 import {
@@ -10,14 +9,16 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SubmitErrorHandler, useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useRateLimit } from "@/hooks/useRateLimit";
 
 export function ResetPasswordForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const initialEmail = useMemo(() => searchParams.get("email") ?? "", [searchParams]);
-  const initialToken = useMemo(() => searchParams.get("token") ?? "", [searchParams]);
+  const rateLimit = useRateLimit({
+    maxAttempts: 3,
+    cooldownMinutes: 5,
+    storageKey: "reset_password_rate_limit",
+  });
 
   const {
     register: formRegister,
@@ -26,59 +27,40 @@ export function ResetPasswordForm() {
   } = useForm<ResetPasswordSchemaFormValues>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
-      email: initialEmail,
-      token: initialToken,
       password: "",
       password_confirmation: "",
     },
   });
 
   const onSubmit = async (data: ResetPasswordSchemaFormValues) => {
+    if (!rateLimit.attempt()) {
+      return;
+    }
+
     try {
-      await resetPasswordRequest(data);
+      await resetPasswordRequest({
+        password: data.password,
+        password_confirmation: data.password_confirmation,
+      });
       toast.success("Password reset successfully");
+      rateLimit.reset();
       router.push("/login");
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to reset password";
-      toast.error(message);
+    } catch {
+      toast.error("Failed to reset password");
     }
   };
 
-  const onFormInvalid: SubmitErrorHandler<ResetPasswordSchemaFormValues> = () => {
-    toast.error("Please complete the form correctly");
+  const onFormInvalid: SubmitErrorHandler<
+    ResetPasswordSchemaFormValues
+  > = () => {
+    toast.error("All fields are required");
   };
 
   return (
-    <form className="w-full space-y-6" onSubmit={handleSubmit(onSubmit, onFormInvalid)}>
-      <div className="relative">
-        <InputWithLabel
-          id="email"
-          type="email"
-          label="Email"
-          placeholder="Enter your account email"
-          className="h-10 border-gray-300 focus-visible:ring-accent/40"
-          {...formRegister("email")}
-        />
-        {errors.email && (
-          <p className="absolute left-0 top-full text-red-500 text-xs">{errors.email.message}</p>
-        )}
-      </div>
-
-      <div className="relative">
-        <InputWithLabel
-          id="token"
-          type="text"
-          label="Reset Token"
-          placeholder="Paste your reset token"
-          className="h-10 border-gray-300 focus-visible:ring-accent/40"
-          {...formRegister("token")}
-        />
-        {errors.token && (
-          <p className="absolute left-0 top-full text-red-500 text-xs">{errors.token.message}</p>
-        )}
-      </div>
-
+    <form
+      className="w-full space-y-6"
+      onSubmit={handleSubmit(onSubmit, onFormInvalid)}
+    >
       <div className="relative">
         <InputWithLabel
           id="password"
@@ -89,7 +71,9 @@ export function ResetPasswordForm() {
           {...formRegister("password")}
         />
         {errors.password && (
-          <p className="absolute left-0 top-full text-red-500 text-xs">{errors.password.message}</p>
+          <p className="absolute left-0 top-full text-red-500 text-xs">
+            {errors.password.message}
+          </p>
         )}
       </div>
 
@@ -111,10 +95,14 @@ export function ResetPasswordForm() {
 
       <button
         type="submit"
-        disabled={isSubmitting}
-        className="bg-accent hover:bg-accent/90 mb-4 w-full text-white py-2 px-4 rounded-md transition duration-300"
+        disabled={isSubmitting || !rateLimit.canAttempt}
+        className="bg-accent hover:bg-accent/90 mb-4 w-full text-white py-2 px-4 rounded-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isSubmitting ? "Resetting..." : "Reset Password"}
+        {rateLimit.isCooldown
+          ? `Try again in ${rateLimit.formatCooldownTime(rateLimit.cooldownRemaining)}`
+          : isSubmitting
+            ? "Resetting..."
+            : "Reset Password"}
       </button>
     </form>
   );

@@ -12,7 +12,7 @@ export default function ResetPasswordPage() {
         </div>
         <h2 className="text-2xl font-semibold mt-2 text-center">Reset Password</h2>
         <p className="text-gray-600 mb-6 text-center">
-          Set a new password for your account.
+          Enter your new password below.
         </p>
 
         <ResetPasswordForm />

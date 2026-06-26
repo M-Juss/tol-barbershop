@@ -18,8 +18,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import {
+  sanitizeString,
+  normalizeEmail,
+  normalizePhone,
+} from "@/lib/sanitizer";
+import type { Role } from "@/services/manager/role.api";
 
 interface AdminFormProps {
   open: boolean;
@@ -27,6 +40,7 @@ interface AdminFormProps {
   onSubmit?: (data: AdminSchemaFormValues & { image?: File }) => void;
   initialData?: AdminSchemaFormValues;
   title?: string;
+  roles?: Role[];
 }
 
 const statusOptions = [
@@ -49,6 +63,7 @@ export function AdminForm({
   onSubmit,
   initialData,
   title = "Add New Admin",
+  roles = [],
 }: AdminFormProps) {
   const isEditMode = Boolean(initialData);
   const {
@@ -59,7 +74,7 @@ export function AdminForm({
     setValue,
     watch,
   } = useForm<AdminSchemaFormValues>({
-    resolver: zodResolver(isEditMode ? adminUpdateSchema : adminCreateSchema),
+    resolver: zodResolver(isEditMode ? adminUpdateSchema : adminCreateSchema) as any,
     defaultValues: {
       fullname: "",
       email: "",
@@ -68,6 +83,7 @@ export function AdminForm({
       password: "",
       confirm_password: "",
       is_active: true,
+      role_id: null,
     },
   });
 
@@ -88,6 +104,7 @@ export function AdminForm({
         password: "",
         confirm_password: "",
         is_active: Boolean(initialData.is_active),
+        role_id: initialData.role_id ?? null,
       });
     } else {
       reset({
@@ -98,35 +115,56 @@ export function AdminForm({
         password: "",
         confirm_password: "",
         is_active: true,
+        role_id: null,
       });
     }
   }, [initialData, open, reset]);
 
+  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif"];
+  const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3MB
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setImagePreview(result);
-        setValue("image", result);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      toast.error("Only JPG, PNG, and HEIC images are allowed");
+      e.target.value = "";
+      return;
     }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.error("Image must be less than 3MB");
+      e.target.value = "";
+      return;
+    }
+
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      setImagePreview(result);
+      setValue("image", result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const onFormSubmit = async (data: AdminSchemaFormValues) => {
-    // Include the image file if selected
-    const submitData: AdminSchemaFormValues & { image?: File } = {
+    const sanitized = {
       ...data,
+      fullname: sanitizeString(data.fullname),
+      email: normalizeEmail(data.email),
+      contact_number: normalizePhone(data.contact_number),
+    };
+    const submitData: AdminSchemaFormValues & { image?: File } = {
+      ...sanitized,
       image: imageFile || undefined,
     };
     await onSubmit?.(submitData);
   };
 
   const onFormInvalid: SubmitErrorHandler<AdminSchemaFormValues> = () => {
-    toast.error("Failed to save admin");
+    toast.error("All fields are required");
   };
 
   return (
@@ -163,7 +201,7 @@ export function AdminForm({
             <div>
               <input
                 type="file"
-                accept="image/*"
+                accept=".jpg,.jpeg,.png,.heic,.heif"
                 onChange={handleImageChange}
                 className="hidden"
                 id="image"
@@ -274,6 +312,30 @@ export function AdminForm({
             value={watch("is_active") ? "true" : "false"}
             onValueChange={(value) => setValue("is_active", value === "true")}
           />
+
+          {/* Role */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Role
+            </label>
+            <Select
+              value={watch("role_id") != null ? String(watch("role_id")) : ""}
+              onValueChange={(value) =>
+                setValue("role_id", value ? Number(value) : null)
+              }
+            >
+              <SelectTrigger className="w-full border-gray-300 h-10">
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent>
+                {roles.map((role) => (
+                  <SelectItem key={role.id} value={String(role.id)}>
+                    {role.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Actions */}
           <DialogFooter>

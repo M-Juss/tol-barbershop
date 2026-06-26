@@ -4,12 +4,14 @@ export const accountInformationSchema = z.object({
   fullname: z
     .string()
     .min(1, "Full name is required")
-    .max(255, "Full name must be less than 255 characters"),
+    .max(255, "Full name must be less than 255 characters")
+    .regex(/^[A-Za-z\s]+$/, "Full name must only contain letters and spaces"),
   email: z.string().email("Invalid email address").min(1, "Email is required"),
   contact_number: z
     .string()
     .min(1, "Contact number is required")
-    .max(20, "Contact number must be less than 20 characters"),
+    .regex(/^09\d{9}$/, "Contact number must be a valid PH mobile number (09XXXXXXXXX)")
+    .max(11, "Contact number must not exceed 11 digits"),
 });
 
 export type AccountInformationSchemaFormValues = z.infer<

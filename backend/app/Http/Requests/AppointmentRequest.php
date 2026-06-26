@@ -2,17 +2,27 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\SanitizesInput;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class AppointmentRequest extends FormRequest
 {
+    use SanitizesInput;
+
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->sanitizeStringFields(['walkin_customer_name']);
+        $this->sanitizeTextFields(['notes', 'cancellation_reason']);
+        $this->normalizePhoneFields(['walkin_customer_contact_number']);
     }
 
     /**
@@ -41,7 +51,6 @@ class AppointmentRequest extends FormRequest
             'appointment_date' => [
                 'required_without:is_walkin',
                 'date',
-                'after_or_equal:today',
             ],
 
             'appointment_time' => [
@@ -57,8 +66,9 @@ class AppointmentRequest extends FormRequest
 
             'price' => [
                 'required',
-                'numeric',
+                'integer',
                 'min:0',
+                'max:999999',
             ],
 
             'status' => [
@@ -69,6 +79,7 @@ class AppointmentRequest extends FormRequest
                     'completed',
                     'cancelled',
                     'no_show',
+                    'rejected',
                 ]),
             ],
 
@@ -81,13 +92,14 @@ class AppointmentRequest extends FormRequest
                 'required_if:is_walkin,true',
                 'string',
                 'max:255',
+                'regex:/^[A-Za-z\s]+$/',
             ],
 
             'walkin_customer_contact_number' => [
                 'required_if:is_walkin,true',
                 'string',
-                'min:7',
-                'max:50',
+                'max:11',
+                'regex:/^09\d{9}$/',
             ],
 
             'notes' => [
@@ -99,6 +111,7 @@ class AppointmentRequest extends FormRequest
             'cancellation_reason' => [
                 'nullable',
                 'string',
+                'max:500',
             ],
         ];
     }

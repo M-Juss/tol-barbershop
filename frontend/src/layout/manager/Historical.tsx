@@ -9,6 +9,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { SectionCard } from "@/components/common/SectionCard";
 import { AppointmentStatusBadge } from "@/components/common/AppointmentStatusBadge";
+import { formatBookingId } from "@/lib/booking";
 import {
   Select,
   SelectContent,
@@ -149,18 +150,18 @@ export function Historical() {
       </div>
 
       <SectionCard title="Filters" className="mb-4 p-4">
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search by booking ID, customer, service, barber"
-            className="w-3/4"
+            className="w-full sm:w-3/4"
           />
           <Select
             value={statusFilter}
             onValueChange={(value) => setStatusFilter(value as StatusFilter)}
           >
-            <SelectTrigger className="w-1/4 border-gray-300">
+            <SelectTrigger className="w-full sm:w-1/4 border-gray-300">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
@@ -177,7 +178,52 @@ export function Historical() {
       </SectionCard>
 
       <div className="space-y-3">
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+        {/* Mobile card view */}
+        <div className="block md:hidden space-y-3">
+          {loading ? (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center text-gray-400 text-sm">
+              Loading appointments...
+            </div>
+          ) : paginatedRows.length === 0 ? (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center text-gray-400 text-sm">
+              No appointments found.
+            </div>
+          ) : (
+            paginatedRows.map((row) => (
+              <div
+                key={row.id}
+                className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-2"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-gray-900 text-sm">
+                    {formatBookingId(row.id)}
+                  </span>
+                  <AppointmentStatusBadge status={row.status} />
+                </div>
+                <p className="text-sm text-gray-900 font-medium">{row.customer}</p>
+                <p className="text-xs text-gray-500">
+                  {row.service} · {row.barber}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {row.date} · {row.time}
+                </p>
+                <div className="flex items-center justify-between pt-1 border-t border-gray-100">
+                  <span className="text-sm font-semibold text-gray-900">
+                    ₱{row.price.toFixed(2)}
+                  </span>
+                  {row.cancellation_reason ? (
+                    <span className="text-xs text-red-500 truncate max-w-[150px]" title={row.cancellation_reason}>
+                      {row.cancellation_reason}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop table view */}
+        <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
           <Table>
             <TableHeader className="bg-gray-50">
               <TableRow>
@@ -207,7 +253,7 @@ export function Historical() {
               ) : (
                 paginatedRows.map((row) => (
                   <TableRow key={row.id} className="group relative">
-                    <TableCell>#{row.id}</TableCell>
+                    <TableCell>{formatBookingId(row.id)}</TableCell>
                     <TableCell>{row.customer}</TableCell>
                     <TableCell>{row.service}</TableCell>
                     <TableCell>{row.barber}</TableCell>

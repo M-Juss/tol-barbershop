@@ -19,11 +19,12 @@ class ForgotPasswordController extends Controller
             $user = User::where('email', $request->validated('email'))->firstOrFail();
             $token = Password::createToken($user);
 
-            // In-app flow: frontend will use this token in reset-password page.
-            return $this->success('Password reset token generated successfully.', [
-                'email' => $user->email,
-                'token' => $token,
+            session([
+                'password_reset_email' => $user->email,
+                'password_reset_token' => $token,
             ]);
+
+            return $this->success('Password reset token generated successfully.');
         } catch (\Exception $e) {
             return $this->error('Failed to generate reset token.', [], 500);
         }
@@ -31,14 +32,19 @@ class ForgotPasswordController extends Controller
 
     public function resetPassword(ResetPasswordRequest $request)
     {
-        $validated = $request->validated();
+        $email = session('password_reset_email');
+        $token = session('password_reset_token');
+
+        if (!$email || !$token) {
+            return $this->error('No reset session found. Please request a new reset token.', [], 422);
+        }
 
         $status = Password::reset(
             [
-                'email' => $validated['email'],
-                'password' => $validated['password'],
-                'password_confirmation' => $validated['password_confirmation'],
-                'token' => $validated['token'],
+                'email' => $email,
+                'password' => $request->validated('password'),
+                'password_confirmation' => $request->validated('password_confirmation'),
+                'token' => $token,
             ],
             function (User $user, string $password) {
                 $user->forceFill([
@@ -47,6 +53,8 @@ class ForgotPasswordController extends Controller
                 ])->save();
             }
         );
+
+        session()->forget(['password_reset_email', 'password_reset_token']);
 
         if ($status === Password::PASSWORD_RESET) {
             return $this->success('Password reset successfully.');

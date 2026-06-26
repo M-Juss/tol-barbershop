@@ -10,9 +10,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { SubmitErrorHandler, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useRateLimit } from "@/hooks/useRateLimit";
+import { normalizeEmail } from "@/lib/sanitizer";
 
 export function ForgotPasswordForm() {
   const router = useRouter();
+  const rateLimit = useRateLimit({
+    maxAttempts: 3,
+    cooldownMinutes: 5,
+    storageKey: "forgot_password_rate_limit",
+  });
+
   const {
     register: formRegister,
     handleSubmit,
@@ -22,31 +30,36 @@ export function ForgotPasswordForm() {
   });
 
   const onSubmit = async (data: ForgotPasswordSchemaFormValues) => {
+    if (!rateLimit.attempt()) {
+      return;
+    }
+
     try {
-      const response = await forgotPasswordRequest(data);
-      toast.success("Reset token generated.");
+      const sanitizedData = {
+        email: normalizeEmail(data.email),
+      };
 
-      const token = response?.data?.token;
-      const email = response?.data?.email;
+      await forgotPasswordRequest(sanitizedData);
+      toast.success("Password reset link sent");
+      rateLimit.reset();
 
-      if (token && email) {
-        router.push(
-          `/reset-password?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`,
-        );
-      }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to request password reset";
-      toast.error(message);
+      router.push("/reset-password");
+    } catch {
+      toast.error("Failed to request password reset");
     }
   };
 
-  const onFormInvalid: SubmitErrorHandler<ForgotPasswordSchemaFormValues> = () => {
-    toast.error("Please enter a valid email");
+  const onFormInvalid: SubmitErrorHandler<
+    ForgotPasswordSchemaFormValues
+  > = () => {
+    toast.error("All fields are required");
   };
 
   return (
-    <form className="w-full space-y-6" onSubmit={handleSubmit(onSubmit, onFormInvalid)}>
+    <form
+      className="w-full space-y-6"
+      onSubmit={handleSubmit(onSubmit, onFormInvalid)}
+    >
       <div className="relative">
         <InputWithLabel
           id="email"
@@ -65,10 +78,14 @@ export function ForgotPasswordForm() {
 
       <button
         type="submit"
-        disabled={isSubmitting}
-        className="bg-accent hover:bg-accent/90 mb-4 w-full text-white py-2 px-4 rounded-md transition duration-300"
+        disabled={isSubmitting || !rateLimit.canAttempt}
+        className="bg-accent hover:bg-accent/90 mb-4 w-full text-white py-2 px-4 rounded-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isSubmitting ? "Requesting..." : "Send Reset Link"}
+        {rateLimit.isCooldown
+          ? `Try again in ${rateLimit.formatCooldownTime(rateLimit.cooldownRemaining)}`
+          : isSubmitting
+            ? "Requesting..."
+            : "Send Reset Link"}
       </button>
     </form>
   );

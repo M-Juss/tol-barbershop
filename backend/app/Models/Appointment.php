@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Appointment extends Model
 {
@@ -22,6 +23,7 @@ class Appointment extends Model
         'approved_at',
         'completed_at',
         'cancelled_at',
+        'rejected_at',
     ];
 
     protected $casts = [
@@ -30,6 +32,7 @@ class Appointment extends Model
         'approved_at' => 'datetime',
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',
+        'rejected_at' => 'datetime',
         'price' => 'decimal:2',
         'is_walkin' => 'boolean',
     ];
@@ -39,19 +42,24 @@ class Appointment extends Model
     | Relationships
     |--------------------------------------------------------------------------
     */
-
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class); // ROLE IS CUSTOMER
+        return $this->belongsTo(User::class)->withTrashed(); // ROLE IS CUSTOMER
     }
 
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class, 'service_id');
     }
+
     public function barber(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'barber_user_id'); // ROLE IS BARBER
+        return $this->belongsTo(User::class, 'barber_user_id')->withTrashed(); // ROLE IS BARBER
+    }
+
+    public function feedback(): HasOne
+    {
+        return $this->hasOne(AppointmentFeedback::class);
     }
 
 }

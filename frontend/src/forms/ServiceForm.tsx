@@ -2,7 +2,7 @@
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/SelectWithLabel";
 import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
-import { useForm } from "react-hook-form";
+import { useForm, type SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   serviceSchema,
@@ -18,6 +18,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { sanitizeString, sanitizeText } from "@/lib/sanitizer";
+import { toast } from "sonner";
 
 interface ServiceFormProps {
   open: boolean;
@@ -71,9 +73,18 @@ export function ServiceForm({
     }
   }, [initialData, open, reset]);
 
+  const onFormInvalid: SubmitErrorHandler<ServiceSchemaFormValues> = () => {
+    toast.error("All fields are required");
+  };
+
   const onFormSubmit = async (data: ServiceSchemaFormValues) => {
     try {
-      await onSubmit?.(data);
+      const sanitized = {
+        ...data,
+        name: sanitizeString(data.name),
+        description: sanitizeText(data.description),
+      };
+      await onSubmit?.(sanitized);
       reset();
       onClose();
     } catch (error: unknown) {
@@ -93,7 +104,7 @@ export function ServiceForm({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onFormSubmit, onFormInvalid)} className="space-y-5">
           {/* Service Name */}
           <div className="relative ">
             <InputWithLabel

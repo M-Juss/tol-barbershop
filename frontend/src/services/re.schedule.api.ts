@@ -28,7 +28,12 @@ export interface ReScheduleItem {
 export interface NotificationItem {
   id: number;
   user_id: number;
-  type: "appointment_status" | "closed_date" | "reschedule_suggestion" | string;
+  type:
+    | "appointment_status"
+    | "appointment_feedback_request"
+    | "closed_date"
+    | "reschedule_suggestion"
+    | string;
   title: string;
   message: string;
   payload?: {
@@ -95,13 +100,21 @@ export const decideReSchedule = async (
   return response.data;
 };
 
+export interface PaginationMeta {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}
+
 export interface NotificationPayload {
   unread_count: number;
   notifications: NotificationItem[];
+  pagination: PaginationMeta;
 }
 
-export const getNotifications = async (): Promise<NotificationPayload> => {
-  const response = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/notifications`);
+export const getNotifications = async (page: number = 1): Promise<NotificationPayload> => {
+  const response = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/notifications?page=${page}`);
   return response.data;
 };
 

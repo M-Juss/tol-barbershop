@@ -9,9 +9,21 @@ import {
 import { registerCustomerRequest } from "@/services/auth.api";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useRateLimit } from "@/hooks/useRateLimit";
+import {
+  sanitizeString,
+  normalizeEmail,
+  normalizePhone,
+} from "@/lib/sanitizer";
 
 export function RegisterForm() {
   const router = useRouter();
+  const rateLimit = useRateLimit({
+    maxAttempts: 20,
+    cooldownMinutes: 1,
+    storageKey: "register_rate_limit",
+  });
+
   const {
     register: formRegister,
     handleSubmit,
@@ -21,20 +33,42 @@ export function RegisterForm() {
   });
 
   const onSubmit = async (data: RegisterSchemaFormValues) => {
-    
+    console.log("Register form submitted");
+    console.log("Rate limit status:", rateLimit);
+
+    // Temporarily disable rate limiting for debugging
+    // if (!rateLimit.attempt()) {
+    //   console.log("Rate limit blocked the request");
+    //   return;
+    // }
+
     try {
-      const response = await registerCustomerRequest(data);
+      const sanitizedData = {
+        ...data,
+        fullname: sanitizeString(data.fullname),
+        email: normalizeEmail(data.email),
+        contact_number: normalizePhone(data.contact_number),
+      };
+
+      console.log("Sending registration data:", sanitizedData);
+      const response = await registerCustomerRequest(sanitizedData);
+      console.log("Registration response:", response);
+
       if (response.success == true) {
         toast.success("Registered successfully");
+        rateLimit.reset();
         router.push("/login");
+      } else {
+        toast.error("Registration failed");
       }
-    } catch {
-      toast.error("Failed to register");
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast.error("Registration failed");
     }
   };
 
   const onFormInvalid: SubmitErrorHandler<RegisterSchemaFormValues> = () => {
-    toast.error("Failed to register");
+    toast.error("All fields are required");
   };
 
   return (
@@ -125,10 +159,14 @@ export function RegisterForm() {
 
       <button
         type="submit"
-        disabled={isSubmitting}
-        className="bg-accent hover:bg-accent/90 mb-4 w-full text-white py-2 px-4 rounded-md transition duration-300"
+        disabled={isSubmitting || !rateLimit.canAttempt}
+        className="bg-accent hover:bg-accent/90 mb-4 w-full text-white py-2 px-4 rounded-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isSubmitting ? "Registering..." : "Register"}
+        {rateLimit.isCooldown
+          ? `Try again in ${rateLimit.formatCooldownTime(rateLimit.cooldownRemaining)}`
+          : isSubmitting
+            ? "Registering..."
+            : "Register"}
       </button>
     </form>
   );

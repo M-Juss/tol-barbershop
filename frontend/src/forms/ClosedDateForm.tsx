@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { DatePickerWithLabel } from "@/components/common/DatePickerWithLabel";
@@ -20,6 +20,8 @@ import {
   closedDateSchema,
   ClosedDateSchemaFormValues,
 } from "@/validations/closed.date.validation";
+import { sanitizeText } from "@/lib/sanitizer";
+import { toast } from "sonner";
 
 interface ClosedDateFormProps {
   open: boolean;
@@ -65,13 +67,21 @@ export function ClosedDateForm({
     }
   }, [initialData, open, reset]);
 
+  const onFormInvalid: SubmitErrorHandler<ClosedDateSchemaFormValues> = () => {
+    toast.error("All fields are required");
+  };
+
   const onFormSubmit = async (data: ClosedDateSchemaFormValues) => {
-    await onSubmit?.(data);
+    const sanitized = {
+      ...data,
+      reason: sanitizeText(data.reason),
+    };
+    await onSubmit?.(sanitized);
   };
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent className="sm:w-lg w-[40vw] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-900">
             {title}
@@ -81,7 +91,7 @@ export function ClosedDateForm({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onFormSubmit, onFormInvalid)} className="space-y-5">
           <div className="relative ">
             <DatePickerWithLabel
               id="date_closed"

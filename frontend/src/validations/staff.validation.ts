@@ -1,31 +1,35 @@
 import { z } from "zod";
 
-const activeFlagSchema = z.preprocess((value) => {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value === 1;
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    return normalized === "1" || normalized === "true";
-  }
-  return value;
-}, z.boolean());
+const activeFlagSchema = z.boolean();
 
 const adminBaseSchema = z.object({
   fullname: z
     .string()
     .min(1, "Full name is required")
-    .max(255, "Full name must be less than 255 characters"),
+    .max(255, "Full name must be less than 255 characters")
+    .regex(/^[A-Za-z\s]+$/, "Full name must only contain letters and spaces"),
   email: z.string().email("Invalid email address").min(1, "Email is required"),
-  contact_number: z.string().min(1, "Contact number is required"),
+  contact_number: z
+    .string()
+    .min(1, "Contact number is required")
+    .regex(/^09\d{9}$/, "Contact number must be a valid PH mobile number (09XXXXXXXXX)")
+    .max(11, "Contact number must not exceed 11 digits"),
   image: z.any().optional(),
   is_active: activeFlagSchema.optional(),
+  role_id: z.number().nullable().optional(),
 });
+
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/;
 
 export const adminCreateSchema = adminBaseSchema
   .extend({
     password: z
       .string()
-      .min(8, "Password must be at least 8 characters"),
+      .min(8, "Password must be at least 8 characters")
+      .regex(
+        passwordRegex,
+        "Password must contain at least one uppercase, one lowercase, one number, and one special character",
+      ),
     confirm_password: z.string().min(1, "Confirm password is required"),
   })
   .refine((data) => data.password === data.confirm_password, {
@@ -49,6 +53,15 @@ export const adminUpdateSchema = adminBaseSchema
         code: "custom",
         path: ["password"],
         message: "Password must be at least 8 characters",
+      });
+    }
+
+    if (hasPassword && !passwordRegex.test(password)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["password"],
+        message:
+          "Password must contain at least one uppercase, one lowercase, one number, and one special character",
       });
     }
 
@@ -85,9 +98,14 @@ export const barberSchema = z.object({
   fullname: z
     .string()
     .min(1, "Full name is required")
-    .max(255, "Full name must be less than 255 characters"),
+    .max(255, "Full name must be less than 255 characters")
+    .regex(/^[A-Za-z\s]+$/, "Full name must only contain letters and spaces"),
   email: z.string().email("Invalid email address").min(1, "Email is required"),
-  contact_number: z.string().min(1, "Contact number is required"),
+  contact_number: z
+    .string()
+    .min(1, "Contact number is required")
+    .regex(/^09\d{9}$/, "Contact number must be a valid PH mobile number (09XXXXXXXXX)")
+    .max(11, "Contact number must not exceed 11 digits"),
   image: z.any().optional(),
   is_active: activeFlagSchema.optional(),
 });

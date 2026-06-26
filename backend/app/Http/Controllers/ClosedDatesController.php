@@ -8,6 +8,7 @@ use App\Traits\ApiResponseTrait;
 use App\Models\ClosedDates;
 use App\Models\Notification;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class ClosedDatesController extends Controller
@@ -57,8 +58,8 @@ class ClosedDatesController extends Controller
                     'type' => 'closed_date',
                     'title' => 'Shop Closed Date Announced',
                     'message' => sprintf(
-                        'The shop will be closed on %s. Reason: %s',
-                        $closedDate->date_closed,
+                        'The shop will be closed on %s due to - %s',
+                        Carbon::parse($closedDate->date_closed)->format('F d, Y'),
                         $closedDate->reason
                     ),
                     'payload' => [
@@ -84,10 +85,11 @@ class ClosedDatesController extends Controller
     {
         try{
             $closedDate = ClosedDates::find($id);
-            $closedDate->update($request->validated());
             if (!$closedDate) {
                 return $this->error('Closed date not found', [], 404);
             }
+
+            $closedDate->update($request->validated());
             
             return $this->success('Closed date updated successfully', new ClosedDatesResource($closedDate));
            

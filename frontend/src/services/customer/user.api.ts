@@ -42,3 +42,9 @@ export const changePassword = async (
     body: JSON.stringify(data),
   });
 };
+
+export const deleteAccount = async (): Promise<void> => {
+  await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/account`, {
+    method: "DELETE",
+  });
+};

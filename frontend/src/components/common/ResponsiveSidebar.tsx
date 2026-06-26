@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 type NavItem = {
   key: string;
@@ -28,6 +29,7 @@ interface ResponsiveSidebarProps {
 
 export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
   const pathname = usePathname();
+  const { logout } = useAuth();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -87,17 +89,18 @@ export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
     };
   }, [isOpen, isMobile]);
 
+  const totalBadgeCount = navItems.reduce((sum, item) => sum + (item.badgeCount ?? 0), 0);
+
   const handleNavClick = () => {
     if (isMobile) {
       setIsOpen(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    document.cookie = "auth_role=; path=/; max-age=0; samesite=lax";
+  const handleLogout = async () => {
     setShowLogoutDialog(false);
     setIsOpen(false);
+    await logout();
     router.push("/");
   };
 
@@ -111,6 +114,11 @@ export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
         aria-label="Open menu"
       >
         <Menu className="w-6 h-6" />
+        {totalBadgeCount > 0 && (
+          <span className="absolute -top-1.5 -right-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white ring-2 ring-white">
+            {totalBadgeCount > 99 ? "99+" : totalBadgeCount}
+          </span>
+        )}
       </button>
 
       {/* Mobile Backdrop */}
@@ -192,7 +200,7 @@ export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
       </aside>
 
       <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-xs">
           <DialogHeader>
             <DialogTitle>Confirm Logout</DialogTitle>
             <DialogDescription>

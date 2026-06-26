@@ -7,6 +7,7 @@ use App\Http\Resources\ReScheduleResource;
 use App\Models\Appointment;
 use App\Models\Notification;
 use App\Models\ReSchedule;
+use App\Models\Service;
 use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -38,10 +39,18 @@ class ReScheduleController extends Controller
     {
         $validated = $request->validated();
         $authUser = $request->user();
+        $appointment = Appointment::findOrFail($validated['appointment_id']);
+        $service = Service::findOrFail($validated['service_id']);
+
+        if ((int) $appointment->user_id !== (int) $validated['customer_user_id']) {
+            return $this->error('Customer does not match the selected appointment.', [], 422);
+        }
 
         $validated['created_by_user_id'] = $authUser?->id;
-        $validated['created_by_role'] = $validated['created_by_role'] ?? ($authUser?->role === 'admin' ? 'admin' : 'manager');
+        $validated['created_by_role'] = $authUser?->role === 'admin' ? 'admin' : 'manager';
         $validated['decision'] = 'pending';
+        $validated['duration_minutes'] = $service->duration;
+        $validated['price'] = $service->price;
 
         $reschedule = ReSchedule::create($validated);
         $reschedule->load(['customer:id,fullname', 'service:id,name', 'barber:id,fullname']);

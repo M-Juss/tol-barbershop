@@ -48,6 +48,7 @@ class AppointmentResource extends JsonResource
             'approved_at' => $this->approved_at,
             'completed_at' => $this->completed_at,
             'cancelled_at' => $this->cancelled_at,
+            'rejected_at' => $this->rejected_at,
 
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

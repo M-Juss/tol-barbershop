@@ -4,57 +4,63 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\UserResource;
-use App\Models\User;
 use App\Traits\ApiResponseTrait;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
-
-
 
 class LoginController extends Controller
 {
     use ApiResponseTrait;
+
     public function login(LoginRequest $request)
     {
-        // Ensure default manager account exists
-        $manager = User::where('email', 'manager@gmail.com')->first();
-        if (!$manager) {
-            User::create([
-                'fullname' => 'Manager',
-                'contact_number' => '0000000000',
-                'email' => 'manager@gmail.com',
-                'password' => bcrypt('manager123'),
-                'role' => 'manager',
-                'is_active' => true,
-            ]);
-        }
-
-        try{
+        try {
             $request->authenticate();
-            $user = $request->user();
-        
-            $token = $user->createToken('auth_token')->plainTextToken;
-        
-            $data = [
+
+            $user = Auth::user();
+
+            if (!$user) {
+                return $this->error('Authentication failed.', [], 401);
+            }
+
+            if (!$user->is_active) {
+                $this->forceLogout($request);
+                return $this->error('Account is disabled.', [], 403);
+            }
+
+            if (!in_array($user->role, ['admin', 'manager', 'customer'], true)) {
+                $this->forceLogout($request);
+                return $this->error('This role does not have application access.', [], 403);
+            }
+
+            Auth::guard('web')->login($user);
+            $request->session()->regenerate();
+
+            return $this->success('Login successful', [
                 'user' => new UserResource($user),
-                'token' => $token,
-            ];
-        
-            return $this->success('Login successful', $data);
+            ]);
         } catch (ValidationException $e) {
+            $errors = $e->errors();
+            $emailError = $errors['email'][0] ?? '';
 
-        return $this->error(
-            'Invalid credentials',
-            $e->errors(),
-            401
-        );
+            if (str_contains($emailError, 'Too many login attempts')) {
+                return $this->error('Too many login attempts. Please try again later.', $errors, 429);
+            }
 
-    } catch (\Exception $e) {
-
-        return $this->error(
-            'Something went wrong',
-            [],
-            500
-        );
+            return $this->error('Invalid email or password.', $errors, 401);
+        } catch (\Exception $e) {
+            return $this->error(
+                'Something went wrong. Please try again.',
+                [],
+                500
+            );
+        }
     }
-}
+
+    private function forceLogout(LoginRequest $request): void
+    {
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+    }
 }

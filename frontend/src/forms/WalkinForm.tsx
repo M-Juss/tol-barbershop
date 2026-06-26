@@ -20,6 +20,11 @@ import {
   type WalkinSchemaValues,
 } from "@/validations/walkin.validation";
 import { toast } from "sonner";
+import {
+  sanitizeString,
+  sanitizeText,
+  normalizePhone,
+} from "@/lib/sanitizer";
 
 type WalkinFormProps = {
   onSuccess?: () => Promise<void> | void;
@@ -61,6 +66,7 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
         setServices(servicesData.filter((service) => service.is_active));
       } catch (error) {
         console.error("Failed to fetch walk-in form data:", error);
+        toast.error("Failed to load form data");
       }
     };
 
@@ -80,7 +86,7 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
   }, [selectedPrice, selectedService, setValue]);
 
   const onFormInvalid: SubmitErrorHandler<WalkinSchemaValues> = () => {
-    toast.error("Failed to complete walk-in");
+    toast.error("All fields are required");
   };
 
   const onFormSubmit = async (data: WalkinSchemaValues) => {
@@ -95,13 +101,13 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
         barber_user_id: data.barber_user_id,
         price: data.price,
         duration_minutes: data.duration_minutes ?? undefined,
-        notes: data.notes || null,
+        notes: data.notes ? sanitizeText(data.notes) : null,
         status: "completed",
         is_walkin: true,
         appointment_date: appointmentDate,
         appointment_time: appointmentTime,
-        walkin_customer_name: data.customer_name,
-        walkin_customer_contact_number: data.phone,
+        walkin_customer_name: sanitizeString(data.customer_name),
+        walkin_customer_contact_number: normalizePhone(data.phone),
       });
 
       toast.success("Completed walk-in successfully");

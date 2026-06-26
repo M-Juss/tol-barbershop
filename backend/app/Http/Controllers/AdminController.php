@@ -49,6 +49,7 @@ class AdminController extends Controller
                 'password' => bcrypt($validated['password']),
                 'role' => 'admin',
                 'is_active' => $validated['is_active'] ?? true,
+                'role_id' => $validated['role_id'] ?? null,
                 'image' => $imagePath ? Storage::url($imagePath) : null,
             ];
             
@@ -130,6 +131,7 @@ class AdminController extends Controller
                 'contact_number' => $validated['contact_number'],
                 'is_active' => $validated['is_active'] ?? $admin->is_active,
                 'image' => $validated['image'],
+                'role_id' => array_key_exists('role_id', $validated) ? $validated['role_id'] : $admin->role_id,
                 'password' => !empty($validated['password'])
                     ? bcrypt($validated['password'])
                     : $admin->password,

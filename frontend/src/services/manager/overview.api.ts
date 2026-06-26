@@ -3,6 +3,7 @@ import { authFetch } from "@/lib/api";
 export interface OverviewStats {
   completed_appointments: number;
   pending_appointments: number;
+  approved_appointments: number;
   total_customers: number;
   total_revenue: number;
 }
@@ -18,15 +19,32 @@ export interface ServiceStats {
 }
 
 export interface TimeSlotAppointment {
+  id: number | null;
   time: string;
   customer: string | null;
+  customer_email: string | null;
+  customer_contact: string | null;
   service: string | null;
   barber: string | null;
+  price: number | null;
+  notes: string | null;
+  appointment_date: string | null;
+  appointment_time: string | null;
   status: "completed" | "approved" | "pending" | "no_show" | "available";
 }
 
+export interface ExportStats {
+  completed_appointments: number;
+  pending_appointments: number;
+  cancelled_appointments: number;
+  no_show_appointments: number;
+  walkin_appointments: number;
+  total_customers: number;
+  total_revenue: number;
+}
+
 export interface ExportSummaryResponse {
-  stats: OverviewStats;
+  stats: ExportStats;
   daily_revenue: DailyRevenue[];
   service_stats: ServiceStats[];
   appointments: {
