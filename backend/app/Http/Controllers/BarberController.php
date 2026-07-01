@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\EntityChange;
 use App\Traits\ApiResponseTrait;
 use App\Http\Requests\StaffRequest;
 use App\Models\User;
@@ -59,6 +60,7 @@ class BarberController extends Controller
             ];
             
             User::create($staffData);
+            EntityChange::dispatch('barbers');
             return $this->created('Barber created successfully');
             
         } catch (\Exception $e) {
@@ -112,6 +114,7 @@ class BarberController extends Controller
                 'image' => $validated['image'],
             ]);
             
+            EntityChange::dispatch('barbers');
             return $this->success('Barber updated successfully');
             
         } catch (\Exception $e) {
@@ -132,6 +135,7 @@ class BarberController extends Controller
             }
             
             $barber->delete();
+            EntityChange::dispatch('barbers');
             return $this->success('Barber deleted successfully');
             
         } catch (\Exception $e) {

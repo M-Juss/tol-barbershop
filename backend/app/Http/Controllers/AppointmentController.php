@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\EntityChange;
 use App\Models\Appointment;
 use App\Models\Notification;
 use App\Models\Service;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Http\Requests\AppointmentRequest;
 use App\Http\Resources\AppointmentResource;
+use App\Services\PushNotificationService;
 
 class AppointmentController extends Controller
 {
@@ -91,6 +93,7 @@ class AppointmentController extends Controller
             ]);
 
             $appointment->load(['user', 'barber', 'service']);
+            EntityChange::dispatch('appointments');
             return new AppointmentResource($appointment);
         }
 
@@ -130,10 +133,67 @@ class AppointmentController extends Controller
             'service',
         ]);
 
+        if ($appointment->status === 'pending' && !$canManage) {
+            $adminUsers = User::whereIn('role', ['admin', 'manager'])->get();
+
+            foreach ($adminUsers as $admin) {
+                Notification::create([
+                    'user_id' => $admin->id,
+                    'type' => 'new_pending_appointment',
+                    'title' => 'New Appointment Request',
+                    'message' => sprintf(
+                        'New booking from %s for %s.',
+                        $appointment->user?->fullname ?? 'A customer',
+                        $appointment->service?->name ?? 'barbershop service'
+                    ),
+                    'payload' => [
+                        'appointment_id' => $appointment->id,
+                        'customer_name' => $appointment->user?->fullname,
+                        'customer_email' => $appointment->user?->email,
+                        'service_name' => $appointment->service?->name,
+                        'barber_name' => $appointment->barber?->fullname,
+                        'appointment_date' => $appointment->appointment_date,
+                        'appointment_time' => $appointment->appointment_time,
+                        'price' => $appointment->price,
+                    ],
+                    'created_by_user_id' => $appointment->user_id,
+                ]);
+            }
+
+            try {
+                $pushService = new PushNotificationService();
+                $pushTitle = 'New Appointment Request';
+                $pushBody = sprintf(
+                    'New booking from %s for %s.',
+                    $appointment->user?->fullname ?? 'A customer',
+                    $appointment->service?->name ?? 'barbershop service'
+                );
+
+                foreach ($adminUsers as $admin) {
+                    $pushService->send($admin, [
+                        'title' => $pushTitle,
+                        'body' => $pushBody,
+                        'icon' => '/logo.svg',
+                        'badge' => '/logo.svg',
+                        'data' => [
+                            'url' => '/' . $admin->role . '/appointment',
+                            'appointment_id' => $appointment->id,
+                        ],
+                    ]);
+                }
+            } catch (\Exception $e) {
+                logger()->error('Push notification failed: ' . $e->getMessage());
+            }
+
+            EntityChange::dispatch('notifications');
+        }
+
+        EntityChange::dispatch('appointments');
         return new AppointmentResource($appointment);
     }
 
     /**
+
      * Display the specified resource.
      */
     public function show(Request $request, string $id)
@@ -204,10 +264,10 @@ class AppointmentController extends Controller
                 if (!$exists) {
                     Notification::create([
                         'user_id' => $appointment->user_id,
-                        'type' => 'appointment_feedback_request',
-                        'title' => 'Your TOLS Barbershop booking is completed',
+                        'type' => 'appointment_completed',
+                        'title' => 'Booking Complete',
                         'message' => sprintf(
-                            'Your %s booking #%d is completed. Tap to rate the service and share your feedback.',
+                            'Your %s booking #%d is now complete.',
                             $appointment->service?->name ?? 'barbershop service',
                             $appointment->id
                         ),
@@ -240,6 +300,29 @@ class AppointmentController extends Controller
                     'created_by_user_id' => $request->user()?->id,
                 ]);
             }
+
+            try {
+                $pushService = new PushNotificationService();
+                $pushTitle = $nextStatus === 'completed'
+                    ? 'Booking Complete'
+                    : 'Appointment Status Updated';
+                $pushBody = $nextStatus === 'completed'
+                    ? sprintf('Your %s booking #%d is now complete.', $appointment->service?->name ?? 'barbershop service', $appointment->id)
+                    : sprintf('Your booking is now %s.', str_replace('_', ' ', $nextStatus));
+
+                $pushService->send($appointment->user, [
+                    'title' => $pushTitle,
+                    'body' => $pushBody,
+                    'icon' => '/logo.svg',
+                    'badge' => '/logo.svg',
+                    'data' => [
+                        'url' => '/customer/notification',
+                        'appointment_id' => $appointment->id,
+                    ],
+                ]);
+            } catch (\Exception $e) {
+                logger()->error('Push notification failed: ' . $e->getMessage());
+            }
         }
 
         $appointment->load([
@@ -248,6 +331,7 @@ class AppointmentController extends Controller
             'service',
         ]);
 
+        EntityChange::dispatch('appointments');
         return new AppointmentResource($appointment);
     }
 
@@ -259,7 +343,7 @@ class AppointmentController extends Controller
         $appointment = Appointment::findOrFail($id);
 
         $appointment->delete();
-
+        EntityChange::dispatch('appointments');
         return response()->json([
             'message' => 'Appointment deleted successfully.',
         ]);

@@ -119,7 +119,7 @@ export function DatePickerWithLabel({
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-auto p-0">
+        <PopoverContent align="start" className="w-auto p-0 max-w-[calc(100vw-2rem)]">
           <Calendar
             mode="single"
             selected={selectedDate}

@@ -40,6 +40,15 @@ export interface RatingStat {
   count: number;
 }
 
+export interface DayOfWeekStat {
+  day: string;
+  day_index: number;
+  completed: number;
+  cancelled: number;
+  no_show: number;
+  total: number;
+}
+
 export interface PeakHourStat {
   hour: string;
   count: number;
@@ -75,4 +84,8 @@ export const getAnalyticsRatings = async (period: Period): Promise<RatingStat[]>
 
 export const getAnalyticsPeakHours = async (period: Period): Promise<PeakHourStat[]> => {
   return authFetch(`${API}/analytics/peak-hours?period=${period}`);
+};
+
+export const getAnalyticsDayOfWeek = async (period: Period): Promise<DayOfWeekStat[]> => {
+  return authFetch(`${API}/analytics/day-of-week?period=${period}`);
 };

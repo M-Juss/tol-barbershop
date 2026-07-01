@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRealtimeEvent } from "@/contexts/RealtimeContext";
 import {
   CalendarDays,
   Clock,
@@ -47,6 +48,7 @@ import { toast } from "sonner";
 import {
   Pagination,
   PaginationContent,
+  PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
@@ -316,7 +318,7 @@ function AppointmentRow({
   onCancel?: (appt: Appointment) => void;
   className?: string;
 }) {
-  const actionDisabled = appt.appointment_date > todayDate;
+  const actionDisabled = appt.appointment_date.split("T")[0] > todayDate;
   return (
     <div className={`flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 ${className}`}>
       <div className="flex flex-col gap-1 min-w-0 flex-1">
@@ -338,6 +340,8 @@ function AppointmentRow({
           Service: {appt.service.name}
           <span className="mx-2 text-gray-300">•</span>
           Barber: {appt.barber.fullname}
+          <span className="mx-2 text-gray-300">•</span>
+          ₱{Number(appt.price).toLocaleString()}
         </p>
       </div>
       <ActionMenu
@@ -397,6 +401,10 @@ function PendingCard({
         <p>
           <span className="font-medium text-gray-800">Time:</span>{" "}
           {formatTime(req.appointment_time)}
+        </p>
+        <p>
+          <span className="font-medium text-gray-800">Price:</span>{" "}
+          ₱{Number(req.price).toLocaleString()}
         </p>
       </div>
       <div className="flex flex-col gap-2">
@@ -527,6 +535,10 @@ export function Appointment() {
     const interval = setInterval(loadAppointments, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  useRealtimeEvent('appointments', loadAppointments);
+  useRealtimeEvent('barbers', loadMeta);
+  useRealtimeEvent('services', loadMeta);
 
   const pending = useMemo(
     () => appointments.filter((a) => a.status === "pending"),
@@ -770,7 +782,7 @@ export function Appointment() {
   // [RESCHEDULE] };
 
   return (
-    <div className="w-full bg-slate-100 p-4 sm:p-6 font-sans">
+    <div className="w-full bg-slate-100 p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
           Appointments
@@ -780,11 +792,11 @@ export function Appointment() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-4 items-start">
         <SectionCard
           title="Pending Requests"
           description={`${pending.length} pending`}
-          className="xl:order-2"
+          className="lg:order-2"
         >
 
           {loading ? (
@@ -817,7 +829,7 @@ export function Appointment() {
 
         </SectionCard>
 
-        <div className="flex flex-col gap-4 xl:order-1">
+        <div className="flex flex-col gap-4 lg:order-1">
           <SectionCard
             title="Approved Appointments"
             description="Scheduled appointments grouped by date"
@@ -879,34 +891,57 @@ export function Appointment() {
                     </div>
 
                     {upcomingApproved.length > approvedPageSize ? (
-                      <Pagination className="mt-4">
-                        <PaginationContent>
+                      <Pagination className="mt-4 overflow-hidden px-1">
+                        <PaginationContent className="flex-nowrap gap-0.5">
                           <PaginationItem>
                             <PaginationPrevious
                               href="#"
+                              className="h-8 w-8 sm:h-9 sm:w-auto"
+                              text=""
                               onClick={(event) => {
                                 event.preventDefault();
                                 setApprovedPage((prev) => Math.max(1, prev - 1));
                               }}
                             />
                           </PaginationItem>
-                          {Array.from({ length: approvedTotalPages }, (_, i) => i + 1).map((pageNo) => (
-                            <PaginationItem key={pageNo}>
-                              <PaginationLink
-                                href="#"
-                                isActive={pageNo === approvedPage}
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  setApprovedPage(pageNo);
-                                }}
-                              >
-                                {pageNo}
-                              </PaginationLink>
-                            </PaginationItem>
-                          ))}
+                          {(() => {
+                            const pages: (number | "...")[] = [];
+                            const total = approvedTotalPages;
+                            const current = approvedPage;
+                            pages.push(1);
+                            if (current > 3) pages.push("...");
+                            const start = Math.max(2, current - 1);
+                            const end = Math.min(total - 1, current + 1);
+                            for (let i = start; i <= end; i++) pages.push(i);
+                            if (current < total - 2) pages.push("...");
+                            if (total > 1) pages.push(total);
+                            return pages.map((pageNo, idx) =>
+                              pageNo === "..." ? (
+                                <PaginationItem key={`ellipsis-${idx}`}>
+                                  <PaginationEllipsis className="size-7 sm:size-8" />
+                                </PaginationItem>
+                              ) : (
+                                <PaginationItem key={pageNo}>
+                                  <PaginationLink
+                                    href="#"
+                                    isActive={pageNo === current}
+                                    className="h-7 w-7 sm:h-8 sm:w-8 text-xs sm:text-sm font-medium rounded-lg"
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      setApprovedPage(pageNo);
+                                    }}
+                                  >
+                                    {pageNo}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              ),
+                            );
+                          })()}
                           <PaginationItem>
                             <PaginationNext
                               href="#"
+                              className="h-8 w-8 sm:h-9 sm:w-auto"
+                              text=""
                               onClick={(event) => {
                                 event.preventDefault();
                                 setApprovedPage((prev) => Math.min(approvedTotalPages, prev + 1));

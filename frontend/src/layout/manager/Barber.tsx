@@ -17,6 +17,7 @@ import {
   deleteBarber,
   type Barber,
 } from "@/services/manager/barber.api";
+import { getImageUrl } from "@/lib/image";
 import {
   Dialog,
   DialogContent,
@@ -36,15 +37,6 @@ const isActiveValue = (value: unknown): boolean => {
     return normalized === "1" || normalized === "true";
   }
   return false;
-};
-
-const getImageUrl = (image: string | null | undefined): string => {
-  if (!image) return "";
-  if (image.startsWith("http://") || image.startsWith("https://")) return image;
-
-  const apiBase = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/api\/?$/, "");
-  const normalizedPath = image.startsWith("/") ? image : `/${image}`;
-  return `${apiBase}${normalizedPath}`;
 };
 
 export function Barber() {
@@ -123,7 +115,7 @@ export function Barber() {
   };
 
   return (
-    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
+    <div className="w-full h-full p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
       {/* Header */}
       <div className="flex justify-end mb-4">
         <button

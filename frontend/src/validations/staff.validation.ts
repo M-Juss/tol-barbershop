@@ -28,7 +28,7 @@ export const adminCreateSchema = adminBaseSchema
       .min(8, "Password must be at least 8 characters")
       .regex(
         passwordRegex,
-        "Password must contain at least one uppercase, one lowercase, one number, and one special character",
+        "Must have uppercase, lowercase, number & special character",
       ),
     confirm_password: z.string().min(1, "Confirm password is required"),
   })
@@ -61,7 +61,7 @@ export const adminUpdateSchema = adminBaseSchema
         code: "custom",
         path: ["password"],
         message:
-          "Password must contain at least one uppercase, one lowercase, one number, and one special character",
+          "Must have uppercase, lowercase, number & special character",
       });
     }
 

@@ -77,6 +77,23 @@ function normalizeApiDate(value: string): string {
   return formatDateForApi(parsed);
 }
 
+function isPastTime(time12hr: string, selectedDate: Date | undefined): boolean {
+  if (!selectedDate) return false;
+  const today = new Date();
+  if (selectedDate.toDateString() !== today.toDateString()) return false;
+
+  const match = time12hr.match(/^(\d{1,2}):(\d{2})\s(AM|PM)$/i);
+  if (!match) return false;
+
+  let hours = Number(match[1]) % 12;
+  if (match[3].toUpperCase() === 'PM') hours += 12;
+  const minutes = Number(match[2]);
+
+  const slotTotalMinutes = hours * 60 + minutes;
+  const nowTotalMinutes = today.getHours() * 60 + today.getMinutes();
+
+  return slotTotalMinutes <= nowTotalMinutes;
+}
 
 
 type BarberWithFallbackId = Barber & {
@@ -201,10 +218,10 @@ export function NewAppointmentForm() {
   }, [selectedBarber, selectedDate]);
 
   useEffect(() => {
-    if (selectedTime && unavailableTimes.includes(selectedTime)) {
+    if (selectedTime && (unavailableTimes.includes(selectedTime) || isPastTime(selectedTime, selectedDate))) {
       setSelectedTime("");
     }
-  }, [selectedTime, unavailableTimes]);
+  }, [selectedTime, unavailableTimes, selectedDate]);
 
   const isFormValid =
     selectedBarber && selectedService && selectedDate && selectedTime;
@@ -319,8 +336,8 @@ export function NewAppointmentForm() {
   return (
     <div className="w-full bg-slate-100 font-sans">
       <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
-        <form className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
-          <div className="col-span-2">
+        <form className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+          <div className="col-span-1 md:col-span-2">
             <InputWithLabel
               id="full-name"
               label="Full Name"
@@ -330,75 +347,87 @@ export function NewAppointmentForm() {
             />
           </div>
 
-          <InputWithLabel
-            id="email"
-            type="email"
-            label="Email"
-            value={authUser?.email ?? ""}
-            disabled
-            className="h-10 border-gray-200 text-gray-500"
-          />
+          <div className="col-span-1 md:col-span-1">
+            <InputWithLabel
+              id="email"
+              type="email"
+              label="Email"
+              value={authUser?.email ?? ""}
+              disabled
+              className="h-10 border-gray-200 text-gray-500"
+            />
+          </div>
 
-          <InputWithLabel
-            id="contact-number"
-            label="Contact Number"
-            value={authUser?.contact_number ?? ""}
-            disabled
-            className="h-10 border-gray-200 text-gray-500"
-          />
+          <div className="col-span-1 md:col-span-1">
+            <InputWithLabel
+              id="contact-number"
+              label="Contact Number"
+              value={authUser?.contact_number ?? ""}
+              disabled
+              className="h-10 border-gray-200 text-gray-500"
+            />
+          </div>
 
-          <SelectWithLabel
-            id="service"
-            label="Service"
-            placeholder="Select a service"
-            options={services.map((service) => ({
-              value: service.id.toString(),
-              label: service.name,
-            }))}
-            value={selectedService}
-            onValueChange={(value) => setSelectedService(value)}
-          />
+          <div className="col-span-1 md:col-span-1">
+            <SelectWithLabel
+              id="service"
+              label="Service"
+              placeholder="Select a service"
+              options={services.map((service) => ({
+                value: service.id.toString(),
+                label: service.name,
+              }))}
+              value={selectedService}
+              onValueChange={(value) => setSelectedService(value)}
+            />
+          </div>
 
-          <SelectWithLabel
-            id="barber"
-            label="Barber"
-            placeholder="Select a barber"
-            options={barbers.map((barber) => ({
-              value: barber.id.toString(),
-              label: barber.fullname,
-            }))}
-            value={selectedBarber}
-            onValueChange={(value) => setSelectedBarber(value)}
-          />
+          <div className="col-span-1 md:col-span-1">
+            <SelectWithLabel
+              id="barber"
+              label="Barber"
+              placeholder="Select a barber"
+              options={barbers.map((barber) => ({
+                value: barber.id.toString(),
+                label: barber.fullname,
+              }))}
+              value={selectedBarber}
+              onValueChange={(value) => setSelectedBarber(value)}
+            />
+          </div>
 
-          <DatePickerWithLabel
-            id="date"
-            label="Date"
-            placeholder="Pick a date"
-            disablePastDates={true}
-            maxDaysAhead={30}
-            disableSundays={true}
-            date={selectedDate}
-            onDateChange={(date) => setSelectedDate(date)}
-            disabled={!selectedBarber}
-          />
+          <div className="col-span-1 md:col-span-1">
+            <DatePickerWithLabel
+              id="date"
+              label="Date"
+              placeholder="Pick a date"
+              disablePastDates={true}
+              maxDaysAhead={30}
+              disableSundays={true}
+              date={selectedDate}
+              onDateChange={(date) => setSelectedDate(date)}
+              disabled={!selectedBarber}
+            />
+          </div>
 
-          <SelectWithLabel
-            id="time"
-            label="Time"
-            placeholder="Select time"
-            options={timeOptions.map((time) => ({
-              ...time,
-              disabled: unavailableTimes.includes(time.value),
-            }))}
-            value={selectedTime}
-            onValueChange={(value) => setSelectedTime(value)}
-            disabled={
-              !selectedBarber || !selectedDate || isCheckingAvailability
-            }
-          />
+          <div className="col-span-1 md:col-span-1">
+            <SelectWithLabel
+              id="time"
+              label="Time"
+              placeholder="Select time"
+              options={timeOptions.map((time) => ({
+                ...time,
+                disabled: unavailableTimes.includes(time.value) || isPastTime(time.value, selectedDate),
+              }))}
+              value={selectedTime}
+              onValueChange={(value) => setSelectedTime(value)}
+              disabled={
+                !selectedBarber || !selectedDate || isCheckingAvailability
+              }
+            />
+          </div>
 
-          <div className="col-span-2">
+          <div className="col-span-1 md:col-span-2">
             <label
               htmlFor="notes"
               className="mb-1.5 block text-sm font-medium text-gray-700"
@@ -415,7 +444,7 @@ export function NewAppointmentForm() {
             />
           </div>
 
-          <div className="col-span-2 border-t border-gray-200 pt-4">
+          <div className="col-span-1 md:col-span-2 border-t border-gray-200 pt-4">
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between">
               <span className="text-base font-semibold text-gray-800">
                 Total

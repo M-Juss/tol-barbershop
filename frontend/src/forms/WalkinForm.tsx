@@ -129,7 +129,7 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-4">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-6 mb-4">
       <div className="flex items-center gap-2 mb-1">
         <UserPlus className="w-5 h-5 text-gray-700" />
         <h2 className="text-base font-bold text-gray-900">
@@ -164,8 +164,13 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
             id="phone"
             label="Phone Number *"
             placeholder="09XX XXX XXXX"
+            type="tel"
+            inputMode="numeric"
             className="h-10 border-gray-200 text-gray-500"
             {...register("phone")}
+            onInput={(e: React.FormEvent<HTMLInputElement>) => {
+              e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");
+            }}
           />
           {errors.phone && (
             <p className="absolute left-0 top-full  text-red-500 text-xs">

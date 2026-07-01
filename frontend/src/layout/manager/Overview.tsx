@@ -329,7 +329,7 @@ export function Overview() {
   }, []);
 
   return (
-    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
+    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
           Dashboard
@@ -370,7 +370,7 @@ export function Overview() {
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
           <h2 className="text-base font-bold text-gray-900 mb-4">
             Daily Revenue
@@ -386,30 +386,33 @@ export function Overview() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[auto_1fr] gap-4 items-start ">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 w-full xl:w-fit">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-4 items-start min-w-0">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 w-full overflow-hidden">
           <h2 className="text-base font-bold text-gray-900">Calendar</h2>
           <p className="text-sm text-gray-400 mb-3">
             Select a date to view time slots
           </p>
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={setSelectedDate}
-            disabled={(day) => {
-              const isSunday = day.getDay() === 0;
-              const isClosedDate = closedDates.includes(formatDateToLocal(day));
-              return isSunday || isClosedDate;
-            }}
-            className="rounded-lg"
-            classNames={{ root: "w-full xl:w-fit" }}
-          />
+          <div className="w-full flex justify-center">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              disabled={(day) => {
+                const isSunday = day.getDay() === 0;
+                const isClosedDate = closedDates.includes(formatDateToLocal(day));
+                return isSunday || isClosedDate;
+              }}
+              className="rounded-lg"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-          <h2 className="text-base font-bold text-gray-900">
-            Time Slots for{" "}
-            {selectedDate ? formatDisplayDate(selectedDate) : "—"}
+          <h2 className="flex items-baseline gap-1 min-w-0 text-xs sm:text-base font-bold text-gray-900">
+            <span className="shrink-0 sm:text-xl">Time Slots for</span>
+            <span className="truncate min-w-0">
+              {selectedDate ? formatDisplayDate(selectedDate) : "—"}
+            </span>
           </h2>
           <p className="text-sm text-gray-400 mb-4">
             View appointments and availability (9:00 AM - 7:00 PM)

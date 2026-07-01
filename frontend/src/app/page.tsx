@@ -1,5 +1,5 @@
 "use client";
-import { Clock, Mail, MapPin, Phone, Scissors, Star } from "lucide-react";
+import { Mail, MapPin, Phone, Scissors, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -159,35 +159,36 @@ export default function Home() {
           id="home"
           className="relative min-h-screen w-full overflow-hidden"
         >
-          <Image
-            src="/Tols-Hero-Image.png"
-            alt="Barber shop"
-            fill
-            sizes="100vw"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-center px-6">
-            <div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-2 ">
-                WHERE STYLE
-              </h1>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-accent mb-4 ">
-                MEETS PRECISION
-              </h1>
-              <p className="text-white/80 mb-6">
-                Where classic meets modern style
-              </p>
-              <Link
-                href="/login"
-                className="bg-accent/80 text-accent-foreground px-4 sm:px-6 py-3 rounded-xl inline-block"
-              >
-                Book Appointment
-              </Link>
-            </div>
-          </div>
+              <Image
+                src="/Tols-Hero-Image.png"
+                alt="Barber shop"
+                fill
+                sizes="100vw"
+                className="absolute inset-0 w-full h-full object-cover"
+                priority
+              />
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-center px-4 sm:px-6">
+                <div>
+                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-1 sm:mb-2 ">
+                    WHERE STYLE
+                  </h1>
+                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-accent mb-3 sm:mb-4 ">
+                    MEETS PRECISION
+                  </h1>
+                  <p className="text-white/80 mb-6 text-sm sm:text-base">
+                    Where classic meets modern style
+                  </p>
+                  <Link
+                    href="/login"
+                    className="bg-accent/80 text-accent-foreground px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl inline-block text-sm sm:text-base"
+                  >
+                    Book Appointment
+                  </Link>
+                </div>
+              </div>
         </section>
 
-        <section id="services" className="py-16 sm:py-24 px-4 sm:px-10 lg:px-20 xl:px-32 bg-primary flex flex-col items-center">
+        <section id="services" className="py-16 sm:py-24 px-4 sm:px-8 lg:px-20 xl:px-32 bg-primary flex flex-col items-center">
           <div className="flex items-center gap-4 ">
             <div className="h-1 w-20 bg-accent rounded-sm"></div>
             <p className="text-accent">
@@ -238,7 +239,7 @@ export default function Home() {
 
         <section
           id="about"
-          className="px-4 sm:px-10 lg:px-20 xl:px-44 py-16 sm:py-20 bg-primary/95 grid xl:grid-cols-2 grid-cols-1 gap-8 lg:gap-12 w-full text-white"
+          className="px-4 sm:px-8 lg:px-20 xl:px-44 py-16 sm:py-20 bg-primary/95 grid lg:grid-cols-2 grid-cols-1 gap-8 lg:gap-12 w-full text-white"
         >
           <div className="my-auto">
             <Image
@@ -286,7 +287,7 @@ export default function Home() {
 
         <section
           id="gallery"
-          className="px-4 sm:px-10 lg:px-20 xl:px-44 py-16 sm:py-20 flex flex-col items-center text-white bg-primary"
+          className="px-4 sm:px-8 lg:px-20 xl:px-44 py-16 sm:py-20 flex flex-col items-center text-white bg-primary"
         >
           <p className="mb-2 text-3xl sm:text-4xl lg:text-5xl font-semibold text-center">
             Our Gallery
@@ -309,7 +310,7 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1 gap-6 mt-10 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-10 w-full">
             {filteredGallery.map((card, index) => (
               <div
                 key={index}
@@ -335,7 +336,7 @@ export default function Home() {
 
         <section
           id="testimonial"
-          className="px-4 sm:px-10 lg:px-20 xl:px-44 py-16 sm:py-20 flex flex-col items-center bg-primary/95 text-center text-white"
+          className="px-4 sm:px-8 lg:px-20 xl:px-44 py-16 sm:py-20 flex flex-col items-center bg-primary/95 text-center text-white"
         >
           <p className="md:text-5xl sm:text-4xl text-3xl font-semibold mb-4 ">
             What Our Customer Say

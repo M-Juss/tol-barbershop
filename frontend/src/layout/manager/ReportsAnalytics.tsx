@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { StatCard } from "@/components/common/StatCard";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +40,7 @@ import {
   getAnalyticsBarbers,
   getAnalyticsRatings,
   getAnalyticsPeakHours,
+  getAnalyticsDayOfWeek,
   type Period,
   type AnalyticsKPI,
   type TimeSeriesPoint,
@@ -48,6 +49,7 @@ import {
   type BarberStat,
   type RatingStat,
   type PeakHourStat,
+  type DayOfWeekStat,
 } from "@/services/manager/analytics.api";
 import { getOverviewExportSummary } from "@/services/manager/overview.api";
 
@@ -89,8 +91,10 @@ export function ReportsAnalytics() {
   const [barberData, setBarberData] = useState<BarberStat[]>([]);
   const [ratingData, setRatingData] = useState<RatingStat[]>([]);
   const [peakHourData, setPeakHourData] = useState<PeakHourStat[]>([]);
-
+  const [dayOfWeekData, setDayOfWeekData] = useState<DayOfWeekStat[]>([]);
+  const fetchId = useRef(0);
   const fetchData = useCallback(async (p: Period) => {
+    const id = ++fetchId.current;
     setLoading(true);
     try {
       const [
@@ -101,6 +105,7 @@ export function ReportsAnalytics() {
         barberResult,
         ratingResult,
         peakHourResult,
+        dayOfWeekResult,
       ] = await Promise.all([
         getAnalyticsKPI(p),
         getAnalyticsRevenue(p),
@@ -109,7 +114,9 @@ export function ReportsAnalytics() {
         getAnalyticsBarbers(p),
         getAnalyticsRatings(p),
         getAnalyticsPeakHours(p),
+        getAnalyticsDayOfWeek(p),
       ]);
+      if (id !== fetchId.current) return;
       setKpi(kpiResult);
       setRevenueData(revenueResult);
       setAppointmentData(appointmentResult);
@@ -117,10 +124,13 @@ export function ReportsAnalytics() {
       setBarberData(barberResult);
       setRatingData(ratingResult);
       setPeakHourData(peakHourResult);
+      setDayOfWeekData(dayOfWeekResult);
     } catch (error) {
+      if (id !== fetchId.current) return;
       console.error("Failed to load analytics data:", error);
       toast.error("Failed to load analytics");
     } finally {
+      if (id !== fetchId.current) return;
       setLoading(false);
     }
   }, []);
@@ -201,8 +211,18 @@ export function ReportsAnalytics() {
     count: { label: "Appointments", color: "#3b82f6" },
   } satisfies ChartConfig;
 
+  const dayOfWeekConfig = {
+    completed: { label: "Completed", color: "#10b981" },
+    cancelled: { label: "Cancelled", color: "#ef4444" },
+    no_show: { label: "No-show", color: "#9ca3af" },
+  } satisfies ChartConfig;
+
+  const barberRevenueConfig = {
+    revenue: { label: "Revenue", color: "#f59e0b" },
+  } satisfies ChartConfig;
+
   return (
-    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
+    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
       <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
@@ -236,7 +256,7 @@ export function ReportsAnalytics() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <StatCard
           label="Revenue"
           value={loading ? "..." : `₱${(kpi?.total_revenue ?? 0).toLocaleString()}`}
@@ -379,41 +399,77 @@ export function ReportsAnalytics() {
         </div>
 
         {/* Service Distribution */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:col-span-2">
           <h2 className="text-base font-bold text-gray-900 mb-4">Service Distribution</h2>
           {loading ? (
             <div className="h-[250px] flex items-center justify-center text-gray-400">Loading...</div>
           ) : serviceData.length === 0 ? (
             <div className="h-[250px] flex items-center justify-center text-gray-400">No data</div>
           ) : (
-            <ChartContainer config={serviceConfig} className="h-[250px] w-full">
-              <PieChart>
-                <Pie
-                  data={serviceData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={58}
-                  outerRadius={92}
-                  paddingAngle={3}
-                  dataKey="completed_count"
-                  nameKey="service_name"
-                  strokeWidth={3}
-                >
-                  {serviceData.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                  ))}
-                </Pie>
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value, name) => `${name}: ${value}`}
-                      indicator="dot"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500 mb-3 text-center">By Count</p>
+                <ChartContainer config={serviceConfig} className="h-[250px] w-full">
+                  <PieChart>
+                    <Pie
+                      data={serviceData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={58}
+                      outerRadius={92}
+                      paddingAngle={3}
+                      dataKey="completed_count"
+                      nameKey="service_name"
+                      strokeWidth={3}
+                    >
+                      {serviceData.map((_, i) => (
+                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          formatter={(value, name) => `${name}: ${value}`}
+                          indicator="dot"
+                        />
+                      }
                     />
-                  }
-                />
-                <ChartLegend content={<ChartLegendContent nameKey="service_name" />} />
-              </PieChart>
-            </ChartContainer>
+                    <ChartLegend content={<ChartLegendContent nameKey="service_name" />} />
+                  </PieChart>
+                </ChartContainer>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-3 text-center">By Revenue</p>
+                <ChartContainer config={serviceConfig} className="h-[250px] w-full">
+                  <BarChart data={serviceData} layout="vertical" barSize={24}>
+                    <CartesianGrid horizontal={false} strokeDasharray="4 4" />
+                    <XAxis type="number" axisLine={false} tickLine={false} tickFormatter={(v) => `₱${v}`} />
+                    <YAxis
+                      dataKey="service_name"
+                      type="category"
+                      axisLine={false}
+                      tickLine={false}
+                      width={90}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          formatter={(value) => [`₱${Number(value).toLocaleString()}`, " Revenue"]}
+                          indicator="dot"
+                        />
+                      }
+                    />
+                    <Bar
+                      dataKey="revenue"
+                      fill="#f59e0b"
+                      radius={[0, 4, 4, 0]}
+                      name="Revenue"
+                    />
+                  </BarChart>
+                </ChartContainer>
+              </div>
+            </div>
           )}
         </div>
 
@@ -490,7 +546,7 @@ export function ReportsAnalytics() {
         </div>
 
         {/* Peak Hours */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:col-span-2">
           <h2 className="text-base font-bold text-gray-900 mb-4">Peak Hours</h2>
           {loading ? (
             <div className="h-[250px] flex items-center justify-center text-gray-400">Loading...</div>
@@ -521,7 +577,7 @@ export function ReportsAnalytics() {
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      formatter={(value) => [`${value} appointments`, "Count"]}
+                      formatter={(value) => [`${value} appointments`]}
                       indicator="dot"
                     />
                   }
@@ -536,8 +592,8 @@ export function ReportsAnalytics() {
           )}
         </div>
 
-        {/* Barber Performance */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:col-span-2">
+        {/* Barber Performance (Count) */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
           <h2 className="text-base font-bold text-gray-900 mb-4">Barber Performance</h2>
           {loading ? (
             <div className="h-[250px] flex items-center justify-center text-gray-400">Loading...</div>
@@ -547,7 +603,7 @@ export function ReportsAnalytics() {
             <ChartContainer config={barberConfig} className="h-[250px] w-full">
               <BarChart data={barberData} layout="vertical" barSize={24}>
                 <CartesianGrid horizontal={false} strokeDasharray="4 4" />
-                <XAxis type="number" axisLine={false} tickLine={false} width={40} tickFormatter={(v) => Math.floor(v).toString()} />
+                <XAxis type="number" axisLine={false} tickLine={false} tickFormatter={(v) => Math.floor(v).toString()} />
                 <YAxis
                   dataKey="barber_name"
                   type="category"
@@ -559,7 +615,7 @@ export function ReportsAnalytics() {
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      formatter={(value, name) => [`${value}`, name === "completed_count" ? "Completed" : "Revenue"]}
+                      formatter={(value) => [`${value}`, " Completed"]}
                       indicator="dot"
                     />
                   }
@@ -570,6 +626,75 @@ export function ReportsAnalytics() {
                   radius={[0, 4, 4, 0]}
                   name="completed_count"
                 />
+              </BarChart>
+            </ChartContainer>
+          )}
+        </div>
+
+        {/* Barber Revenue */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+          <h2 className="text-base font-bold text-gray-900 mb-4">Barber Revenue</h2>
+          {loading ? (
+            <div className="h-[250px] flex items-center justify-center text-gray-400">Loading...</div>
+          ) : barberData.length === 0 ? (
+            <div className="h-[250px] flex items-center justify-center text-gray-400">No data</div>
+          ) : (
+            <ChartContainer config={barberRevenueConfig} className="h-[250px] w-full">
+              <BarChart data={barberData} layout="vertical" barSize={24}>
+                <CartesianGrid horizontal={false} strokeDasharray="4 4" />
+                <XAxis type="number" axisLine={false} tickLine={false} tickFormatter={(v) => `₱${v}`} />
+                <YAxis
+                  dataKey="barber_name"
+                  type="category"
+                  axisLine={false}
+                  tickLine={false}
+                  width={80}
+                  tick={{ fontSize: 12 }}
+                />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value) => [`₱${Number(value).toLocaleString()}`, " Revenue"]}
+                      indicator="dot"
+                    />
+                  }
+                />
+                <Bar
+                  dataKey="revenue"
+                  fill="#f59e0b"
+                  radius={[0, 4, 4, 0]}
+                  name="revenue"
+                />
+              </BarChart>
+            </ChartContainer>
+          )}
+        </div>
+
+        {/* Day of Week */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:col-span-2">
+          <h2 className="text-base font-bold text-gray-900 mb-4">Day of Week</h2>
+          {loading ? (
+            <div className="h-[250px] flex items-center justify-center text-gray-400">Loading...</div>
+          ) : (
+            <ChartContainer config={dayOfWeekConfig} className="h-[250px] w-full">
+              <BarChart data={dayOfWeekData}>
+                <CartesianGrid vertical={false} strokeDasharray="4 4" />
+                <XAxis
+                  dataKey="day"
+                  tickMargin={10}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis axisLine={false} tickLine={false} width={40} tickFormatter={(v) => Math.floor(v).toString()} />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent indicator="dot" />
+                  }
+                />
+                <ChartLegend content={<ChartLegendContent />} />
+                <Bar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="cancelled" stackId="a" fill="var(--color-cancelled)" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="no_show" stackId="a" fill="var(--color-no_show)" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ChartContainer>
           )}

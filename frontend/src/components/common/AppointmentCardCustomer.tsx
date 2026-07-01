@@ -1,4 +1,4 @@
-import { CalendarDays, Clock } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 
 export type AppointmentStatus =
   | "Approved"
@@ -60,7 +60,7 @@ export function AppointmentCardCustomer({
         </div>
       </div>
       <div className="flex flex-col items-end gap-2">
-        <p className="font-bold text-gray-900 text-lg">₱{price}</p>
+        <p className="font-bold text-gray-900 text-base sm:text-lg">₱{price}</p>
         <span
           className={`text-xs font-medium px-3 py-1 rounded-full ${statusBadge[status]}`}
         >

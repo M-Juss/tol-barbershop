@@ -6,13 +6,13 @@ import {
   AlertTriangle,
   Shield,
   Check,
-  X,
   Mail,
   Phone,
 } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
+  PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
@@ -246,14 +246,14 @@ export function Admin() {
 
   if (loading) {
     return (
-      <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans flex items-center justify-center">
+      <div className="w-full h-full font-sans flex items-center justify-center">
         <p className="text-gray-500">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
+    <div className="w-full h-full p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
       {/* ===== Roles Section ===== */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -488,34 +488,57 @@ export function Admin() {
 
             {/* Pagination (shared) */}
             {adminTotalPages > 1 && (
-              <Pagination className="mt-4">
-                <PaginationContent>
+              <Pagination className="mt-4 overflow-hidden px-1">
+                <PaginationContent className="flex-nowrap gap-0.5">
                   <PaginationItem>
                     <PaginationPrevious
                       href="#"
+                      className="h-8 w-8 sm:h-9 sm:w-auto"
+                      text=""
                       onClick={(event) => {
                         event.preventDefault();
                         setAdminPage((prev) => Math.max(1, prev - 1));
                       }}
                     />
                   </PaginationItem>
-                  {Array.from({ length: adminTotalPages }, (_, i) => i + 1).map((pageNo) => (
-                    <PaginationItem key={pageNo}>
-                      <PaginationLink
-                        href="#"
-                        isActive={pageNo === adminPage}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          setAdminPage(pageNo);
-                        }}
-                      >
-                        {pageNo}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
+                  {(() => {
+                    const pages: (number | "...")[] = [];
+                    const total = adminTotalPages;
+                    const current = adminPage;
+                    pages.push(1);
+                    if (current > 3) pages.push("...");
+                    const start = Math.max(2, current - 1);
+                    const end = Math.min(total - 1, current + 1);
+                    for (let i = start; i <= end; i++) pages.push(i);
+                    if (current < total - 2) pages.push("...");
+                    if (total > 1) pages.push(total);
+                    return pages.map((pageNo, idx) =>
+                      pageNo === "..." ? (
+                        <PaginationItem key={`ellipsis-${idx}`}>
+                          <PaginationEllipsis className="size-7 sm:size-8" />
+                        </PaginationItem>
+                      ) : (
+                        <PaginationItem key={pageNo}>
+                          <PaginationLink
+                            href="#"
+                            isActive={pageNo === current}
+                            className="h-7 w-7 sm:h-8 sm:w-8 text-xs sm:text-sm font-medium rounded-lg"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              setAdminPage(pageNo);
+                            }}
+                          >
+                            {pageNo}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ),
+                    );
+                  })()}
                   <PaginationItem>
                     <PaginationNext
                       href="#"
+                      className="h-8 w-8 sm:h-9 sm:w-auto"
+                      text=""
                       onClick={(event) => {
                         event.preventDefault();
                         setAdminPage((prev) => Math.min(adminTotalPages, prev + 1));

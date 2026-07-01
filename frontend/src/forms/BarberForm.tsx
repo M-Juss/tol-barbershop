@@ -24,6 +24,7 @@ import {
   normalizeEmail,
   normalizePhone,
 } from "@/lib/sanitizer";
+import { getImageUrl } from "@/lib/image";
 
 interface BarberFormProps {
   open: boolean;
@@ -37,15 +38,6 @@ const statusOptions = [
   { value: "true", label: "Active" },
   { value: "false", label: "Inactive" },
 ];
-
-const getImageUrl = (image: string | null | undefined): string => {
-  if (!image) return "";
-  if (image.startsWith("http://") || image.startsWith("https://")) return image;
-
-  const apiBase = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/api\/?$/, "");
-  const normalizedPath = image.startsWith("/") ? image : `/${image}`;
-  return `${apiBase}${normalizedPath}`;
-};
 
 export function BarberForm({
   open,
@@ -230,8 +222,12 @@ export function BarberForm({
               label="Contact Number"
               placeholder="09123456789"
               type="tel"
+              inputMode="numeric"
               className="border-gray-300 focus:border-gray-400 h-10"
               {...formRegister("contact_number")}
+              onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");
+              }}
             />
             {errors.contact_number && (
               <p className="absolute left-0 top-full  text-red-500 text-xs">

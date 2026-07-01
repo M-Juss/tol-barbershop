@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\EntityChange;
 use App\Http\Requests\AppointmentFeedbackRequest;
 use App\Http\Resources\AppointmentFeedbackResource;
 use App\Models\Appointment;
@@ -45,6 +46,7 @@ class AppointmentFeedbackController extends Controller
         );
 
         $feedback->load(['user', 'appointment.service']);
+        EntityChange::dispatch('feedback');
 
         return $this->success(
             'Feedback submitted successfully.',

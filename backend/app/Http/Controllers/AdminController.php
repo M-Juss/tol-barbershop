@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\EntityChange;
 use App\Traits\ApiResponseTrait;
 use App\Http\Requests\StaffRequest;
 use App\Models\User;
@@ -54,6 +55,7 @@ class AdminController extends Controller
             ];
             
             User::create($staffData);
+            EntityChange::dispatch('admins');
             return $this->created('Admin created successfully');
             
         } catch (\Exception $e) {
@@ -137,6 +139,7 @@ class AdminController extends Controller
                     : $admin->password,
             ]);
             
+            EntityChange::dispatch('admins');
             return $this->success('Admin updated successfully');
             
         } catch (\Exception $e) {
@@ -157,6 +160,7 @@ class AdminController extends Controller
             }
             
             $admin->delete();
+            EntityChange::dispatch('admins');
             return $this->success('Admin deleted successfully');
             
         } catch (\Exception $e) {

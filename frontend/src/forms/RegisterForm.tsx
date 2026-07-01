@@ -96,11 +96,15 @@ export function RegisterForm() {
       <div className="relative ">
         <InputWithLabel
           id="contact_number"
-          type="text"
+          type="tel"
+          inputMode="numeric"
           label="Contact Number"
           placeholder="Enter your contact number"
           className="h-10 border-gray-300 focus-visible:ring-accent/40"
           {...formRegister("contact_number")}
+          onInput={(e: React.FormEvent<HTMLInputElement>) => {
+            e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");
+          }}
         />
         {errors.contact_number && (
           <p className="absolute left-0 top-full  text-red-500 text-xs">

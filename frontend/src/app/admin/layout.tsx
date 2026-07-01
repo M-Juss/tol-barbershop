@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useRealtimeEvent } from "@/contexts/RealtimeContext";
 import { Calendar, LayoutDashboard, History, UserPlus, MessageSquareText, Settings, BarChart3 } from "lucide-react";
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
+import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPendingAppointmentCount } from "@/services/manager/admin.api";
@@ -60,10 +63,25 @@ export default function AdminLayout({
   useRoleRoutePersistence("/admin");
   const { user } = useAuth();
   const [pendingCount, setPendingCount] = useState(0);
+  const prevCountRef = useRef(0);
+  const isFirstLoadRef = useRef(true);
 
   const fetchPendingCount = useCallback(async () => {
     try {
       const count = await getPendingAppointmentCount();
+      if (!isFirstLoadRef.current && count > prevCountRef.current) {
+        const diff = count - prevCountRef.current;
+        toast(`${diff} New Pending Appointment${diff > 1 ? "s" : ""}`, {
+          description: `A customer has submitted a new booking request.`,
+          action: {
+            label: "View",
+            onClick: () => (window.location.href = "/admin/appointment"),
+          },
+          duration: 8000,
+        });
+      }
+      isFirstLoadRef.current = false;
+      prevCountRef.current = count;
       setPendingCount(count);
     } catch {}
   }, []);
@@ -79,6 +97,8 @@ export default function AdminLayout({
     };
   }, [fetchPendingCount]);
 
+  useRealtimeEvent('appointments', fetchPendingCount);
+
   const navItems = (user?.permissions
     ? allNavItems.filter((item) => item.key === "dashboard" || user.permissions?.includes(item.key))
     : allNavItems
@@ -89,9 +109,10 @@ export default function AdminLayout({
   return (
     <div className="flex h-dvh overflow-hidden">
       <ResponsiveSidebar navItems={navItems} />
-      <main className="min-h-0 flex-1 overflow-y-auto bg-gray-100 md:pl-0 pt-16 md:pt-0 pb-20 overscroll-contain">
+      <main className="min-h-0 flex-1 overflow-y-auto bg-gray-100 md:pl-0 pt-[calc(4rem+env(safe-area-inset-top))] md:pt-0 pb-[calc(5rem+env(safe-area-inset-bottom))] overscroll-contain">
         {children}
       </main>
+      <Toaster />
     </div>
   );
 }

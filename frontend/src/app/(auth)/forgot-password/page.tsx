@@ -4,7 +4,7 @@ import { ForgotPasswordForm } from "@/forms/ForgotPasswordForm";
 
 export default function ForgotPasswordPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-primary p-4">
+    <div className="min-h-screen flex items-center justify-center bg-primary p-4 pb-8">
       <div className="flex w-full max-w-md flex-col items-center px-6 sm:px-12 py-8 bg-white rounded-lg shadow-md">
         <div className="flex space-x-2 items-center">
           <Image src="/logo.svg" alt="Logo" height={40} width={40} />

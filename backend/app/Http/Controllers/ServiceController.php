@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\EntityChange;
 use Illuminate\Http\Request;
 use App\Http\Requests\ServiceRequest;
 use App\Http\Controllers\Controller;
@@ -57,7 +58,7 @@ class ServiceController extends Controller
             $validated = $request->validated();
             
             Service::create($validated);
-            
+            EntityChange::dispatch('services');
             return $this->created('Service created successfully');
             
             
@@ -92,7 +93,7 @@ class ServiceController extends Controller
             }
             
             $service->update($request->validated());
-            
+            EntityChange::dispatch('services');
             return $this->created('Service updated successfully');
                 
             
@@ -119,7 +120,7 @@ class ServiceController extends Controller
             }
             
             $service->delete();
-            
+            EntityChange::dispatch('services');
             return $this->success('Service deleted successfully');
                 
             

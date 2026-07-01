@@ -152,7 +152,7 @@ export function Service() {
   };
 
   return (
-    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
+    <div className="w-full h-full p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
       <div className="flex justify-end mb-4">
         <button
           onClick={openAddModal}

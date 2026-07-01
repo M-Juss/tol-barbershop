@@ -16,7 +16,10 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [env('FRONTEND_URL', 'http://localhost:3000')],
+    'allowed_origins' => [
+        env('FRONTEND_URL', 'http://localhost:3000'),
+        env('NGROK_URL'),
+    ],
 
     'allowed_origins_patterns' => [],
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\EntityChange;
 use App\Http\Requests\ClosedDatesRequest;
 use App\Http\Resources\ClosedDatesResource;
 use App\Traits\ApiResponseTrait;
@@ -71,6 +72,7 @@ class ClosedDatesController extends Controller
                 ]);
             }
 
+            EntityChange::dispatch('closed_dates');
             return $this->created('Closed date succescfully inserted');
         
             
@@ -90,7 +92,7 @@ class ClosedDatesController extends Controller
             }
 
             $closedDate->update($request->validated());
-            
+            EntityChange::dispatch('closed_dates');
             return $this->success('Closed date updated successfully', new ClosedDatesResource($closedDate));
            
         } catch (\Exception $e) {

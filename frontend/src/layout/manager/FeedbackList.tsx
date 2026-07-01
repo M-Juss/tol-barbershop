@@ -18,6 +18,7 @@ import {
 import {
   Pagination,
   PaginationContent,
+  PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
@@ -114,7 +115,7 @@ export function FeedbackList() {
   }, [search, ratingFilter, page]);
 
   return (
-    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
+    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
           Customer Feedback
@@ -272,36 +273,57 @@ export function FeedbackList() {
         </div>
 
         {meta && meta.last_page > 1 ? (
-          <Pagination>
-            <PaginationContent>
+          <Pagination className="overflow-hidden px-1">
+            <PaginationContent className="flex-nowrap gap-0.5">
               <PaginationItem>
                 <PaginationPrevious
                   href="#"
+                  className="h-8 w-8 sm:h-9 sm:w-auto"
+                  text=""
                   onClick={(e) => {
                     e.preventDefault();
                     setPage((p) => Math.max(1, p - 1));
                   }}
                 />
               </PaginationItem>
-              {Array.from({ length: meta.last_page }, (_, i) => i + 1).map(
-                (pageNo) => (
-                  <PaginationItem key={pageNo}>
-                    <PaginationLink
-                      href="#"
-                      isActive={pageNo === page}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setPage(pageNo);
-                      }}
-                    >
-                      {pageNo}
-                    </PaginationLink>
-                  </PaginationItem>
-                ),
-              )}
+              {(() => {
+                const pages: (number | "...")[] = [];
+                const total = meta.last_page;
+                const current = page;
+                pages.push(1);
+                if (current > 3) pages.push("...");
+                const start = Math.max(2, current - 1);
+                const end = Math.min(total - 1, current + 1);
+                for (let i = start; i <= end; i++) pages.push(i);
+                if (current < total - 2) pages.push("...");
+                if (total > 1) pages.push(total);
+                return pages.map((pageNo, idx) =>
+                  pageNo === "..." ? (
+                    <PaginationItem key={`ellipsis-${idx}`}>
+                      <PaginationEllipsis className="size-7 sm:size-8" />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={pageNo}>
+                      <PaginationLink
+                        href="#"
+                        isActive={pageNo === current}
+                        className="h-7 w-7 sm:h-8 sm:w-8 text-xs sm:text-sm font-medium rounded-lg"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPage(pageNo);
+                        }}
+                      >
+                        {pageNo}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ),
+                );
+              })()}
               <PaginationItem>
                 <PaginationNext
                   href="#"
+                  className="h-8 w-8 sm:h-9 sm:w-auto"
+                  text=""
                   onClick={(e) => {
                     e.preventDefault();
                     setPage((p) => Math.min(meta.last_page, p + 1));

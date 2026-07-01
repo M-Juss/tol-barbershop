@@ -49,7 +49,7 @@ export function SelectWithLabel({
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
-        <SelectContent align="start" className="w-[var(--radix-select-trigger-width)]">
+        <SelectContent align="start" position="popper" className="w-[var(--radix-select-trigger-width)] z-[60]">
           {options.map((option) => (
             <SelectItem
               key={option.value}

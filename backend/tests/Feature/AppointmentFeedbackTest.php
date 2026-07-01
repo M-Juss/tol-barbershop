@@ -52,7 +52,7 @@ test('marking an appointment completed creates a feedback request notification',
 
     Sanctum::actingAs($manager);
 
-    $this->putJson("/api/appointments/{$appointment->id}", [
+    $this->putJson("/api/v1/appointments/{$appointment->id}", [
         'user_id' => $customer->id,
         'service_id' => $service->id,
         'barber_user_id' => $barber->id,
@@ -95,7 +95,7 @@ test('customer can submit feedback for their completed appointment', function ()
 
     Sanctum::actingAs($customer);
 
-    $this->postJson('/api/appointment-feedback', [
+    $this->postJson('/api/v1/appointment-feedback', [
         'appointment_id' => $appointment->id,
         'rating' => 5,
         'comment' => 'Excellent barber service and clean booking experience.',

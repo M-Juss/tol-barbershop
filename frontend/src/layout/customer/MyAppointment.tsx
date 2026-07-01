@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRealtimeEvent } from "@/contexts/RealtimeContext";
 import {
   getAppointments,
   type Appointment,
@@ -19,6 +20,7 @@ import {
 import {
   Pagination,
   PaginationContent,
+  PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
@@ -77,44 +79,46 @@ export function MyAppointment() {
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
+  const fetchAppointments = useCallback(async () => {
+    try {
+      const currentUserId = authUser?.id;
+      const data = await getAppointments();
+
+      const mapped = data
+        .filter((appt) =>
+          currentUserId ? appt.customer.id === currentUserId : true,
+        )
+        .map((appt: Appointment) => ({
+          id: appt.id,
+          service: appt.service.name ?? "Unknown service",
+          barber: appt.barber.fullname ?? "Unknown barber",
+          date: formatDate(appt.appointment_date),
+          time: formatTime(appt.appointment_time),
+          status: appt.status,
+          price: Number(appt.price) || 0,
+          created_at: appt.created_at,
+          cancellation_reason: appt.cancellation_reason,
+        }))
+        .sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
+
+      setRows(mapped);
+    } catch (error) {
+      console.error("Failed to load appointments:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [authUser?.id]);
+
   useEffect(() => {
-    const fetchAppointments = async () => {
-      try {
-        const currentUserId = authUser?.id;
-        const data = await getAppointments();
-
-        const mapped = data
-          .filter((appt) =>
-            currentUserId ? appt.customer.id === currentUserId : true,
-          )
-          .map((appt: Appointment) => ({
-            id: appt.id,
-            service: appt.service.name ?? "Unknown service",
-            barber: appt.barber.fullname ?? "Unknown barber",
-            date: formatDate(appt.appointment_date),
-            time: formatTime(appt.appointment_time),
-            status: appt.status,
-            price: Number(appt.price) || 0,
-            created_at: appt.created_at,
-            cancellation_reason: appt.cancellation_reason,
-          }))
-          .sort(
-            (a, b) =>
-              new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-          );
-
-        setRows(mapped);
-      } catch (error) {
-        console.error("Failed to load appointments:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchAppointments();
     const interval = setInterval(fetchAppointments, 30000);
     return () => clearInterval(interval);
-  }, [authUser?.id]);
+  }, [fetchAppointments]);
+
+  useRealtimeEvent('appointments', fetchAppointments);
 
   const filteredRows = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -277,34 +281,57 @@ export function MyAppointment() {
         </div>
 
         {filteredRows.length > pageSize ? (
-          <Pagination>
-            <PaginationContent>
+          <Pagination className="overflow-hidden px-1">
+            <PaginationContent className="flex-nowrap gap-0.5">
               <PaginationItem>
                 <PaginationPrevious
                   href="#"
+                  className="h-8 w-8 sm:h-9 sm:w-auto"
+                  text=""
                   onClick={(event) => {
                     event.preventDefault();
                     setPage((prev) => Math.max(1, prev - 1));
                   }}
                 />
               </PaginationItem>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNo) => (
-                <PaginationItem key={pageNo}>
-                  <PaginationLink
-                    href="#"
-                    isActive={pageNo === page}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      setPage(pageNo);
-                    }}
-                  >
-                    {pageNo}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
+              {(() => {
+                const pages: (number | "...")[] = [];
+                const total = totalPages;
+                const current = page;
+                pages.push(1);
+                if (current > 3) pages.push("...");
+                const start = Math.max(2, current - 1);
+                const end = Math.min(total - 1, current + 1);
+                for (let i = start; i <= end; i++) pages.push(i);
+                if (current < total - 2) pages.push("...");
+                if (total > 1) pages.push(total);
+                return pages.map((pageNo, idx) =>
+                  pageNo === "..." ? (
+                    <PaginationItem key={`ellipsis-${idx}`}>
+                      <PaginationEllipsis className="size-7 sm:size-8" />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={pageNo}>
+                      <PaginationLink
+                        href="#"
+                        isActive={pageNo === current}
+                        className="h-7 w-7 sm:h-8 sm:w-8 text-xs sm:text-sm font-medium rounded-lg"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          setPage(pageNo);
+                        }}
+                      >
+                        {pageNo}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ),
+                );
+              })()}
               <PaginationItem>
                 <PaginationNext
                   href="#"
+                  className="h-8 w-8 sm:h-9 sm:w-auto"
+                  text=""
                   onClick={(event) => {
                     event.preventDefault();
                     setPage((prev) => Math.min(totalPages, prev + 1));

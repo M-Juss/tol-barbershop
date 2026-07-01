@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRealtimeEvent } from "@/contexts/RealtimeContext";
 import {
   CalendarDays,
   CheckCircle2,
@@ -140,27 +141,29 @@ export function Overview() {
     fetchAppointments();
   }, []);
 
-  useEffect(() => {
-    const fetchAppointments = async () => {
-      try {
-        const currentUserId = authUser?.id;
-        if (!currentUserId) {
-          setAppointments([]);
-          return;
-        }
-        const data = await getAppointments();
-        const userAppointments = data.filter(
-          (appointment) => appointment.customer.id === currentUserId,
-        );
-        setAppointments(userAppointments);
-      } catch (error) {
-        console.error("Failed to load appointments:", error);
+  const refreshAppointments = useCallback(async () => {
+    try {
+      const currentUserId = authUser?.id;
+      if (!currentUserId) {
+        setAppointments([]);
+        return;
       }
-    };
-
-    const interval = setInterval(fetchAppointments, 30000);
-    return () => clearInterval(interval);
+      const data = await getAppointments();
+      const userAppointments = data.filter(
+        (appointment) => appointment.customer.id === currentUserId,
+      );
+      setAppointments(userAppointments);
+    } catch (error) {
+      console.error("Failed to load appointments:", error);
+    }
   }, [authUser?.id]);
+
+  useEffect(() => {
+    const interval = setInterval(refreshAppointments, 30000);
+    return () => clearInterval(interval);
+  }, [refreshAppointments]);
+
+  useRealtimeEvent('appointments', refreshAppointments);
 
   useEffect(() => {
     if (!authUser) return;
@@ -229,7 +232,7 @@ export function Overview() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <StatCard
           label="Completed"
           value={String(completedCount)}

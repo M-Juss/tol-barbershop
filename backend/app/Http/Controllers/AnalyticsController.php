@@ -194,23 +194,19 @@ class AnalyticsController extends Controller
         $range = $this->getDateRange($request->input('period', 'monthly'));
 
         $rows = DB::table('appointment_feedback')
-            ->join('appointments', 'appointments.id', '=', 'appointment_feedback.appointment_id')
-            ->select('appointment_feedback.rating', DB::raw('COUNT(*) as count'))
-            ->whereBetween('appointments.appointment_date', [$range['from'], $range['to']])
-            ->groupBy('appointment_feedback.rating')
-            ->orderBy('appointment_feedback.rating')
+            ->select('rating', DB::raw('COUNT(*) as count'))
+            ->whereDate('created_at', '>=', $range['from'])
+            ->whereDate('created_at', '<=', $range['to'])
+            ->groupBy('rating')
+            ->orderBy('rating')
             ->get()
-            ->map(fn ($row) => [
-                'rating' => (int) $row->rating,
-                'count' => (int) $row->count,
-            ]);
+            ->keyBy('rating');
 
-        $ratingMap = $rows->keyBy('rating');
         $result = [];
         for ($i = 1; $i <= 5; $i++) {
             $result[] = [
                 'rating' => $i,
-                'count' => (int) ($ratingMap->get($i)?->count ?? 0),
+                'count' => (int) ($rows->get($i)?->count ?? 0),
             ];
         }
 
@@ -236,5 +232,39 @@ class AnalyticsController extends Controller
             ]);
 
         return response()->json($rows);
+    }
+
+    public function dayOfWeek(Request $request)
+    {
+        $range = $this->getDateRange($request->input('period', 'monthly'));
+
+        $dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $rows = Appointment::select([
+                DB::raw("DAYOFWEEK(appointment_date) - 1 as day_index"),
+                DB::raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed"),
+                DB::raw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled"),
+                DB::raw("SUM(CASE WHEN status = 'no_show' THEN 1 ELSE 0 END) as no_show"),
+                DB::raw('COUNT(*) as total'),
+            ])
+            ->whereBetween('appointment_date', [$range['from'], $range['to']])
+            ->groupBy('day_index')
+            ->orderBy('day_index')
+            ->get()
+            ->keyBy('day_index');
+
+        $result = [];
+        for ($i = 0; $i < 7; $i++) {
+            $dayData = $rows->get($i);
+            $result[] = [
+                'day' => $dayNames[$i],
+                'day_index' => $i,
+                'completed' => (int) ($dayData->completed ?? 0),
+                'cancelled' => (int) ($dayData->cancelled ?? 0),
+                'no_show' => (int) ($dayData->no_show ?? 0),
+                'total' => (int) ($dayData->total ?? 0),
+            ];
+        }
+
+        return response()->json($result);
     }
 }

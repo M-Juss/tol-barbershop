@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays, CheckCheck, Clock, Scissors, Star, User } from "lucide-react";
+import { CalendarDays, CheckCheck, Clock, Scissors, User } from "lucide-react";
 import { formatBookingId } from "@/lib/booking";
 import { toast } from "sonner";
 import {
@@ -13,13 +13,10 @@ import {
   // [RESCHEDULE] type ReScheduleItem,
   // [RESCHEDULE] getReSchedules,
 } from "@/services/re.schedule.api";
-import { submitAppointmentFeedback } from "@/services/customer/feedback.api";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -42,33 +39,6 @@ function formatDateTime(value: string): string {
 // [RESCHEDULE]   if (decision === "declined") return "bg-red-100 text-red-700 border-red-200";
 // [RESCHEDULE]   return "bg-amber-100 text-amber-700 border-amber-200";
 // [RESCHEDULE] }
-
-function getPayloadNumber(
-  notification: NotificationItem | null,
-  key: string,
-): number | null {
-  const value = notification?.payload?.[key];
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) ? numberValue : null;
-}
-
-function getPayloadString(
-  notification: NotificationItem | null,
-  key: string,
-): string | null {
-  const value = notification?.payload?.[key];
-  return typeof value === "string" && value.trim() !== "" ? value : null;
-}
-
-function getStatusStyle(status: string): string {
-  const s = status.toLowerCase();
-  if (s === "approved") return "bg-blue-100 text-blue-700 border-blue-200";
-  if (s === "pending") return "bg-yellow-100 text-yellow-700 border-yellow-200";
-  if (s === "completed") return "bg-green-100 text-green-700 border-green-200";
-  if (s === "cancelled") return "bg-red-100 text-red-700 border-red-200";
-  if (s === "no_show") return "bg-gray-200 text-gray-700 border-gray-300";
-  return "bg-gray-100 text-gray-600 border-gray-200";
-}
 
 function isAppointmentStatusPayload(
   payload: Record<string, unknown> | null | undefined,
@@ -115,15 +85,10 @@ export function Notification() {
   // [RESCHEDULE] const [reschedules, setReschedules] = useState<ReScheduleItem[]>([]);
   // [RESCHEDULE] const [selectedSuggestion, setSelectedSuggestion] =
   // [RESCHEDULE]   useState<ReScheduleItem | null>(null);
-  const [selectedFeedbackNotification, setSelectedFeedbackNotification] =
-    useState<NotificationItem | null>(null);
   const [selectedNotification, setSelectedNotification] =
     useState<NotificationItem | null>(null);
-  const [feedbackRating, setFeedbackRating] = useState(0);
-  const [feedbackComment, setFeedbackComment] = useState("");
   const [loading, setLoading] = useState(true);
   // [RESCHEDULE] const [saving, setSaving] = useState(false);
-  const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
   const unreadCount = useMemo(
     () => notifications.filter((item) => !item.is_read).length,
@@ -188,30 +153,6 @@ export function Notification() {
   // [RESCHEDULE]     }
   // [RESCHEDULE]   }
   // [RESCHEDULE] };
-
-  const openFeedback = async (notification: NotificationItem) => {
-    setSelectedFeedbackNotification(notification);
-    setFeedbackRating(0);
-    setFeedbackComment("");
-
-    if (!notification.is_read) {
-      try {
-        await markNotificationAsRead(notification.id);
-        setNotifications((prev) =>
-          prev.map((item) =>
-            item.id === notification.id
-              ? {
-                  ...item,
-                  is_read: true,
-                }
-              : item,
-          ),
-        );
-      } catch (error) {
-        console.error("Failed to mark notification as read:", error);
-      }
-    }
-  };
 
   const openDetail = async (notification: NotificationItem) => {
     setSelectedNotification(notification);
@@ -292,46 +233,6 @@ export function Notification() {
   // [RESCHEDULE]   }
   // [RESCHEDULE] };
 
-  const handleSubmitFeedback = async () => {
-    const appointmentId = getPayloadNumber(
-      selectedFeedbackNotification,
-      "appointment_id",
-    );
-
-    if (!appointmentId) {
-      toast.error("Missing appointment details for this feedback request");
-      return;
-    }
-
-    if (feedbackRating < 1) {
-      toast.error("Please select a rating");
-      return;
-    }
-
-    try {
-      setSubmittingFeedback(true);
-      await submitAppointmentFeedback({
-        appointment_id: appointmentId,
-        rating: feedbackRating,
-        comment: feedbackComment.trim() || null,
-      });
-      toast.success("Thank you for your feedback");
-      setSelectedFeedbackNotification(null);
-      setFeedbackRating(0);
-      setFeedbackComment("");
-    } catch (error) {
-      console.error("Failed to submit feedback:", error);
-      toast.error("Failed to submit feedback");
-    } finally {
-      setSubmittingFeedback(false);
-    }
-  };
-
-  const selectedFeedbackService = getPayloadString(
-    selectedFeedbackNotification,
-    "service_name",
-  );
-
   return (
     <div className="w-full h-full bg-slate-100 p-4 sm:p-6 pb-24 font-sans">
       <div className="mb-6 flex items-center justify-between gap-3">
@@ -363,7 +264,6 @@ export function Notification() {
           <div className="space-y-3 p-3">
             {notifications.map((item) => {
               // [RESCHEDULE] const isReschedule = item.type === "reschedule_suggestion";
-              const isFeedbackRequest = item.type === "appointment_feedback_request";
               const isUnread = !item.is_read;
 
               return (
@@ -404,17 +304,6 @@ export function Notification() {
                           </Button>
                         ) : null}
                         */}
-
-                        {isFeedbackRequest ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            className="bg-primary text-white hover:bg-primary/90"
-                            onClick={() => openFeedback(item)}
-                          >
-                            Feedback
-                          </Button>
-                        ) : null}
 
                         {isUnread ? (
                           <Button
@@ -520,82 +409,6 @@ export function Notification() {
         </DialogContent>
       </Dialog>
       */}
-
-      <Dialog
-        open={Boolean(selectedFeedbackNotification)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelectedFeedbackNotification(null);
-          }
-        }}
-      >
-        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-3xl p-6 sm:max-w-[560px] sm:p-8">
-          <DialogHeader className="items-center gap-4 text-center">
-            <DialogTitle className="text-3xl font-bold text-primary sm:text-4xl">
-              Rate your TOLS Barbershop booking
-            </DialogTitle>
-            <DialogDescription className="max-w-md text-base leading-7 text-gray-600">
-              Your {selectedFeedbackService ?? "barbershop service"} is completed.
-              Please rate your satisfaction and leave feedback below.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex items-center justify-center gap-3 py-5">
-            {[1, 2, 3, 4, 5].map((rating) => (
-              <button
-                key={rating}
-                type="button"
-                className="rounded-full p-1 transition hover:scale-105 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                onClick={() => setFeedbackRating(rating)}
-                aria-label={`Rate ${rating} star${rating === 1 ? "" : "s"}`}
-              >
-                <Star
-                  className={`size-9 sm:size-11 ${
-                    rating <= feedbackRating
-                      ? "fill-accent text-accent"
-                      : "fill-white text-gray-300"
-                  }`}
-                  strokeWidth={1.8}
-                />
-              </button>
-            ))}
-          </div>
-
-          <div className="h-px bg-gray-200" />
-
-          <div className="space-y-2 pt-2">
-            <label
-              htmlFor="appointment-feedback-comment"
-              className="text-sm font-medium text-gray-700"
-            >
-              Your feedback (optional)
-            </label>
-            <Textarea
-              id="appointment-feedback-comment"
-              value={feedbackComment}
-              onChange={(event) => setFeedbackComment(event.target.value)}
-              maxLength={300}
-              placeholder="Tell us about your barber service experience"
-              className="min-h-32 resize-none border-gray-100 bg-gray-50 text-base shadow-none focus-visible:ring-primary/20"
-            />
-            <p className="text-xs text-gray-400">
-              Max 300 characters - {feedbackComment.length}/300
-            </p>
-          </div>
-
-          <div className="space-y-4 pt-4">
-            <Button
-              type="button"
-              size="lg"
-              className="h-12 w-full bg-primary text-base font-bold uppercase tracking-wide text-white hover:bg-primary/90"
-              disabled={submittingFeedback || feedbackRating === 0}
-              onClick={handleSubmitFeedback}
-            >
-              {submittingFeedback ? "Submitting..." : "Submit"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={Boolean(selectedNotification)}
@@ -721,17 +534,6 @@ export function Notification() {
                   </Button>
                 )}
                 */}
-                {selectedNotification.type === "appointment_feedback_request" && (
-                  <Button
-                    size="sm"
-                    className="flex-1 bg-primary text-white hover:bg-primary/90"
-                    onClick={() => {
-                      openFeedback(selectedNotification);
-                    }}
-                  >
-                    Give Feedback
-                  </Button>
-                )}
                 <Button
                   size="sm"
                   variant="outline"

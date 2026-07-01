@@ -9,7 +9,6 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { TimeSlots } from "@/components/common/TimeSlots";
 import { ActivityLog } from "@/components/common/ActivityLog";
 import { ClosedDateForm } from "@/forms/ClosedDateForm";
 import { ClosedDateSchemaFormValues } from "@/validations/closed.date.validation";
@@ -219,7 +218,7 @@ export function Slots() {
   };
 
   return (
-    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 font-sans">
+    <div className="w-full h-full p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Closed Dates Card */}
         <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col">
@@ -304,7 +303,7 @@ export function Slots() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
+          <div className="grid grid-cols-2 gap-3 flex-1">
             {scheduleInfo.map(
               ({ icon: Icon, label, value, accent, iconBg }) => (
                 <div

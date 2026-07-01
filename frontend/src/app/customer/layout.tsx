@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRealtimeEvent } from "@/contexts/RealtimeContext";
 import { Bell, Calendar, CalendarPlus, LayoutDashboard, User } from "lucide-react";
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
@@ -13,19 +14,19 @@ export default function CustomerLayout({
   const [unreadCount, setUnreadCount] = useState(0);
   useRoleRoutePersistence("/customer");
 
-  useEffect(() => {
-    const loadUnreadCount = async () => {
-      try {
-        const data = await getNotifications();
-        setUnreadCount(data.unread_count);
-      } catch {
-        setUnreadCount(0);
-      }
-    };
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const data = await getNotifications();
+      setUnreadCount(data.unread_count);
+    } catch {
+      setUnreadCount(0);
+    }
+  }, []);
 
+  useEffect(() => {
     loadUnreadCount();
 
-    const timer = setInterval(loadUnreadCount, 15000);
+    const timer = setInterval(loadUnreadCount, 30000);
 
     const handleUnreadUpdate = (event: Event) => {
       const customEvent = event as CustomEvent<{ unreadCount?: number }>;
@@ -41,7 +42,9 @@ export default function CustomerLayout({
       clearInterval(timer);
       window.removeEventListener("notifications:unread-updated", handleUnreadUpdate as EventListener);
     };
-  }, []);
+  }, [loadUnreadCount]);
+
+  useRealtimeEvent('notifications', loadUnreadCount);
 
   const navItems = useMemo(
     () => [
@@ -78,7 +81,7 @@ export default function CustomerLayout({
   return (
     <div className="flex h-dvh overflow-hidden">
       <ResponsiveSidebar navItems={navItems} />
-      <main className="min-h-0 flex-1 overflow-y-auto bg-gray-100 md:pl-0 pt-16 md:pt-0 pb-20 overscroll-contain">
+      <main className="min-h-0 flex-1 overflow-y-auto bg-gray-100 md:pl-0 pt-[calc(4rem+env(safe-area-inset-top))] md:pt-0 pb-[calc(5rem+env(safe-area-inset-bottom))] overscroll-contain">
         {children}
       </main>
     </div>

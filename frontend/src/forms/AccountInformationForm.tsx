@@ -137,9 +137,14 @@ export function AccountInformationForm() {
           <InputWithLabel
             id="contact_number"
             label="Contact Number"
+            type="tel"
+            inputMode="numeric"
             disabled={!isEditing}
             className="h-10"
             {...register("contact_number")}
+            onInput={(e: React.FormEvent<HTMLInputElement>) => {
+              e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");
+            }}
           />
           {errors.contact_number && (
             <p className="absolute left-0 top-full  text-red-500 text-xs">
