@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('image')->nullable();
             $table->string('fullname');
-            $table->string('contact_number');
+            $table->string('contact_number', 11);
             $table->string('email')->unique();
             $table->string('role')->default('customer');
             $table->string('password');

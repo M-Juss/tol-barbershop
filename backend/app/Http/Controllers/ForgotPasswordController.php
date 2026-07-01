@@ -35,7 +35,7 @@ class ForgotPasswordController extends Controller
         $email = session('password_reset_email');
         $token = session('password_reset_token');
 
-        if (!$email || !$token) {
+        if (! $email || ! $token) {
             return $this->error('No reset session found. Please request a new reset token.', [], 422);
         }
 

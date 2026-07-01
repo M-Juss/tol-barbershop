@@ -5,19 +5,15 @@ import { CalendarDays, CheckCheck, Clock, Scissors, User } from "lucide-react";
 import { formatBookingId } from "@/lib/booking";
 import { toast } from "sonner";
 import {
-  // [RESCHEDULE] decideReSchedule,
   getNotifications,
   markAllNotificationsAsRead,
   markNotificationAsRead,
   type NotificationItem,
-  // [RESCHEDULE] type ReScheduleItem,
-  // [RESCHEDULE] getReSchedules,
 } from "@/services/re.schedule.api";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -33,12 +29,6 @@ function formatDateTime(value: string): string {
     minute: "2-digit",
   });
 }
-
-// [RESCHEDULE] function getDecisionStyle(decision: ReScheduleItem["decision"]): string {
-// [RESCHEDULE]   if (decision === "accepted") return "bg-green-100 text-green-700 border-green-200";
-// [RESCHEDULE]   if (decision === "declined") return "bg-red-100 text-red-700 border-red-200";
-// [RESCHEDULE]   return "bg-amber-100 text-amber-700 border-amber-200";
-// [RESCHEDULE] }
 
 function isAppointmentStatusPayload(
   payload: Record<string, unknown> | null | undefined,
@@ -82,14 +72,9 @@ export function Notification() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  // [RESCHEDULE] const [reschedules, setReschedules] = useState<ReScheduleItem[]>([]);
-  // [RESCHEDULE] const [selectedSuggestion, setSelectedSuggestion] =
-  // [RESCHEDULE]   useState<ReScheduleItem | null>(null);
   const [selectedNotification, setSelectedNotification] =
     useState<NotificationItem | null>(null);
   const [loading, setLoading] = useState(true);
-  // [RESCHEDULE] const [saving, setSaving] = useState(false);
-
   const unreadCount = useMemo(
     () => notifications.filter((item) => !item.is_read).length,
     [notifications],
@@ -108,12 +93,10 @@ export function Notification() {
       setLoading(true);
       const [notificationData] = await Promise.all([
         getNotifications(page),
-        // [RESCHEDULE] getReSchedules(),
       ]);
 
       setNotifications(notificationData.notifications);
       setTotalPages(notificationData.pagination.last_page);
-      // [RESCHEDULE] setReschedules(reScheduleData);
     } catch (error) {
       console.error("Failed to load notifications:", error);
       toast.error("Failed to load notifications");
@@ -125,34 +108,6 @@ export function Notification() {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  // [RESCHEDULE] const openSuggestion = async (notification: NotificationItem) => {
-  // [RESCHEDULE]   const rescheduleId = Number(notification.payload?.reschedule_id);
-  // [RESCHEDULE]   if (!Number.isFinite(rescheduleId)) {
-  // [RESCHEDULE]     return;
-  // [RESCHEDULE]   }
-  // [RESCHEDULE]
-  // [RESCHEDULE]   const target = reschedules.find((item) => item.id === rescheduleId) ?? null;
-  // [RESCHEDULE]   setSelectedSuggestion(target);
-  // [RESCHEDULE]
-  // [RESCHEDULE]   if (!notification.is_read) {
-  // [RESCHEDULE]     try {
-  // [RESCHEDULE]       await markNotificationAsRead(notification.id);
-  // [RESCHEDULE]       setNotifications((prev) =>
-  // [RESCHEDULE]         prev.map((item) =>
-  // [RESCHEDULE]           item.id === notification.id
-  // [RESCHEDULE]             ? {
-  // [RESCHEDULE]                 ...item,
-  // [RESCHEDULE]                 is_read: true,
-  // [RESCHEDULE]               }
-  // [RESCHEDULE]             : item,
-  // [RESCHEDULE]         ),
-  // [RESCHEDULE]       );
-  // [RESCHEDULE]     } catch (error) {
-  // [RESCHEDULE]       console.error("Failed to mark notification as read:", error);
-  // [RESCHEDULE]     }
-  // [RESCHEDULE]   }
-  // [RESCHEDULE] };
 
   const openDetail = async (notification: NotificationItem) => {
     setSelectedNotification(notification);
@@ -212,27 +167,6 @@ export function Notification() {
     }
   };
 
-  // [RESCHEDULE] const handleDecision = async (decision: "accepted" | "declined") => {
-  // [RESCHEDULE]   if (!selectedSuggestion) return;
-  // [RESCHEDULE]
-  // [RESCHEDULE]   try {
-  // [RESCHEDULE]     setSaving(true);
-  // [RESCHEDULE]     await decideReSchedule(selectedSuggestion.id, decision);
-  // [RESCHEDULE]     toast.success(
-  // [RESCHEDULE]       decision === "accepted"
-  // [RESCHEDULE]         ? "Re-schedule accepted and appointment approved."
-  // [RESCHEDULE]         : "Re-schedule declined and appointment cancelled.",
-  // [RESCHEDULE]     );
-  // [RESCHEDULE]     setSelectedSuggestion(null);
-  // [RESCHEDULE]     await loadData();
-  // [RESCHEDULE]   } catch (error) {
-  // [RESCHEDULE]     console.error("Failed to apply re-schedule decision:", error);
-  // [RESCHEDULE]     toast.error("Failed to apply re-schedule decision");
-  // [RESCHEDULE]   } finally {
-  // [RESCHEDULE]     setSaving(false);
-  // [RESCHEDULE]   }
-  // [RESCHEDULE] };
-
   return (
     <div className="w-full h-full bg-slate-100 p-4 sm:p-6 pb-24 font-sans">
       <div className="mb-6 flex items-center justify-between gap-3">
@@ -263,7 +197,6 @@ export function Notification() {
         ) : (
           <div className="space-y-3 p-3">
             {notifications.map((item) => {
-              // [RESCHEDULE] const isReschedule = item.type === "reschedule_suggestion";
               const isUnread = !item.is_read;
 
               return (
@@ -292,19 +225,6 @@ export function Notification() {
                       </button>
 
                       <div className="flex items-center gap-2">
-                        {/* [RESCHEDULE]
-                        {isReschedule ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openSuggestion(item)}
-                          >
-                            View
-                          </Button>
-                        ) : null}
-                        */}
-
                         {isUnread ? (
                           <Button
                             type="button"
@@ -354,61 +274,6 @@ export function Notification() {
           </div>
         )}
       </div>
-
-      {/* [RESCHEDULE]
-      <Dialog
-        open={Boolean(selectedSuggestion)}
-        onOpenChange={(open) => !open && setSelectedSuggestion(null)}
-      >
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Re-schedule Suggestion</DialogTitle>
-            <DialogDescription>Review the proposed appointment update.</DialogDescription>
-          </DialogHeader>
-          {selectedSuggestion && (
-            <div className="rounded-lg border border-gray-200 p-4 space-y-2 text-sm">
-              <div className="pb-2">
-                <span
-                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${getDecisionStyle(selectedSuggestion.decision)}`}
-                >
-                  {selectedSuggestion.decision === "accepted"
-                    ? "Accepted"
-                    : selectedSuggestion.decision === "declined"
-                      ? "Declined"
-                      : "Pending Response"}
-                </span>
-              </div>
-              <p className="flex items-center gap-2"><Scissors className="w-4 h-4 text-gray-500" />Service: {selectedSuggestion.service_name}</p>
-              <p className="flex items-center gap-2"><User className="w-4 h-4 text-gray-500" />Barber: {selectedSuggestion.barber_name}</p>
-              <p>Suggested date: {selectedSuggestion.appointment_date}</p>
-              <p>Suggested time: {selectedSuggestion.appointment_time}</p>
-              <p>Reason: {selectedSuggestion.reason || "No reason provided"}</p>
-              <p>Notes: {selectedSuggestion.notes || "No notes"}</p>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedSuggestion(null)}>
-              Close
-            </Button>
-            <Button
-              variant="outline"
-              className="border-red-300 bg-red-50 text-red-700 hover:bg-red-100 font-semibold"
-              disabled={saving || selectedSuggestion?.decision !== "pending"}
-              onClick={() => handleDecision("declined")}
-            >
-              Decline
-            </Button>
-            <Button
-              className="bg-green-600 text-white hover:bg-green-700 font-semibold"
-              disabled={saving || selectedSuggestion?.decision !== "pending"}
-              onClick={() => handleDecision("accepted")}
-            >
-              Accept
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      */}
 
       <Dialog
         open={Boolean(selectedNotification)}
@@ -520,20 +385,6 @@ export function Notification() {
               )}
 
               <div className="border-t border-gray-100 pt-3 flex gap-2">
-                {/* [RESCHEDULE]
-                {selectedNotification.type === "reschedule_suggestion" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => {
-                      openSuggestion(selectedNotification);
-                    }}
-                  >
-                    View Suggestion
-                  </Button>
-                )}
-                */}
                 <Button
                   size="sm"
                   variant="outline"

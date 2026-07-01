@@ -2,17 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\EntityChange;
+use App\Http\Requests\AppointmentRequest;
+use App\Http\Resources\AppointmentResource;
 use App\Models\Appointment;
 use App\Models\Notification;
 use App\Models\Service;
 use App\Models\User;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request;
-use App\Http\Requests\AppointmentRequest;
-use App\Http\Resources\AppointmentResource;
 use App\Services\PushNotificationService;
+use App\Support\EntityChange;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class AppointmentController extends Controller
 {
@@ -32,7 +33,7 @@ class AppointmentController extends Controller
         $user = $request->user();
         if ($user?->role === 'customer') {
             $query->where('user_id', $user->id);
-        } elseif (!in_array($user?->role, ['admin', 'manager'], true)) {
+        } elseif (! in_array($user?->role, ['admin', 'manager'], true)) {
             abort(403, 'Forbidden.');
         }
 
@@ -52,7 +53,7 @@ class AppointmentController extends Controller
         $canManage = in_array($authUser?->role, ['admin', 'manager'], true);
         $service = Service::findOrFail($validated['service_id']);
 
-        if (!$canManage) {
+        if (! $canManage) {
             if ($isWalkin) {
                 abort(403, 'Customers cannot create walk-in appointments.');
             }
@@ -67,13 +68,13 @@ class AppointmentController extends Controller
         if ($isWalkin) {
             $now = Carbon::now();
             $normalizedPhone = preg_replace('/\D+/', '', (string) ($validated['walkin_customer_contact_number'] ?? ''));
-            $dummyEmail = 'walkin+' . ($normalizedPhone !== '' ? $normalizedPhone : uniqid()) . '+' . $now->timestamp . '@walkin.local';
+            $dummyEmail = 'walkin+'.($normalizedPhone !== '' ? $normalizedPhone : uniqid()).'+'.$now->timestamp.'@walkin.local';
 
             $customer = User::create([
                 'fullname' => $validated['walkin_customer_name'] ?? 'Walk-in Customer',
                 'email' => $dummyEmail,
                 'contact_number' => $validated['walkin_customer_contact_number'] ?? '',
-                'password' => bcrypt('Walkin123!'),
+                'password' => bcrypt(Str::random(32)),
                 'role' => 'customer',
                 'is_active' => true,
             ]);
@@ -94,6 +95,7 @@ class AppointmentController extends Controller
 
             $appointment->load(['user', 'barber', 'service']);
             EntityChange::dispatch('appointments');
+
             return new AppointmentResource($appointment);
         }
 
@@ -133,7 +135,7 @@ class AppointmentController extends Controller
             'service',
         ]);
 
-        if ($appointment->status === 'pending' && !$canManage) {
+        if ($appointment->status === 'pending' && ! $canManage) {
             $adminUsers = User::whereIn('role', ['admin', 'manager'])->get();
 
             foreach ($adminUsers as $admin) {
@@ -161,7 +163,7 @@ class AppointmentController extends Controller
             }
 
             try {
-                $pushService = new PushNotificationService();
+                $pushService = new PushNotificationService;
                 $pushTitle = 'New Appointment Request';
                 $pushBody = sprintf(
                     'New booking from %s for %s.',
@@ -176,24 +178,24 @@ class AppointmentController extends Controller
                         'icon' => '/logo.svg',
                         'badge' => '/logo.svg',
                         'data' => [
-                            'url' => '/' . $admin->role . '/appointment',
+                            'url' => '/'.$admin->role.'/appointment',
                             'appointment_id' => $appointment->id,
                         ],
                     ]);
                 }
             } catch (\Exception $e) {
-                logger()->error('Push notification failed: ' . $e->getMessage());
+                logger()->error('Push notification failed: '.$e->getMessage());
             }
 
             EntityChange::dispatch('notifications');
         }
 
         EntityChange::dispatch('appointments');
+
         return new AppointmentResource($appointment);
     }
 
     /**
-
      * Display the specified resource.
      */
     public function show(Request $request, string $id)
@@ -207,7 +209,7 @@ class AppointmentController extends Controller
         $user = $request->user();
         if ($user?->role === 'customer') {
             $query->where('user_id', $user->id);
-        } elseif (!in_array($user?->role, ['admin', 'manager'], true)) {
+        } elseif (! in_array($user?->role, ['admin', 'manager'], true)) {
             abort(403, 'Forbidden.');
         }
 
@@ -221,7 +223,7 @@ class AppointmentController extends Controller
      */
     public function update(AppointmentRequest $request, string $id)
     {
-        if (!in_array($request->user()?->role, ['admin', 'manager'], true)) {
+        if (! in_array($request->user()?->role, ['admin', 'manager'], true)) {
             abort(403, 'Forbidden.');
         }
 
@@ -242,7 +244,7 @@ class AppointmentController extends Controller
             $validated['cancellation_reason'] = null;
         }
 
-        if ($nextStatus === 'completed' && $originalStatus !== 'completed' && !$appointment->completed_at) {
+        if ($nextStatus === 'completed' && $originalStatus !== 'completed' && ! $appointment->completed_at) {
             $validated['completed_at'] = Carbon::now();
         }
 
@@ -261,7 +263,7 @@ class AppointmentController extends Controller
                     ->where('payload->appointment_id', $appointment->id)
                     ->exists();
 
-                if (!$exists) {
+                if (! $exists) {
                     Notification::create([
                         'user_id' => $appointment->user_id,
                         'type' => 'appointment_completed',
@@ -292,7 +294,7 @@ class AppointmentController extends Controller
                         'appointment_id' => $appointment->id,
                         'status' => $nextStatus,
                         'service_name' => $appointment->service?->name,
-                        'barber_name'   => $appointment->barber?->fullname,
+                        'barber_name' => $appointment->barber?->fullname,
                         'appointment_date' => $appointment->appointment_date,
                         'appointment_time' => $appointment->appointment_time,
                         'price' => $appointment->price,
@@ -302,7 +304,7 @@ class AppointmentController extends Controller
             }
 
             try {
-                $pushService = new PushNotificationService();
+                $pushService = new PushNotificationService;
                 $pushTitle = $nextStatus === 'completed'
                     ? 'Booking Complete'
                     : 'Appointment Status Updated';
@@ -321,7 +323,7 @@ class AppointmentController extends Controller
                     ],
                 ]);
             } catch (\Exception $e) {
-                logger()->error('Push notification failed: ' . $e->getMessage());
+                logger()->error('Push notification failed: '.$e->getMessage());
             }
         }
 
@@ -332,6 +334,7 @@ class AppointmentController extends Controller
         ]);
 
         EntityChange::dispatch('appointments');
+
         return new AppointmentResource($appointment);
     }
 
@@ -344,6 +347,7 @@ class AppointmentController extends Controller
 
         $appointment->delete();
         EntityChange::dispatch('appointments');
+
         return response()->json([
             'message' => 'Appointment deleted successfully.',
         ]);
@@ -384,9 +388,9 @@ class AppointmentController extends Controller
         $endDate = Carbon::today();
 
         $rows = Appointment::select([
-                DB::raw("DATE_FORMAT(appointment_date, '%Y-%m-%d') as date"),
-                DB::raw('SUM(price) as revenue'),
-            ])
+            DB::raw("DATE_FORMAT(appointment_date, '%Y-%m-%d') as date"),
+            DB::raw('SUM(price) as revenue'),
+        ])
             ->where('status', 'completed')
             ->whereBetween('appointment_date', [$startDate->toDateString(), $endDate->toDateString()])
             ->groupBy('date')
@@ -501,9 +505,9 @@ class AppointmentController extends Controller
         $endDate = Carbon::today();
 
         $revenueRows = Appointment::select([
-                DB::raw("DATE_FORMAT(appointment_date, '%Y-%m-%d') as date"),
-                DB::raw('SUM(price) as revenue'),
-            ])
+            DB::raw("DATE_FORMAT(appointment_date, '%Y-%m-%d') as date"),
+            DB::raw('SUM(price) as revenue'),
+        ])
             ->where('status', 'completed')
             ->whereBetween('appointment_date', [$startDate->toDateString(), $endDate->toDateString()])
             ->groupBy('date')

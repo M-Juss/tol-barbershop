@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\EntityChange;
-use Illuminate\Http\Request;
 use App\Http\Requests\ServiceRequest;
-use App\Http\Controllers\Controller;
-use App\Traits\ApiResponseTrait;
-use App\Models\Service;
 use App\Http\Resources\ServiceResource;
+use App\Models\Service;
+use App\Support\EntityChange;
+use App\Traits\ApiResponseTrait;
+use Illuminate\Http\Request;
 
 class ServiceController extends Controller
 {
@@ -20,7 +19,7 @@ class ServiceController extends Controller
             $services = Service::where('is_active', true)->get();
 
             $data = [
-                "services" => ServiceResource::collection($services),
+                'services' => ServiceResource::collection($services),
             ];
 
             return $this->success('Public services retrieved successfully', $data);
@@ -31,45 +30,44 @@ class ServiceController extends Controller
 
     public function index(Request $request)
     {
-    try {
-        $query = Service::query();
+        try {
+            $query = Service::query();
 
-        if ($request->user()?->role !== 'manager') {
-            $query->where('is_active', true);
+            if ($request->user()?->role !== 'manager') {
+                $query->where('is_active', true);
+            }
+
+            $services = $query->get();
+
+            $data = [
+                'services' => ServiceResource::collection($services),
+            ];
+
+            return $this->success('Services retrieved successfully', $data);
+
+        } catch (\Exception $e) {
+            return $this->error('Could not fetch services', [], 500);
         }
-
-        $services = $query->get();
-        
-        $data = [
-            "services" => ServiceResource::collection($services),
-        ];
-
-        return $this->success('Services retrieved successfully', $data);
-        
-    } catch (\Exception $e) {
-        return $this->error('Could not fetch services', [], 500);
     }
-    }
-
 
     public function store(ServiceRequest $request)
     {
-        try{
+        try {
             $validated = $request->validated();
-            
+
             Service::create($validated);
             EntityChange::dispatch('services');
+
             return $this->created('Service created successfully');
-            
-            
+
         } catch (\Exception $e) {
 
-        return $this->error(
-            'Something went wrong',
-            [],
-            500
-        );
-    }
+            return $this->error(
+                'Something went wrong',
+                [],
+                500
+            );
+        }
     }
 
     /**
@@ -87,24 +85,24 @@ class ServiceController extends Controller
     {
         try {
             $service = Service::find($id);
-            
-            if(!$service) {
-                return $this->error('Service not found', [],404);
+
+            if (! $service) {
+                return $this->error('Service not found', [], 404);
             }
-            
+
             $service->update($request->validated());
             EntityChange::dispatch('services');
+
             return $this->created('Service updated successfully');
-                
-            
+
         } catch (\Exception $e) {
 
-        return $this->error(
-            $e->getMessage(),
-            [],
-            500
-        );
-    }
+            return $this->error(
+                $e->getMessage(),
+                [],
+                500
+            );
+        }
     }
 
     /**
@@ -114,23 +112,23 @@ class ServiceController extends Controller
     {
         try {
             $service = Service::find($id);
-            
-            if(!$service) {
-                return $this->error('Service not found', [],404);
+
+            if (! $service) {
+                return $this->error('Service not found', [], 404);
             }
-            
+
             $service->delete();
             EntityChange::dispatch('services');
+
             return $this->success('Service deleted successfully');
-                
-            
+
         } catch (\Exception $e) {
 
-        return $this->error(
-            $e->getMessage(),
-            [],
-            500
-        );
-    }
+            return $this->error(
+                $e->getMessage(),
+                [],
+                500
+            );
+        }
     }
 }

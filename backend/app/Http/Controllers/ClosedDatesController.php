@@ -2,54 +2,54 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\EntityChange;
 use App\Http\Requests\ClosedDatesRequest;
 use App\Http\Resources\ClosedDatesResource;
-use App\Traits\ApiResponseTrait;
 use App\Models\ClosedDates;
 use App\Models\Notification;
 use App\Models\User;
+use App\Support\EntityChange;
+use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class ClosedDatesController extends Controller
 {
     use ApiResponseTrait;
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        try{
+        try {
             $showAll = $request->query('all', false);
-            
+
             if ($showAll) {
                 // For activity log - show all records including removed ones
-                $closedDates = ClosedDates::orderBy("created_at","desc")->paginate(5);
+                $closedDates = ClosedDates::orderBy('created_at', 'desc')->paginate(5);
             } else {
                 // For main display - only show non-removed records
-                $closedDates = ClosedDates::orderBy("created_at","desc")->where('is_removed', false)->paginate(5);
+                $closedDates = ClosedDates::orderBy('created_at', 'desc')->where('is_removed', false)->paginate(5);
             }
-            
+
             return $this->success('Closed dates fetched successfully', [
                 'data' => ClosedDatesResource::collection($closedDates)->items(),
                 'current_page' => $closedDates->currentPage(),
                 'last_page' => $closedDates->lastPage(),
                 'per_page' => $closedDates->perPage(),
-                'total' => $closedDates->total()
+                'total' => $closedDates->total(),
             ]);
-            
-        }catch(\Exception $e){
+
+        } catch (\Exception $e) {
             return $this->error($e->getMessage(), [], 500);
         }
     }
-
 
     public function store(ClosedDatesRequest $request)
     {
         try {
             $validated = $request->validated();
-            
+
             $closedDate = ClosedDates::create($validated);
 
             $customers = User::where('role', 'customer')->where('is_active', true)->get(['id']);
@@ -73,28 +73,27 @@ class ClosedDatesController extends Controller
             }
 
             EntityChange::dispatch('closed_dates');
+
             return $this->created('Closed date succescfully inserted');
-        
-            
+
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), [], 500);
         }
     }
 
-
-
     public function update(ClosedDatesRequest $request, string $id)
     {
-        try{
+        try {
             $closedDate = ClosedDates::find($id);
-            if (!$closedDate) {
+            if (! $closedDate) {
                 return $this->error('Closed date not found', [], 404);
             }
 
             $closedDate->update($request->validated());
             EntityChange::dispatch('closed_dates');
+
             return $this->success('Closed date updated successfully', new ClosedDatesResource($closedDate));
-           
+
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), [], 500);
         }

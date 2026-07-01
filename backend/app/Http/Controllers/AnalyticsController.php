@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Models\Appointment;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AnalyticsController extends Controller
 {
@@ -105,9 +105,9 @@ class AnalyticsController extends Controller
         $dateFormat = $this->getDateFormat($period);
 
         $rows = Appointment::select([
-                DB::raw("DATE_FORMAT(appointment_date, '{$dateFormat}') as label"),
-                DB::raw('SUM(price) as value'),
-            ])
+            DB::raw("DATE_FORMAT(appointment_date, '{$dateFormat}') as label"),
+            DB::raw('SUM(price) as value'),
+        ])
             ->where('status', 'completed')
             ->whereBetween('appointment_date', [$range['from'], $range['to']])
             ->groupBy('label')
@@ -128,11 +128,11 @@ class AnalyticsController extends Controller
         $dateFormat = $this->getDateFormat($period);
 
         $rows = Appointment::select([
-                DB::raw("DATE_FORMAT(appointment_date, '{$dateFormat}') as label"),
-                DB::raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed"),
-                DB::raw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled"),
-                DB::raw("SUM(CASE WHEN status = 'no_show' THEN 1 ELSE 0 END) as no_show"),
-            ])
+            DB::raw("DATE_FORMAT(appointment_date, '{$dateFormat}') as label"),
+            DB::raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed"),
+            DB::raw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled"),
+            DB::raw("SUM(CASE WHEN status = 'no_show' THEN 1 ELSE 0 END) as no_show"),
+        ])
             ->whereBetween('appointment_date', [$range['from'], $range['to']])
             ->groupBy('label')
             ->orderBy('label')
@@ -177,6 +177,7 @@ class AnalyticsController extends Controller
             ->groupBy(fn ($appt) => $appt->barber?->fullname ?? 'Unknown')
             ->map(function ($appts, $name) {
                 $completedAppts = $appts->where('status', 'completed');
+
                 return [
                     'barber_name' => $name,
                     'completed_count' => $completedAppts->count(),
@@ -218,9 +219,9 @@ class AnalyticsController extends Controller
         $range = $this->getDateRange($request->input('period', 'monthly'));
 
         $rows = Appointment::select([
-                DB::raw("DATE_FORMAT(appointment_time, '%H:00') as hour"),
-                DB::raw('COUNT(*) as count'),
-            ])
+            DB::raw("DATE_FORMAT(appointment_time, '%H:00') as hour"),
+            DB::raw('COUNT(*) as count'),
+        ])
             ->whereIn('status', ['completed', 'approved'])
             ->whereBetween('appointment_date', [$range['from'], $range['to']])
             ->groupBy('hour')
@@ -240,12 +241,12 @@ class AnalyticsController extends Controller
 
         $dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         $rows = Appointment::select([
-                DB::raw("DAYOFWEEK(appointment_date) - 1 as day_index"),
-                DB::raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed"),
-                DB::raw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled"),
-                DB::raw("SUM(CASE WHEN status = 'no_show' THEN 1 ELSE 0 END) as no_show"),
-                DB::raw('COUNT(*) as total'),
-            ])
+            DB::raw('DAYOFWEEK(appointment_date) - 1 as day_index'),
+            DB::raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed"),
+            DB::raw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled"),
+            DB::raw("SUM(CASE WHEN status = 'no_show' THEN 1 ELSE 0 END) as no_show"),
+            DB::raw('COUNT(*) as total'),
+        ])
             ->whereBetween('appointment_date', [$range['from'], $range['to']])
             ->groupBy('day_index')
             ->orderBy('day_index')

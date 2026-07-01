@@ -19,17 +19,19 @@ class LoginController extends Controller
 
             $user = Auth::user();
 
-            if (!$user) {
+            if (! $user) {
                 return $this->error('Authentication failed.', [], 401);
             }
 
-            if (!$user->is_active) {
+            if (! $user->is_active) {
                 $this->forceLogout($request);
+
                 return $this->error('Account is disabled.', [], 403);
             }
 
-            if (!in_array($user->role, ['admin', 'manager', 'customer'], true)) {
+            if (! in_array($user->role, ['admin', 'manager', 'customer'], true)) {
                 $this->forceLogout($request);
+
                 return $this->error('This role does not have application access.', [], 403);
             }
 

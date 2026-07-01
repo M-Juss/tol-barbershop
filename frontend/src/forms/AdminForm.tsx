@@ -245,6 +245,7 @@ export function AdminForm({
               type="tel"
               inputMode="numeric"
               className="border-gray-300 focus:border-gray-400 h-10"
+              maxLength={11}
               {...formRegister("contact_number")}
               onInput={(e: React.FormEvent<HTMLInputElement>) => {
                 e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");

@@ -5,11 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ChangeInformationRequest;
 use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Resources\UserResource;
-use App\Models\User;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class EditUserController extends Controller
 {
@@ -19,7 +17,7 @@ class EditUserController extends Controller
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return $this->error('Not authenticated.', [], 401);
         }
 
@@ -36,7 +34,7 @@ class EditUserController extends Controller
         ]);
 
         return response()->json([
-            'success' => true,  
+            'success' => true,
             'message' => 'Password updated successfully.',
             'data' => null,
         ]);
@@ -46,7 +44,7 @@ class EditUserController extends Controller
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return $this->error('Not authenticated.', [], 401);
         }
 

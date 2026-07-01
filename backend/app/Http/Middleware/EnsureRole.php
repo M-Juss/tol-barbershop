@@ -12,14 +12,14 @@ class EnsureRole
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized.',
             ], 401);
         }
 
-        if (!in_array($user->role, $roles, true)) {
+        if (! in_array($user->role, $roles, true)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden: role is not allowed for this route.',

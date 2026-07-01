@@ -32,11 +32,11 @@ class ServiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'=> ['required', 'string', 'max:255', 'regex:/^[A-Za-z\s]+$/'],
-            'description'=> 'required|string|max:1000',
-            'duration'=> 'required|integer|min:1|max:480',
-            'price'=> 'required|integer|min:0|max:999999',
-            'is_active'=> 'required|boolean',
+            'name' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z\s]+$/'],
+            'description' => 'required|string|max:1000',
+            'duration' => 'required|integer|min:1|max:480',
+            'price' => 'required|integer|min:0|max:999999',
+            'is_active' => 'required|boolean',
         ];
     }
 }

@@ -23,27 +23,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { DatePickerWithLabel } from "@/components/common/DatePickerWithLabel";
-import { SelectWithLabel } from "@/components/common/SelectWithLabel";
 import { SectionCard } from "@/components/common/SectionCard";
-// [RESCHEDULE] import { ReScheduleTable } from "@/components/common/ReScheduleTable";
 import {
   getAppointments,
-  getActiveBarbers,
-  getActiveServices,
   updateAppointment,
   type Appointment,
-  type Barber,
-  type Service,
 } from "@/services/customer/appointment.api";
 import { updateAppointmentSchema } from "@/validations/appointment.validation";
 import { CancellationForm } from "@/forms/CancellationForm";
 import { type CancellationReasonSchemaFormValues } from "@/validations/appointment.validation";
-// [RESCHEDULE] import {
-// [RESCHEDULE]   createReSchedule,
-// [RESCHEDULE]   getReSchedules,
-// [RESCHEDULE]   type ReScheduleItem,
-// [RESCHEDULE] } from "@/services/re.schedule.api";
 import { toast } from "sonner";
 import {
   Pagination,
@@ -60,24 +48,6 @@ type DateGroup = {
   sortKey: string;
   appointments: Appointment[];
 };
-
-const timeOptions = [
-  { value: "9:00 AM", label: "9:00 AM" },
-  { value: "10:00 AM", label: "10:00 AM" },
-  { value: "11:00 AM", label: "11:00 AM" },
-  { value: "12:00 PM", label: "12:00 PM" },
-  { value: "1:00 PM", label: "1:00 PM" },
-  { value: "2:00 PM", label: "2:00 PM" },
-  { value: "3:00 PM", label: "3:00 PM" },
-  { value: "4:00 PM", label: "4:00 PM" },
-  { value: "5:00 PM", label: "5:00 PM" },
-  { value: "6:00 PM", label: "6:00 PM" },
-  { value: "7:00 PM", label: "7:00 PM" },
-];
-
-// const EMAILJS_SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID;
-// const EMAILJS_TEMPLATE_ID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID;
-// const EMAILJS_PUBLIC_KEY = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
 
 function formatDateLabel(date: string): string {
   return new Date(date).toLocaleDateString("en-US", {
@@ -122,98 +92,6 @@ function normalizeToHHmm(time: string): string {
 
   return time;
 }
-
-function convert12HourTo24Hour(value: string): string {
-  const match = value.match(/^(\d{1,2}):([0-5]\d)\s(AM|PM)$/i);
-  if (!match) return value;
-
-  const rawHours = Number(match[1]);
-  const minutes = match[2];
-  const period = match[3].toUpperCase();
-  let hours = rawHours % 12;
-  if (period === "PM") {
-    hours += 12;
-  }
-
-  return `${hours.toString().padStart(2, "0")}:${minutes}`;
-}
-
-function convert24HourTo12Hour(value: string): string {
-  const match = value.match(/^(\d{2}):(\d{2})(?::\d{2})?$/);
-  if (!match) return value;
-
-  const hours24 = Number(match[1]);
-  const minutes = match[2];
-  const period = hours24 >= 12 ? "PM" : "AM";
-  const hours12 = hours24 % 12 || 12;
-  return `${hours12}:${minutes} ${period}`;
-}
-
-function formatDateForApi(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function normalizeApiDate(value: string): string {
-  if (!value) return value;
-  const base = value.includes("T") ? value.split("T")[0] : value;
-  const parsed = new Date(base);
-  if (Number.isNaN(parsed.getTime())) return base;
-  return formatDateForApi(parsed);
-}
-
-// async function sendAppointmentStatusEmail(
-//   appt: Appointment,
-//   status: "approved" | "cancelled",
-//   cancellationReason?: string,
-// ) {
-//   if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
-//     console.warn(
-//       "EmailJS env vars are incomplete. Expected NEXT_PUBLIC_EMAILJS_SERVICE_ID, NEXT_PUBLIC_EMAILJS_TEMPLATE_ID, and NEXT_PUBLIC_EMAILJS_PUBLIC_KEY.",
-//     );
-//     return;
-//   }
-//
-//   const isApproved = status === "approved";
-//   const message = isApproved
-//     ? "Please arrive 5 minutes before the said time."
-//     : cancellationReason?.trim() || appt.cancellation_reason || "Cancelled by the manager.";
-//
-//   const templateParams = {
-//     title: isApproved
-//       ? "Appointment Approved"
-//       : "Appointment Cancelled",
-//     customer_name: appt.customer.fullname || "Customer",
-//     service: appt.service.name || "N/A",
-//     barber: appt.barber.fullname || "N/A",
-//     appointment_date: formatShortDate(appt.appointment_date),
-//     appointment_time: formatTime(appt.appointment_time),
-//     booking_id: String(appt.id),
-//     message,
-//     status,
-//     email: appt.customer.email || "",
-//   };
-//
-//   const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-//     method: "POST",
-//     headers: {
-//       "Content-Type": "application/json",
-//     },
-//     body: JSON.stringify({
-//       service_id: EMAILJS_SERVICE_ID,
-//       template_id: EMAILJS_TEMPLATE_ID,
-//       user_id: EMAILJS_PUBLIC_KEY,
-//       template_params: templateParams,
-//     }),
-//   });
-//
-//   if (!response.ok) {
-//     const errorText = await response.text();
-//     throw new Error(`Email send failed: ${errorText}`);
-//   }
-// }
 
 const todayDate = new Date().toISOString().split("T")[0];
 
@@ -357,13 +235,11 @@ function PendingCard({
   req,
   onApprove,
   onCancel,
-  // [RESCHEDULE] onReschedule,
   disabled = false,
 }: {
   req: Appointment;
   onApprove: (appt: Appointment) => void;
   onCancel: (appt: Appointment) => void;
-  // [RESCHEDULE] onReschedule: (appt: Appointment) => void;
   disabled?: boolean;
 }) {
   return (
@@ -424,16 +300,6 @@ function PendingCard({
             <X className="w-4 h-4" /> Reject
           </Button>
         </div>
-        {/* [RESCHEDULE]
-        <Button
-          onClick={() => onReschedule(req)}
-          disabled={disabled}
-          variant="outline"
-          className="gap-1.5 text-sm h-9 w-full"
-        >
-          Re-schedule
-        </Button>
-        */}
       </div>
     </div>
   );
@@ -463,26 +329,11 @@ function toDateGroups(appointments: Appointment[]): DateGroup[] {
 
 export function Appointment() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [barbers, setBarbers] = useState<Barber[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  // [RESCHEDULE] const [rescheduleSuggestions, setRescheduleSuggestions] = useState<
-  // [RESCHEDULE]   ReScheduleItem[]
-  // [RESCHEDULE] >([]);
   const [loading, setLoading] = useState(true);
   const [updatingIds, setUpdatingIds] = useState<number[]>([]);
   const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
-  // [RESCHEDULE] const [rescheduleOpen, setRescheduleOpen] = useState(false);
-  // [RESCHEDULE] const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(null);
-  // [RESCHEDULE] const [selectedService, setSelectedService] = useState("");
-  // [RESCHEDULE] const [selectedBarber, setSelectedBarber] = useState("");
-  // [RESCHEDULE] const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  // [RESCHEDULE] const [selectedTime, setSelectedTime] = useState("");
-  // [RESCHEDULE] const [notes, setNotes] = useState("");
-  // [RESCHEDULE] const [rescheduleReason, setRescheduleReason] = useState("");
-  // [RESCHEDULE] const [unavailableTimes, setUnavailableTimes] = useState<string[]>([]);
-  // [RESCHEDULE] const [savingReschedule, setSavingReschedule] = useState(false);
   const [approvedPage, setApprovedPage] = useState(1);
   const [pastDueOpen, setPastDueOpen] = useState(false);
   const approvedPageSize = 10;
@@ -503,32 +354,8 @@ export function Appointment() {
     }
   };
 
-  const loadMeta = async () => {
-    try {
-      const [barberData, serviceData] = await Promise.all([
-        getActiveBarbers(),
-        getActiveServices(),
-      ]);
-      setBarbers(barberData.filter((b) => b.is_active));
-      setServices(serviceData.filter((s) => s.is_active));
-    } catch (error) {
-      console.error("Failed to load metadata:", error);
-    }
-  };
-
-  // [RESCHEDULE] const loadReScheduleSuggestions = async () => {
-  // [RESCHEDULE]   try {
-  // [RESCHEDULE]     const data = await getReSchedules();
-  // [RESCHEDULE]     setRescheduleSuggestions(data);
-  // [RESCHEDULE]   } catch (error) {
-  // [RESCHEDULE]     console.error("Failed to load re-schedule suggestions:", error);
-  // [RESCHEDULE]   }
-  // [RESCHEDULE] };
-
   useEffect(() => {
     loadAppointments();
-    loadMeta();
-    // [RESCHEDULE] loadReScheduleSuggestions();
   }, []);
 
   useEffect(() => {
@@ -537,8 +364,6 @@ export function Appointment() {
   }, []);
 
   useRealtimeEvent('appointments', loadAppointments);
-  useRealtimeEvent('barbers', loadMeta);
-  useRealtimeEvent('services', loadMeta);
 
   const pending = useMemo(
     () => appointments.filter((a) => a.status === "pending"),
@@ -562,11 +387,6 @@ export function Appointment() {
     [approvedAppointments, today],
   );
 
-  const upcomingGroups = useMemo(
-    () => toDateGroups(upcomingApproved),
-    [upcomingApproved],
-  );
-
   const pastDueGroups = useMemo(
     () => toDateGroups(pastDueApproved),
     [pastDueApproved],
@@ -579,35 +399,6 @@ export function Appointment() {
     const paginated = upcomingApproved.slice(start, start + approvedPageSize);
     return toDateGroups(paginated);
   }, [upcomingApproved, approvedPage]);
-
-  // [RESCHEDULE] useEffect(() => {
-  // [RESCHEDULE]   const fetchUnavailableTimes = async () => {
-  // [RESCHEDULE]     if (!selectedBarber || !selectedDate) {
-  // [RESCHEDULE]       setUnavailableTimes([]);
-  // [RESCHEDULE]       return;
-  // [RESCHEDULE]     }
-  // [RESCHEDULE]
-  // [RESCHEDULE]     const targetDate = formatDateForApi(selectedDate);
-  // [RESCHEDULE]     const targetBarberId = Number(selectedBarber);
-  // [RESCHEDULE]     const blocked = appointments
-  // [RESCHEDULE]       .filter((appointment) => {
-  // [RESCHEDULE]         if (rescheduleTarget && appointment.id === rescheduleTarget.id) {
-  // [RESCHEDULE]           return false;
-  // [RESCHEDULE]         }
-  // [RESCHEDULE]
-  // [RESCHEDULE]         return (
-  // [RESCHEDULE]           appointment.barber.id === targetBarberId &&
-  // [RESCHEDULE]           normalizeApiDate(appointment.appointment_date) === targetDate &&
-  // [RESCHEDULE]           (appointment.status === "pending" || appointment.status === "approved")
-  // [RESCHEDULE]         );
-  // [RESCHEDULE]       })
-  // [RESCHEDULE]       .map((appointment) => convert24HourTo12Hour(appointment.appointment_time));
-  // [RESCHEDULE]
-  // [RESCHEDULE]     setUnavailableTimes(blocked);
-  // [RESCHEDULE]   };
-  // [RESCHEDULE]
-  // [RESCHEDULE]   fetchUnavailableTimes();
-  // [RESCHEDULE] }, [appointments, selectedBarber, selectedDate, rescheduleTarget]);
 
   const runUpdate = async (
     appt: Appointment,
@@ -660,19 +451,6 @@ export function Appointment() {
       };
       toast.success(actionMessages[status] ?? "Appointment updated");
 
-      // if (status === "approved" || status === "cancelled") {
-      //   try {
-      //     await sendAppointmentStatusEmail(
-      //       appt,
-      //       status,
-      //       normalizedCancellationReason ?? undefined,
-      //     );
-      //   } catch (emailError) {
-      //     console.error("Failed to send appointment status email:", emailError);
-      //     toast.error("Appointment updated, but email notification failed");
-      //   }
-      // }
-
       await loadAppointments();
       window.dispatchEvent(new CustomEvent("appointments:updated"));
       return true;
@@ -717,70 +495,6 @@ export function Appointment() {
     }
   };
 
-  // [RESCHEDULE] const handleOpenReschedule = (appt: Appointment) => {
-  // [RESCHEDULE]   setRescheduleTarget(appt);
-  // [RESCHEDULE]   setSelectedService(String(appt.service.id ?? ""));
-  // [RESCHEDULE]   setSelectedBarber(String(appt.barber.id ?? ""));
-  // [RESCHEDULE]   setSelectedDate(new Date(normalizeApiDate(appt.appointment_date)));
-  // [RESCHEDULE]   setSelectedTime(convert24HourTo12Hour(appt.appointment_time));
-  // [RESCHEDULE]   setNotes(appt.notes ?? "");
-  // [RESCHEDULE]   setRescheduleReason("");
-  // [RESCHEDULE]   setRescheduleOpen(true);
-  // [RESCHEDULE] };
-  // [RESCHEDULE]
-  // [RESCHEDULE] const isRescheduleValid = Boolean(
-  // [RESCHEDULE]   rescheduleTarget &&
-  // [RESCHEDULE]     selectedService &&
-  // [RESCHEDULE]     selectedBarber &&
-  // [RESCHEDULE]     selectedDate &&
-  // [RESCHEDULE]     selectedTime &&
-  // [RESCHEDULE]     !unavailableTimes.includes(selectedTime),
-  // [RESCHEDULE] );
-  // [RESCHEDULE]
-  // [RESCHEDULE] const handleSaveReschedule = async () => {
-  // [RESCHEDULE]   if (!rescheduleTarget || !selectedDate) return;
-  // [RESCHEDULE]   if (!isRescheduleValid) {
-  // [RESCHEDULE]     toast.error("Please complete all required fields.");
-  // [RESCHEDULE]     return;
-  // [RESCHEDULE]   }
-  // [RESCHEDULE]
-  // [RESCHEDULE]   const service = services.find((item) => String(item.id) === selectedService);
-  // [RESCHEDULE]   const barber = barbers.find((item) => String(item.id) === selectedBarber);
-  // [RESCHEDULE]   const customerId = Number(rescheduleTarget.customer.id);
-  // [RESCHEDULE]
-  // [RESCHEDULE]   if (!service || !barber || !customerId) {
-  // [RESCHEDULE]     toast.error("Missing appointment data for re-schedule.");
-  // [RESCHEDULE]     return;
-  // [RESCHEDULE]   }
-  // [RESCHEDULE]
-  // [RESCHEDULE]   setSavingReschedule(true);
-  // [RESCHEDULE]   try {
-  // [RESCHEDULE]     await createReSchedule({
-  // [RESCHEDULE]       appointment_id: rescheduleTarget.id,
-  // [RESCHEDULE]       customer_user_id: customerId,
-  // [RESCHEDULE]       service_id: service.id,
-  // [RESCHEDULE]       barber_user_id: barber.id,
-  // [RESCHEDULE]       appointment_date: formatDateForApi(selectedDate),
-  // [RESCHEDULE]       appointment_time: convert12HourTo24Hour(selectedTime),
-  // [RESCHEDULE]       duration_minutes: service.duration ?? rescheduleTarget.duration_minutes,
-  // [RESCHEDULE]       price: Number(service.price ?? rescheduleTarget.price),
-  // [RESCHEDULE]       notes: notes || null,
-  // [RESCHEDULE]       reason: rescheduleReason || null,
-  // [RESCHEDULE]       created_by_role: "manager",
-  // [RESCHEDULE]     });
-  // [RESCHEDULE]
-  // [RESCHEDULE]     loadReScheduleSuggestions();
-  // [RESCHEDULE]     setRescheduleOpen(false);
-  // [RESCHEDULE]     setRescheduleTarget(null);
-  // [RESCHEDULE]     toast.success("Re-schedule suggestion saved.");
-  // [RESCHEDULE]   } catch (error) {
-  // [RESCHEDULE]     console.error("Failed to save re-schedule suggestion:", error);
-  // [RESCHEDULE]     toast.error("Failed to save re-schedule suggestion.");
-  // [RESCHEDULE]   } finally {
-  // [RESCHEDULE]     setSavingReschedule(false);
-  // [RESCHEDULE]   }
-  // [RESCHEDULE] };
-
   return (
     <div className="w-full bg-slate-100 p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
       <div className="mb-6">
@@ -819,7 +533,6 @@ export function Appointment() {
                     req={req}
                     onApprove={(appt) => runUpdate(appt, "approved")}
                     onCancel={handleCancelClick}
-                    // [RESCHEDULE] onReschedule={handleOpenReschedule}
                     disabled={updatingIds.includes(req.id)}
                   />
                 </div>
@@ -1011,18 +724,6 @@ export function Appointment() {
             )}
           </SectionCard>
 
-          {/* [RESCHEDULE]
-          <SectionCard
-            title="Re-schedule Table"
-            description="Suggested re-schedule requests saved by manager/admin"
-          >
-            <ReScheduleTable
-              items={rescheduleSuggestions}
-              formatShortDate={formatShortDate}
-              formatTime={formatTime}
-            />
-          </SectionCard>
-          */}
         </div>
       </div>
 
@@ -1110,106 +811,6 @@ export function Appointment() {
         />
       )}
 
-      {/* [RESCHEDULE]
-      <Dialog
-        open={rescheduleOpen}
-        onOpenChange={(open) => {
-          setRescheduleOpen(open);
-          if (!open) setRescheduleTarget(null);
-        }}
-      >
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Re-schedule Appointment</DialogTitle>
-            <DialogDescription>
-              Edit required booking details and save to re-schedule table.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <SelectWithLabel
-              id="reschedule-service"
-              label="Service"
-              placeholder="Select a service"
-              value={selectedService}
-              onValueChange={setSelectedService}
-              options={services.map((service) => ({
-                value: String(service.id),
-                label: service.name ?? "Service",
-              }))}
-            />
-            <SelectWithLabel
-              id="reschedule-barber"
-              label="Barber"
-              placeholder="Select a barber"
-              value={selectedBarber}
-              onValueChange={setSelectedBarber}
-              options={barbers.map((barber) => ({
-                value: String(barber.id),
-                label: barber.fullname,
-              }))}
-            />
-            <DatePickerWithLabel
-              id="reschedule-date"
-              label="Date"
-              placeholder="Pick a date"
-              date={selectedDate}
-              onDateChange={setSelectedDate}
-              disablePastDates={true}
-              maxDaysAhead={30}
-              disableSundays={true}
-            />
-            <SelectWithLabel
-              id="reschedule-time"
-              label="Time"
-              placeholder="Select time"
-              value={selectedTime}
-              onValueChange={setSelectedTime}
-              options={timeOptions.map((time) => ({
-                ...time,
-                disabled: unavailableTimes.includes(time.value),
-              }))}
-            />
-            <div className="sm:col-span-2 grid gap-2">
-              <label className="text-sm font-medium text-gray-700" htmlFor="reschedule-notes">
-                Notes
-              </label>
-              <textarea
-                id="reschedule-notes"
-                rows={3}
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                placeholder="Optional notes"
-              />
-            </div>
-            <div className="sm:col-span-2 grid gap-2">
-              <label className="text-sm font-medium text-gray-700" htmlFor="reschedule-reason">
-                Re-schedule Reason
-              </label>
-              <textarea
-                id="reschedule-reason"
-                rows={2}
-                value={rescheduleReason}
-                onChange={(event) => setRescheduleReason(event.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                placeholder="Why you suggested this re-schedule"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRescheduleOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={!isRescheduleValid || savingReschedule}
-              onClick={handleSaveReschedule}
-            >
-              {savingReschedule ? "Saving..." : "Save Re-schedule"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      */}
     </div>
   );
 }

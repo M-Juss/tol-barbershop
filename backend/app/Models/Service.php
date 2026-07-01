@@ -11,11 +11,11 @@ class Service extends Model
         'description',
         'duration',
         'price',
-        'is_active'
+        'is_active',
     ];
-    
+
     protected $casts = [
         'price' => 'decimal:2',
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
     ];
 }

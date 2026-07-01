@@ -16,7 +16,7 @@ class NotificationController extends Controller
     {
         $authUser = $request->user();
 
-        if (!$authUser) {
+        if (! $authUser) {
             return $this->error('Unauthorized.', [], 401);
         }
 
@@ -43,13 +43,13 @@ class NotificationController extends Controller
     public function markAsRead(Request $request, string $id)
     {
         $authUser = $request->user();
-        if (!$authUser) {
+        if (! $authUser) {
             return $this->error('Unauthorized.', [], 401);
         }
 
         $notification = Notification::where('user_id', $authUser->id)->findOrFail($id);
 
-        if (!$notification->is_read) {
+        if (! $notification->is_read) {
             $notification->update([
                 'is_read' => true,
                 'read_at' => Carbon::now(),
@@ -62,7 +62,7 @@ class NotificationController extends Controller
     public function markAllAsRead(Request $request)
     {
         $authUser = $request->user();
-        if (!$authUser) {
+        if (! $authUser) {
             return $this->error('Unauthorized.', [], 401);
         }
 

@@ -155,7 +155,9 @@ class DefaultDataSeeder extends Seeder
                 }
 
                 $dailyCount = random_int(max(0, $apptsPerDay - 1), $apptsPerDay + 1);
-                if ($dailyCount === 0) continue;
+                if ($dailyCount === 0) {
+                    continue;
+                }
 
                 $usedTimes = [];
                 for ($a = 0; $a < $dailyCount; $a++) {
@@ -164,8 +166,10 @@ class DefaultDataSeeder extends Seeder
                     $service = $services->random();
                     $status = $this->weightedRandom($statusDistribution);
 
-                    $availableSlots = array_filter($timeSlots, fn($t) => !in_array($t, $usedTimes));
-                    if (empty($availableSlots)) break;
+                    $availableSlots = array_filter($timeSlots, fn ($t) => ! in_array($t, $usedTimes));
+                    if (empty($availableSlots)) {
+                        break;
+                    }
                     $time = $availableSlots[array_rand($availableSlots)];
                     $usedTimes[] = $time;
 

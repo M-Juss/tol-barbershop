@@ -14,13 +14,13 @@ class ClosedDatesResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-       return [
-            'id'=> $this->id,
+        return [
+            'id' => $this->id,
             'date_closed' => $this->date_closed,
-            'reason'=> $this->reason,
+            'reason' => $this->reason,
             'is_removed' => $this->is_removed,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-       ];
+        ];
     }
 }

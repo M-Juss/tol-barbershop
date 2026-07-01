@@ -12,6 +12,7 @@ import {
 import { changeInformation } from "@/services/customer/user.api";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { sanitizeString, normalizeEmail, normalizePhone } from "@/lib/sanitizer";
 
 export function AccountInformationForm() {
   const { user, refreshUser } = useAuth();
@@ -50,7 +51,13 @@ export function AccountInformationForm() {
 
   const onFormSubmit = async (data: AccountInformationSchemaFormValues) => {
     try {
-      await changeInformation(data);
+      const sanitized = {
+        ...data,
+        fullname: sanitizeString(data.fullname),
+        email: normalizeEmail(data.email),
+        contact_number: normalizePhone(data.contact_number),
+      };
+      await changeInformation(sanitized);
 
       await refreshUser();
       setIsEditing(false);
@@ -141,6 +148,7 @@ export function AccountInformationForm() {
             inputMode="numeric"
             disabled={!isEditing}
             className="h-10"
+            maxLength={11}
             {...register("contact_number")}
             onInput={(e: React.FormEvent<HTMLInputElement>) => {
               e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");

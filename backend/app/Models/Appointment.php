@@ -61,5 +61,4 @@ class Appointment extends Model
     {
         return $this->hasOne(AppointmentFeedback::class);
     }
-
 }

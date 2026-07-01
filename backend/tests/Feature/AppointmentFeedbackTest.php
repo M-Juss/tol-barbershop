@@ -13,7 +13,7 @@ uses(RefreshDatabase::class);
 function createFeedbackTestUser(string $role, string $email): User
 {
     return User::create([
-        'fullname' => ucfirst($role) . ' User',
+        'fullname' => ucfirst($role).' User',
         'contact_number' => '09170000000',
         'email' => $email,
         'role' => $role,

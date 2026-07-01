@@ -3,11 +3,11 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\SanitizesInput;
+use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
-use App\Models\User;
 
 class StaffRequest extends FormRequest
 {
@@ -33,7 +33,6 @@ class StaffRequest extends FormRequest
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
-    
     public function rules(): array
     {
         $currentId = $this->route('admin') ?? $this->route('barber') ?? $this->route('id');
@@ -45,7 +44,7 @@ class StaffRequest extends FormRequest
             strtolower((string) $this->input('email')) === strtolower((string) $currentUser->email);
 
         $emailRules = ['required', 'string', 'email', 'max:255'];
-        if (!$emailUnchanged) {
+        if (! $emailUnchanged) {
             $emailRules[] = Rule::unique('users', 'email')->ignore($currentId);
         }
 
@@ -63,6 +62,7 @@ class StaffRequest extends FormRequest
             'role_id' => 'nullable|integer|exists:roles,id',
         ];
     }
+
     public function messages(): array
     {
         return [

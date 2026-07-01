@@ -101,6 +101,7 @@ export function RegisterForm() {
           label="Contact Number"
           placeholder="Enter your contact number"
           className="h-10 border-gray-300 focus-visible:ring-accent/40"
+          maxLength={11}
           {...formRegister("contact_number")}
           onInput={(e: React.FormEvent<HTMLInputElement>) => {
             e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");

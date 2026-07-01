@@ -167,6 +167,7 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
             type="tel"
             inputMode="numeric"
             className="h-10 border-gray-200 text-gray-500"
+            maxLength={11}
             {...register("phone")}
             onInput={(e: React.FormEvent<HTMLInputElement>) => {
               e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");

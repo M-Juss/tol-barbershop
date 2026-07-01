@@ -36,7 +36,7 @@ class ClosedDatesRequest extends FormRequest
             'is_removed' => 'boolean',
         ];
     }
-    
+
     public function messages(): array
     {
         return [

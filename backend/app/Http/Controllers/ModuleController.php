@@ -13,6 +13,7 @@ class ModuleController extends Controller
     public function index()
     {
         $modules = Module::orderBy('id')->get();
+
         return $this->success('Modules retrieved successfully.', ModuleResource::collection($modules));
     }
 }

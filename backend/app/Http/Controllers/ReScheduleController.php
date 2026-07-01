@@ -29,7 +29,8 @@ class ReScheduleController extends Controller
         }
 
         if ($request->filled('decision')) {
-            $query->where('decision', $request->query('decision'));
+            $validated = $request->validate(['decision' => 'in:pending,accepted,declined']);
+            $query->where('decision', $validated['decision']);
         }
 
         return $this->success('Re-schedules fetched successfully', ReScheduleResource::collection($query->get()));

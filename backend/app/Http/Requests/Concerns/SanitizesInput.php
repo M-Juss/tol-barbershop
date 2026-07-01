@@ -66,7 +66,7 @@ trait SanitizesInput
 
     private function sanitizeSingleLine(mixed $value): mixed
     {
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             return $value;
         }
 
@@ -79,7 +79,7 @@ trait SanitizesInput
 
     private function sanitizeMultiline(mixed $value): mixed
     {
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             return $value;
         }
 

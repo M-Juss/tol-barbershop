@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -14,14 +13,14 @@ class SSEController extends Controller
     {
         $token = $request->query('token');
 
-        if (!$token) {
+        if (! $token) {
             return response()->stream(function () {
                 echo "event: error\ndata: {\"message\":\"Unauthenticated\"}\n\n";
             }, 401, ['Content-Type' => 'text/event-stream']);
         }
 
         $accessToken = PersonalAccessToken::findToken($token);
-        if (!$accessToken || !$accessToken->tokenable) {
+        if (! $accessToken || ! $accessToken->tokenable) {
             return response()->stream(function () {
                 echo "event: error\ndata: {\"message\":\"Invalid token\"}\n\n";
             }, 401, ['Content-Type' => 'text/event-stream']);
@@ -52,8 +51,9 @@ class SSEController extends Controller
                 foreach ($entityTypes as $type) {
                     $current = Cache::get("change:{$type}", 0);
 
-                    if (!isset($lastValues[$type])) {
+                    if (! isset($lastValues[$type])) {
                         $lastValues[$type] = $current;
+
                         continue;
                     }
 

@@ -40,7 +40,7 @@ class LoginRequest extends FormRequest
             'password' => ['required', 'string', 'max:255'],
         ];
     }
-    
+
     public function messages(): array
     {
         return [
@@ -52,8 +52,8 @@ class LoginRequest extends FormRequest
             'password.string' => 'Password must be a string.',
         ];
     }
-    
-        public function authenticate(): void
+
+    public function authenticate(): void
     {
         $this->ensureIsNotRateLimited();
 

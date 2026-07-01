@@ -4,7 +4,6 @@ namespace App\Traits;
 
 use Illuminate\Http\JsonResponse;
 
-
 trait ApiResponseTrait
 {
     protected function success(
@@ -15,7 +14,7 @@ trait ApiResponseTrait
         return response()->json([
             'success' => true,
             'message' => $message,
-            'data'    => $data,
+            'data' => $data,
         ], $status);
     }
 
@@ -32,26 +31,25 @@ trait ApiResponseTrait
         return response()->json([
             'success' => true,
             'message' => $message,
-            'data'    => null,
+            'data' => null,
         ], 200);
     }
 
-protected function error(
-    string $message = 'Something went wrong',
-    array $errors = [],
-    int $status = 400
-): JsonResponse {
+    protected function error(
+        string $message = 'Something went wrong',
+        array $errors = [],
+        int $status = 400
+    ): JsonResponse {
 
-    $body = [
-        'success' => false,
-        'message' => $message,
-    ];
+        $body = [
+            'success' => false,
+            'message' => $message,
+        ];
 
-    if (!empty($errors)) {
-        $body['errors'] = $errors;
+        if (! empty($errors)) {
+            $body['errors'] = $errors;
+        }
+
+        return response()->json($body, $status);
     }
-
-    return response()->json($body, $status);
-}
-
 }

@@ -4,8 +4,9 @@ namespace App\Services;
 
 use App\Models\PushSubscription;
 use App\Models\User;
-use Minishlink\WebPush\WebPush;
+use App\Support\PushEndpointValidator;
 use Minishlink\WebPush\Subscription;
+use Minishlink\WebPush\WebPush;
 
 class PushNotificationService
 {
@@ -35,6 +36,12 @@ class PushNotificationService
         $data = json_encode($payload);
 
         foreach ($subscriptions as $sub) {
+            if (! PushEndpointValidator::validate($sub->endpoint)) {
+                $sub->delete();
+
+                continue;
+            }
+
             $subscription = Subscription::create([
                 'endpoint' => $sub->endpoint,
                 'publicKey' => $sub->p256dh,

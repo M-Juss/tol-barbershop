@@ -2,11 +2,19 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\SanitizesInput;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class RoleRequest extends FormRequest
 {
+    use SanitizesInput;
+
+    protected function prepareForValidation(): void
+    {
+        $this->sanitizeStringFields(['name']);
+    }
+
     public function authorize(): bool
     {
         return true;

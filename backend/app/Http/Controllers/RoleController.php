@@ -5,9 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\RoleRequest;
 use App\Http\Resources\RoleResource;
 use App\Models\Role;
-use App\Models\User;
 use App\Traits\ApiResponseTrait;
-use Illuminate\Http\Request;
 
 class RoleController extends Controller
 {
@@ -16,6 +14,7 @@ class RoleController extends Controller
     public function index()
     {
         $roles = Role::with('modules')->latest()->get();
+
         return $this->success('Roles retrieved successfully.', RoleResource::collection($roles));
     }
 
@@ -31,6 +30,7 @@ class RoleController extends Controller
     public function show(Role $role)
     {
         $role->load('modules');
+
         return $this->success('Role retrieved successfully.', new RoleResource($role));
     }
 
@@ -60,6 +60,7 @@ class RoleController extends Controller
 
         $role->users()->where('role', 'admin')->update(['role_id' => null]);
         $role->delete();
+
         return $this->noData('Role deleted successfully.');
     }
 }
