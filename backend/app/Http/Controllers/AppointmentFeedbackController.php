@@ -45,7 +45,7 @@ class AppointmentFeedbackController extends Controller
             ],
         );
 
-        $feedback->load(['user', 'appointment.service']);
+        $feedback->load(['user', 'appointment.service', 'appointment.barber']);
         EntityChange::dispatch('feedback');
 
         return $this->success(
@@ -56,7 +56,7 @@ class AppointmentFeedbackController extends Controller
 
     public function publicIndex(Request $request)
     {
-        $feedback = AppointmentFeedback::with(['user:id,fullname', 'appointment.service:id,name'])
+        $feedback = AppointmentFeedback::with(['user:id,fullname', 'appointment.service:id,name', 'appointment.barber:id,fullname'])
             ->where('rating', 5)
             ->whereNotNull('comment')
             ->where('comment', '<>', '')
@@ -76,13 +76,14 @@ class AppointmentFeedbackController extends Controller
         $appointments = Appointment::where('user_id', $authUser->id)
             ->where('status', 'completed')
             ->whereDoesntHave('feedback')
-            ->with('service:id,name')
+            ->with(['service:id,name', 'barber:id,fullname'])
             ->get();
 
         return $this->success('Pending feedback retrieved.', [
             'appointments' => $appointments->map(fn ($a) => [
                 'appointment_id' => $a->id,
                 'service_name' => $a->service?->name,
+                'barber_name' => $a->barber?->fullname,
             ]),
         ]);
     }
@@ -94,12 +95,13 @@ class AppointmentFeedbackController extends Controller
             'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
         ]);
 
-        $query = AppointmentFeedback::with(['user:id,fullname', 'appointment.service:id,name']);
+        $query = AppointmentFeedback::with(['user:id,fullname', 'appointment.service:id,name', 'appointment.barber:id,fullname']);
 
         if (! empty($validated['search'])) {
             $search = $validated['search'];
             $query->where(function ($q) use ($search) {
                 $q->whereHas('user', fn ($uq) => $uq->where('fullname', 'like', "%{$search}%"))
+                    ->orWhereHas('appointment.barber', fn ($bq) => $bq->where('fullname', 'like', "%{$search}%"))
                     ->orWhereHas('appointment.service', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
                     ->orWhere('comment', 'like', "%{$search}%");
             });

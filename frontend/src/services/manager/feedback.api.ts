@@ -9,6 +9,7 @@ export interface FeedbackItem {
   customer_initials: string;
   service_name: string;
   submitted_at: string;
+  barber_name: string | null;
 }
 
 export interface FeedbackMeta {

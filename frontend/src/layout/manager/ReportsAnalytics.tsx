@@ -60,7 +60,15 @@ const periods: { key: Period; label: string }[] = [
   { key: "yearly", label: "Yearly" },
 ];
 
-const CHART_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6"];
+const CHART_COLORS = [
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#ec4899",
+  "#14b8a6",
+];
 
 function formatLabel(label: string, period: Period): string {
   if (period === "daily") {
@@ -86,7 +94,9 @@ export function ReportsAnalytics() {
 
   const [kpi, setKpi] = useState<AnalyticsKPI | null>(null);
   const [revenueData, setRevenueData] = useState<TimeSeriesPoint[]>([]);
-  const [appointmentData, setAppointmentData] = useState<AppointmentVolumePoint[]>([]);
+  const [appointmentData, setAppointmentData] = useState<
+    AppointmentVolumePoint[]
+  >([]);
   const [serviceData, setServiceData] = useState<ServiceStat[]>([]);
   const [barberData, setBarberData] = useState<BarberStat[]>([]);
   const [ratingData, setRatingData] = useState<RatingStat[]>([]);
@@ -152,7 +162,10 @@ export function ReportsAnalytics() {
       XLSX.utils.book_append_sheet(workbook, revenueSheet, "Daily Revenue");
       XLSX.utils.book_append_sheet(workbook, serviceSheet, "Service Stats");
       XLSX.utils.book_append_sheet(workbook, appointmentsSheet, "Appointments");
-      XLSX.writeFile(workbook, `tols-summary-${period}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.writeFile(
+        workbook,
+        `tols-summary-${period}-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      );
       toast.success("Exported successfully");
     } catch (error) {
       console.error("Export failed:", error);
@@ -248,7 +261,11 @@ export function ReportsAnalytics() {
               </button>
             ))}
           </div>
-          <Button onClick={handleExport} disabled={exporting} className="shrink-0">
+          <Button
+            onClick={handleExport}
+            disabled={exporting}
+            className="shrink-0"
+          >
             <Download className="h-4 w-4 mr-2" />
             {exporting ? "Exporting..." : "Export"}
           </Button>
@@ -259,7 +276,9 @@ export function ReportsAnalytics() {
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <StatCard
           label="Revenue"
-          value={loading ? "..." : `₱${(kpi?.total_revenue ?? 0).toLocaleString()}`}
+          value={
+            loading ? "..." : `₱${(kpi?.total_revenue ?? 0).toLocaleString()}`
+          }
           icon={PhilippinePeso}
           iconContainerClassName="bg-orange-100"
           iconClassName="text-orange-500"
@@ -267,7 +286,9 @@ export function ReportsAnalytics() {
         />
         <StatCard
           label="Completed"
-          value={loading ? "..." : (kpi?.completed_appointments ?? 0).toString()}
+          value={
+            loading ? "..." : (kpi?.completed_appointments ?? 0).toString()
+          }
           icon={CheckCircle2}
           iconContainerClassName="bg-green-100"
           iconClassName="text-green-500"
@@ -311,16 +332,28 @@ export function ReportsAnalytics() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {/* Revenue Trend */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-          <h2 className="text-base font-bold text-gray-900 mb-4">Revenue Trend</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-4">
+            Revenue Trend
+          </h2>
           {loading ? (
-            <div className="h-[250px] flex items-center justify-center text-gray-400">Loading...</div>
+            <div className="h-[250px] flex items-center justify-center text-gray-400">
+              Loading...
+            </div>
           ) : (
             <ChartContainer config={revenueConfig} className="h-[250px] w-full">
               <AreaChart data={revenueData}>
                 <defs>
                   <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--color-revenue)" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="var(--color-revenue)" stopOpacity={0.05} />
+                    <stop
+                      offset="0%"
+                      stopColor="var(--color-revenue)"
+                      stopOpacity={0.3}
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor="var(--color-revenue)"
+                      stopOpacity={0.05}
+                    />
                   </linearGradient>
                 </defs>
                 <CartesianGrid vertical={false} strokeDasharray="4 4" />
@@ -360,11 +393,18 @@ export function ReportsAnalytics() {
 
         {/* Appointment Volume */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-          <h2 className="text-base font-bold text-gray-900 mb-4">Appointment Volume</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-4">
+            Appointment Volume
+          </h2>
           {loading ? (
-            <div className="h-[250px] flex items-center justify-center text-gray-400">Loading...</div>
+            <div className="h-[250px] flex items-center justify-center text-gray-400">
+              Loading...
+            </div>
           ) : (
-            <ChartContainer config={appointmentConfig} className="h-[250px] w-full">
+            <ChartContainer
+              config={appointmentConfig}
+              className="h-[250px] w-full"
+            >
               <BarChart data={appointmentData}>
                 <CartesianGrid vertical={false} strokeDasharray="4 4" />
                 <XAxis
@@ -390,9 +430,24 @@ export function ReportsAnalytics() {
                   }
                 />
                 <ChartLegend content={<ChartLegendContent />} />
-                <Bar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="cancelled" stackId="a" fill="var(--color-cancelled)" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="no_show" stackId="a" fill="var(--color-no_show)" radius={[2, 2, 0, 0]} />
+                <Bar
+                  dataKey="completed"
+                  stackId="a"
+                  fill="var(--color-completed)"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar
+                  dataKey="cancelled"
+                  stackId="a"
+                  fill="var(--color-cancelled)"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar
+                  dataKey="no_show"
+                  stackId="a"
+                  fill="var(--color-no_show)"
+                  radius={[2, 2, 0, 0]}
+                />
               </BarChart>
             </ChartContainer>
           )}
@@ -400,16 +455,27 @@ export function ReportsAnalytics() {
 
         {/* Service Distribution */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:col-span-2">
-          <h2 className="text-base font-bold text-gray-900 mb-4">Service Distribution</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-4">
+            Service Distribution
+          </h2>
           {loading ? (
-            <div className="h-[250px] flex items-center justify-center text-gray-400">Loading...</div>
+            <div className="h-[250px] flex items-center justify-center text-gray-400">
+              Loading...
+            </div>
           ) : serviceData.length === 0 ? (
-            <div className="h-[250px] flex items-center justify-center text-gray-400">No data</div>
+            <div className="h-[250px] flex items-center justify-center text-gray-400">
+              No data
+            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500 mb-3 text-center">By Count</p>
-                <ChartContainer config={serviceConfig} className="h-[250px] w-full">
+                <p className="text-sm text-gray-500 mb-3 text-center">
+                  By Count
+                </p>
+                <ChartContainer
+                  config={serviceConfig}
+                  className="h-[250px] w-full"
+                >
                   <PieChart>
                     <Pie
                       data={serviceData}
@@ -423,7 +489,10 @@ export function ReportsAnalytics() {
                       strokeWidth={3}
                     >
                       {serviceData.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                        <Cell
+                          key={i}
+                          fill={CHART_COLORS[i % CHART_COLORS.length]}
+                        />
                       ))}
                     </Pie>
                     <ChartTooltip
@@ -434,16 +503,28 @@ export function ReportsAnalytics() {
                         />
                       }
                     />
-                    <ChartLegend content={<ChartLegendContent nameKey="service_name" />} />
+                    <ChartLegend
+                      content={<ChartLegendContent nameKey="service_name" />}
+                    />
                   </PieChart>
                 </ChartContainer>
               </div>
               <div>
-                <p className="text-sm text-gray-500 mb-3 text-center">By Revenue</p>
-                <ChartContainer config={serviceConfig} className="h-[250px] w-full">
+                <p className="text-sm text-gray-500 mb-3 text-center">
+                  By Revenue
+                </p>
+                <ChartContainer
+                  config={serviceConfig}
+                  className="h-[250px] w-full"
+                >
                   <BarChart data={serviceData} layout="vertical" barSize={24}>
                     <CartesianGrid horizontal={false} strokeDasharray="4 4" />
-                    <XAxis type="number" axisLine={false} tickLine={false} tickFormatter={(v) => `₱${v}`} />
+                    <XAxis
+                      type="number"
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v) => `₱${v}`}
+                    />
                     <YAxis
                       dataKey="service_name"
                       type="category"
@@ -455,7 +536,10 @@ export function ReportsAnalytics() {
                     <ChartTooltip
                       content={
                         <ChartTooltipContent
-                          formatter={(value) => [`₱${Number(value).toLocaleString()}`, " Revenue"]}
+                          formatter={(value) => [
+                            `₱${Number(value).toLocaleString()}`,
+                            " Revenue",
+                          ]}
                           indicator="dot"
                         />
                       }
@@ -475,9 +559,13 @@ export function ReportsAnalytics() {
 
         {/* Status Breakdown */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-          <h2 className="text-base font-bold text-gray-900 mb-4">Status Breakdown</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-4">
+            Status Breakdown
+          </h2>
           {loading ? (
-            <div className="h-[250px] flex items-center justify-center text-gray-400">Loading...</div>
+            <div className="h-[250px] flex items-center justify-center text-gray-400">
+              Loading...
+            </div>
           ) : (
             <ChartContainer config={statusConfig} className="h-[250px] w-full">
               <PieChart>
@@ -512,9 +600,13 @@ export function ReportsAnalytics() {
 
         {/* Rating Distribution */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-          <h2 className="text-base font-bold text-gray-900 mb-4">Rating Distribution</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-4">
+            Rating Distribution
+          </h2>
           {loading ? (
-            <div className="h-[250px] flex items-center justify-center text-gray-400">Loading...</div>
+            <div className="h-[250px] flex items-center justify-center text-gray-400">
+              Loading...
+            </div>
           ) : (
             <ChartContainer config={ratingConfig} className="h-[250px] w-full">
               <BarChart data={ratingData} barSize={40}>
@@ -549,20 +641,28 @@ export function ReportsAnalytics() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:col-span-2">
           <h2 className="text-base font-bold text-gray-900 mb-4">Peak Hours</h2>
           {loading ? (
-            <div className="h-[250px] flex items-center justify-center text-gray-400">Loading...</div>
+            <div className="h-[250px] flex items-center justify-center text-gray-400">
+              Loading...
+            </div>
           ) : peakHourData.length === 0 ? (
-            <div className="h-[250px] flex items-center justify-center text-gray-400">No data</div>
+            <div className="h-[250px] flex items-center justify-center text-gray-400">
+              No data
+            </div>
           ) : (
-            <ChartContainer config={peakHourConfig} className="h-[250px] w-full">
+            <ChartContainer
+              config={peakHourConfig}
+              className="h-[250px] w-full"
+            >
               <BarChart data={peakHourData} barSize={20}>
                 <CartesianGrid vertical={false} strokeDasharray="4 4" />
                 <XAxis
                   dataKey="hour"
                   tickFormatter={(h) => {
-                    const hour = parseInt(h);
-                    if (hour < 12) return `${hour}AM`;
-                    if (hour === 12) return `12PM`;
-                    return `${hour - 12}PM`;
+                    const [hourStr, minute] = h.split(":");
+                    const hour = parseInt(hourStr, 10);
+                    const ampm = hour >= 12 ? "PM" : "AM";
+                    const hour12 = hour % 12 || 12;
+                    return `${hour12}:${minute} ${ampm}`;
                   }}
                   tickMargin={10}
                   axisLine={false}
@@ -594,16 +694,27 @@ export function ReportsAnalytics() {
 
         {/* Barber Performance (Count) */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-          <h2 className="text-base font-bold text-gray-900 mb-4">Barber Performance</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-4">
+            Barber Performance
+          </h2>
           {loading ? (
-            <div className="h-[250px] flex items-center justify-center text-gray-400">Loading...</div>
+            <div className="h-[250px] flex items-center justify-center text-gray-400">
+              Loading...
+            </div>
           ) : barberData.length === 0 ? (
-            <div className="h-[250px] flex items-center justify-center text-gray-400">No data</div>
+            <div className="h-[250px] flex items-center justify-center text-gray-400">
+              No data
+            </div>
           ) : (
             <ChartContainer config={barberConfig} className="h-[250px] w-full">
               <BarChart data={barberData} layout="vertical" barSize={24}>
                 <CartesianGrid horizontal={false} strokeDasharray="4 4" />
-                <XAxis type="number" axisLine={false} tickLine={false} tickFormatter={(v) => Math.floor(v).toString()} />
+                <XAxis
+                  type="number"
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v) => Math.floor(v).toString()}
+                />
                 <YAxis
                   dataKey="barber_name"
                   type="category"
@@ -633,16 +744,30 @@ export function ReportsAnalytics() {
 
         {/* Barber Revenue */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-          <h2 className="text-base font-bold text-gray-900 mb-4">Barber Revenue</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-4">
+            Barber Revenue
+          </h2>
           {loading ? (
-            <div className="h-[250px] flex items-center justify-center text-gray-400">Loading...</div>
+            <div className="h-[250px] flex items-center justify-center text-gray-400">
+              Loading...
+            </div>
           ) : barberData.length === 0 ? (
-            <div className="h-[250px] flex items-center justify-center text-gray-400">No data</div>
+            <div className="h-[250px] flex items-center justify-center text-gray-400">
+              No data
+            </div>
           ) : (
-            <ChartContainer config={barberRevenueConfig} className="h-[250px] w-full">
+            <ChartContainer
+              config={barberRevenueConfig}
+              className="h-[250px] w-full"
+            >
               <BarChart data={barberData} layout="vertical" barSize={24}>
                 <CartesianGrid horizontal={false} strokeDasharray="4 4" />
-                <XAxis type="number" axisLine={false} tickLine={false} tickFormatter={(v) => `₱${v}`} />
+                <XAxis
+                  type="number"
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v) => `₱${v}`}
+                />
                 <YAxis
                   dataKey="barber_name"
                   type="category"
@@ -654,7 +779,10 @@ export function ReportsAnalytics() {
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      formatter={(value) => [`₱${Number(value).toLocaleString()}`, " Revenue"]}
+                      formatter={(value) => [
+                        `₱${Number(value).toLocaleString()}`,
+                        " Revenue",
+                      ]}
                       indicator="dot"
                     />
                   }
@@ -672,11 +800,18 @@ export function ReportsAnalytics() {
 
         {/* Day of Week */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:col-span-2">
-          <h2 className="text-base font-bold text-gray-900 mb-4">Day of Week</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-4">
+            Day of Week
+          </h2>
           {loading ? (
-            <div className="h-[250px] flex items-center justify-center text-gray-400">Loading...</div>
+            <div className="h-[250px] flex items-center justify-center text-gray-400">
+              Loading...
+            </div>
           ) : (
-            <ChartContainer config={dayOfWeekConfig} className="h-[250px] w-full">
+            <ChartContainer
+              config={dayOfWeekConfig}
+              className="h-[250px] w-full"
+            >
               <BarChart data={dayOfWeekData}>
                 <CartesianGrid vertical={false} strokeDasharray="4 4" />
                 <XAxis
@@ -685,22 +820,40 @@ export function ReportsAnalytics() {
                   axisLine={false}
                   tickLine={false}
                 />
-                <YAxis axisLine={false} tickLine={false} width={40} tickFormatter={(v) => Math.floor(v).toString()} />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  width={40}
+                  tickFormatter={(v) => Math.floor(v).toString()}
+                />
                 <ChartTooltip
-                  content={
-                    <ChartTooltipContent indicator="dot" />
-                  }
+                  content={<ChartTooltipContent indicator="dot" />}
                 />
                 <ChartLegend content={<ChartLegendContent />} />
-                <Bar dataKey="completed" stackId="a" fill="var(--color-completed)" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="cancelled" stackId="a" fill="var(--color-cancelled)" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="no_show" stackId="a" fill="var(--color-no_show)" radius={[2, 2, 0, 0]} />
+                <Bar
+                  dataKey="completed"
+                  stackId="a"
+                  fill="var(--color-completed)"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar
+                  dataKey="cancelled"
+                  stackId="a"
+                  fill="var(--color-cancelled)"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar
+                  dataKey="no_show"
+                  stackId="a"
+                  fill="var(--color-no_show)"
+                  radius={[2, 2, 0, 0]}
+                />
               </BarChart>
             </ChartContainer>
           )}
         </div>
+        <div className="mb-10" />
       </div>
-
     </div>
   );
 }

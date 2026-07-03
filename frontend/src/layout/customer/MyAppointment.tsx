@@ -36,6 +36,14 @@ import {
 } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatBookingId } from "@/lib/booking";
+import { Star, User as UserIcon } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type StatusFilter = "all" | AppointmentStatus;
 
@@ -43,12 +51,18 @@ type Row = {
   id: number;
   service: string;
   barber: string;
+  barber_id: number | null;
   date: string;
   time: string;
   status: AppointmentStatus;
   price: number;
   created_at: string;
   cancellation_reason: string | null;
+  feedback: {
+    rating: number | null;
+    comment: string | null;
+    submitted_at: string | null;
+  } | null;
 };
 
 function formatDate(date: string): string {
@@ -77,6 +91,7 @@ export function MyAppointment() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [page, setPage] = useState(1);
+  const [selectedRow, setSelectedRow] = useState<Row | null>(null);
   const pageSize = 10;
 
   const fetchAppointments = useCallback(async () => {
@@ -92,12 +107,20 @@ export function MyAppointment() {
           id: appt.id,
           service: appt.service.name ?? "Unknown service",
           barber: appt.barber.fullname ?? "Unknown barber",
+          barber_id: appt.barber.id,
           date: formatDate(appt.appointment_date),
           time: formatTime(appt.appointment_time),
           status: appt.status,
           price: Number(appt.price) || 0,
           created_at: appt.created_at,
           cancellation_reason: appt.cancellation_reason,
+          feedback: appt.feedback
+            ? {
+                rating: appt.feedback.rating,
+                comment: appt.feedback.comment,
+                submitted_at: appt.feedback.submitted_at,
+              }
+            : null,
         }))
         .sort(
           (a, b) =>
@@ -199,7 +222,8 @@ export function MyAppointment() {
             paginatedRows.map((row) => (
               <div
                 key={row.id}
-                className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-2"
+                onClick={() => setSelectedRow(row)}
+                className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-2 cursor-pointer active:scale-[0.99] transition-transform"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-gray-900 text-sm">
@@ -256,7 +280,7 @@ export function MyAppointment() {
                 </TableRow>
               ) : (
                 paginatedRows.map((row) => (
-                  <TableRow key={row.id} className="group relative">
+                  <TableRow key={row.id} className="group relative cursor-pointer" onClick={() => setSelectedRow(row)}>
                     <TableCell>{formatBookingId(row.id)}</TableCell>
                     <TableCell>{row.service}</TableCell>
                     <TableCell>{row.barber}</TableCell>
@@ -342,6 +366,83 @@ export function MyAppointment() {
           </Pagination>
         ) : null}
       </div>
+
+      <Dialog open={selectedRow !== null} onOpenChange={(open) => { if (!open) setSelectedRow(null); }}>
+        <DialogContent className="rounded-3xl p-6 sm:max-w-[480px] sm:p-8">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-gray-900">
+              Appointment Detail
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500">
+              Booking {formatBookingId(selectedRow?.id ?? 0)}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedRow && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                <div className="bg-primary/10 rounded-full p-3">
+                  <UserIcon className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Barber</p>
+                  <p className="font-semibold text-gray-900 text-lg">{selectedRow.barber}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-gray-500">Service</p>
+                  <p className="font-medium text-gray-900">{selectedRow.service}</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-gray-500">Price</p>
+                  <p className="font-medium text-gray-900">₱{selectedRow.price.toFixed(2)}</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-gray-500">Date</p>
+                  <p className="font-medium text-gray-900">{selectedRow.date}</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-gray-500">Time</p>
+                  <p className="font-medium text-gray-900">{selectedRow.time}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-500">Status</p>
+                <AppointmentStatusBadge status={selectedRow.status} />
+              </div>
+
+              {selectedRow.feedback && (
+                <div className="space-y-3 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-900">Your Feedback</p>
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-4 h-4 ${
+                            star <= (selectedRow.feedback?.rating ?? 0)
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "fill-white text-gray-300"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  {selectedRow.feedback.comment && (
+                    <p className="text-sm text-gray-600 italic">"{selectedRow.feedback.comment}"</p>
+                  )}
+                  <p className="text-xs text-gray-400">
+                    Submitted {selectedRow.feedback.submitted_at ? new Date(selectedRow.feedback.submitted_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

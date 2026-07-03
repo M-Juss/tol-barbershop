@@ -13,6 +13,7 @@ export interface AppointmentFeedback {
   comment: string | null;
   customer_name: string;
   customer_initials: string;
+  barber_name: string | null;
   service_name: string | null;
   submitted_at: string;
 }
@@ -34,6 +35,7 @@ export const submitAppointmentFeedback = async (
 export interface PendingFeedbackItem {
   appointment_id: number;
   service_name: string | null;
+  barber_name: string | null;
 }
 
 export const getPendingFeedback = async (): Promise<PendingFeedbackItem[]> => {

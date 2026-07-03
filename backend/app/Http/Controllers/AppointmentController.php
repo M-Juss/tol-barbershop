@@ -13,7 +13,6 @@ use App\Support\EntityChange;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class AppointmentController extends Controller
 {
@@ -28,6 +27,7 @@ class AppointmentController extends Controller
             'user',
             'barber',
             'service',
+            'feedback',
         ])->latest();
 
         $user = $request->user();
@@ -67,20 +67,9 @@ class AppointmentController extends Controller
 
         if ($isWalkin) {
             $now = Carbon::now();
-            $normalizedPhone = preg_replace('/\D+/', '', (string) ($validated['walkin_customer_contact_number'] ?? ''));
-            $dummyEmail = 'walkin+'.($normalizedPhone !== '' ? $normalizedPhone : uniqid()).'+'.$now->timestamp.'@walkin.local';
-
-            $customer = User::create([
-                'fullname' => $validated['walkin_customer_name'] ?? 'Walk-in Customer',
-                'email' => $dummyEmail,
-                'contact_number' => $validated['walkin_customer_contact_number'] ?? '',
-                'password' => bcrypt(Str::random(32)),
-                'role' => 'customer',
-                'is_active' => true,
-            ]);
 
             $appointment = Appointment::create([
-                'user_id' => $customer->id,
+                'user_id' => null,
                 'service_id' => $validated['service_id'],
                 'barber_user_id' => $validated['barber_user_id'],
                 'appointment_date' => $now->toDateString(),
@@ -89,11 +78,13 @@ class AppointmentController extends Controller
                 'price' => $service->price,
                 'status' => 'completed',
                 'is_walkin' => true,
+                'walkin_customer_name' => $validated['walkin_customer_name'] ?? null,
+                'walkin_customer_contact_number' => $validated['walkin_customer_contact_number'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'completed_at' => $now,
             ]);
 
-            $appointment->load(['user', 'barber', 'service']);
+            $appointment->load(['barber', 'service']);
             EntityChange::dispatch('appointments');
 
             return new AppointmentResource($appointment);
@@ -550,8 +541,10 @@ class AppointmentController extends Controller
             ->map(function ($appointment) {
                 return [
                     'id' => $appointment->id,
-                    'customer_name' => $appointment->user?->fullname,
-                    'customer_email' => $appointment->user?->email,
+                    'customer_name' => $appointment->is_walkin
+                        ? ($appointment->walkin_customer_name ?? $appointment->user?->fullname)
+                        : $appointment->user?->fullname,
+                    'customer_email' => $appointment->is_walkin ? null : $appointment->user?->email,
                     'barber_name' => $appointment->barber?->fullname,
                     'service_name' => $appointment->service?->name,
                     'appointment_date' => $appointment->appointment_date,

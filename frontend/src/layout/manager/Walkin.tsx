@@ -99,9 +99,13 @@ export function Walkin() {
     try {
       setLoading(true);
       const appointments = (await getAppointments()) as WalkinAppointment[];
-      const walkinData = appointments.filter(
-        (appointment) => appointment.is_walkin,
-      );
+      const walkinData = appointments
+        .filter((appointment) => appointment.is_walkin)
+        .sort(
+          (a, b) =>
+            new Date(b.completed_at ?? b.created_at).getTime() -
+            new Date(a.completed_at ?? a.created_at).getTime(),
+        );
       setWalkins(walkinData);
     } catch (error) {
       console.error("Failed to load walk-ins:", error);

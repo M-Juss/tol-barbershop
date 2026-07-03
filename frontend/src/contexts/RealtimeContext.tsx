@@ -54,34 +54,62 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     const token = getAuthToken();
     if (!token) return;
 
-    const url = `/api/v1/events/stream?token=${encodeURIComponent(token)}`;
-    const es = new EventSource(url);
-    eventSourceRef.current = es;
-
-    es.onopen = () => {};
+    const url = "/api/v1/events/stream";
+    const abortController = new AbortController();
 
     const entityTypes = [
       "appointments", "barbers", "services", "admins",
       "notifications", "feedback", "closed_dates", "modules", "roles",
     ];
 
-    for (const type of entityTypes) {
-      es.addEventListener(type, () => {
-        setLastEvent(type);
-        const callbacks = listenersRef.current.get(type);
-        if (callbacks) {
-          for (const cb of callbacks) {
-            cb();
+    (async () => {
+      try {
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: abortController.signal,
+        });
+
+        if (!response.ok || !response.body) {
+          throw new Error(`SSE connection failed: ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() || "";
+
+          for (const part of parts) {
+            const eventMatch = part.match(/^event: (.+)$/m);
+            if (eventMatch) {
+              const type = eventMatch[1];
+              if (entityTypes.includes(type)) {
+                setLastEvent(type);
+                const callbacks = listenersRef.current.get(type);
+                if (callbacks) {
+                  for (const cb of callbacks) {
+                    cb();
+                  }
+                }
+              }
+            }
           }
         }
-      });
-    }
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === "AbortError") return;
+      }
 
-    es.onerror = () => {
-      es.close();
       eventSourceRef.current = null;
       reconnectTimeoutRef.current = setTimeout(connect, 5000);
-    };
+    })();
+
+    eventSourceRef.current = { close: () => abortController.abort() } as unknown as EventSource;
   }, []);
 
   const disconnect = useCallback(() => {

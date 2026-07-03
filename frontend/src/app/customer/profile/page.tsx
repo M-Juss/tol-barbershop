@@ -75,6 +75,7 @@ export default function Profile() {
           }
         }}
       />
+      <div className="my-10" />
     </div>
   );
 }

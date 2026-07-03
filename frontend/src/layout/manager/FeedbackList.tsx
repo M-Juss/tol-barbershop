@@ -331,9 +331,14 @@ export function FeedbackList() {
                 />
               </PaginationItem>
             </PaginationContent>
+            <div className="my-10 bg-red-600" />
           </Pagination>
+          
         ) : null}
+
+        
       </div>
+      
 
       <Dialog
         open={!!selectedFeedback}
@@ -359,6 +364,11 @@ export function FeedbackList() {
                     <p className="text-xs text-gray-500 truncate">
                       {selectedFeedback.service_name}
                     </p>
+                    {selectedFeedback.barber_name && (
+                      <p className="text-xs text-gray-400 truncate">
+                        by {selectedFeedback.barber_name}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <StarRating rating={selectedFeedback.rating} />
@@ -395,6 +405,7 @@ export function FeedbackList() {
           )}
         </DialogContent>
       </Dialog>
+      
     </div>
   );
 }

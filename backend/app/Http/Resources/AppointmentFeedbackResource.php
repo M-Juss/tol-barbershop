@@ -11,6 +11,7 @@ class AppointmentFeedbackResource extends JsonResource
     public function toArray(Request $request): array
     {
         $customerName = $this->user?->fullname ?? 'Customer';
+        $barberName = $this->appointment?->barber?->fullname;
 
         return [
             'id' => $this->id,
@@ -24,6 +25,7 @@ class AppointmentFeedbackResource extends JsonResource
                 ->map(fn (string $part) => Str::upper(Str::substr($part, 0, 1)))
                 ->take(2)
                 ->implode(''),
+            'barber_name' => $barberName,
             'service_name' => $this->appointment?->service?->name,
             'submitted_at' => $this->created_at,
         ];

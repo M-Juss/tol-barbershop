@@ -10,5 +10,6 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(ModuleSeeder::class);
         $this->call(DefaultDataSeeder::class);
+        $this->call(WalkinAppointmentSeeder::class);
     }
 }

@@ -14,6 +14,7 @@ export default function AdminReportsPage() {
         <h2 className="text-lg font-semibold text-gray-500">Coming Soon</h2>
         <p className="text-gray-400 mt-1">Reports feature is under development.</p>
       </div>
+      <div className="my-10" />
     </div>
   );
 }

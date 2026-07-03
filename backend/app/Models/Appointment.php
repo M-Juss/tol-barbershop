@@ -18,6 +18,8 @@ class Appointment extends Model
         'price',
         'status',
         'is_walkin',
+        'walkin_customer_name',
+        'walkin_customer_contact_number',
         'notes',
         'cancellation_reason',
         'approved_at',

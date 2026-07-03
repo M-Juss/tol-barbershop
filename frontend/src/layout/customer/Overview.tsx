@@ -339,8 +339,9 @@ export function Overview() {
               Rate your TOLS Barbershop booking
             </DialogTitle>
             <DialogDescription className="max-w-md text-base leading-7 text-gray-600">
-              {currentFeedback?.service_name ?? "Your barbershop service"} is completed.
-              Please rate your satisfaction and leave feedback below.
+              Your {currentFeedback?.service_name ?? "barbershop service"} with{" "}
+              <span className="font-semibold text-gray-900">{currentFeedback?.barber_name ?? "your barber"}</span>{" "}
+              is completed. Please rate your satisfaction and leave feedback below.
             </DialogDescription>
           </DialogHeader>
 
@@ -400,6 +401,7 @@ export function Overview() {
           </div>
         </DialogContent>
       </Dialog>
+      <div className="my-10" />
     </div>
   );
 }

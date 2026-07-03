@@ -337,9 +337,11 @@ export function Historical() {
                 />
               </PaginationItem>
             </PaginationContent>
+            <div className="my-10" />
           </Pagination>
         ) : null}
       </div>
+      
     </div>
   );
 }

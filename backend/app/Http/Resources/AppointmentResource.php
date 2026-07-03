@@ -16,10 +16,14 @@ class AppointmentResource extends JsonResource
             'id' => $this->id,
 
             'customer' => [
-                'id' => $this->user?->id,
-                'fullname' => $this->user?->fullname,
-                'email' => $this->user?->email,
-                'contact_number' => $this->user?->contact_number,
+                'id' => $this->is_walkin ? null : $this->user?->id,
+                'fullname' => $this->is_walkin
+                    ? ($this->walkin_customer_name ?? $this->user?->fullname)
+                    : $this->user?->fullname,
+                'email' => $this->is_walkin ? null : $this->user?->email,
+                'contact_number' => $this->is_walkin
+                    ? ($this->walkin_customer_contact_number ?? $this->user?->contact_number)
+                    : $this->user?->contact_number,
             ],
 
             'barber' => [
@@ -33,6 +37,13 @@ class AppointmentResource extends JsonResource
                 'id' => $this->service?->id,
                 'name' => $this->service?->name,
             ],
+
+            'feedback' => $this->whenLoaded('feedback', fn () => [
+                'id' => $this->feedback?->id,
+                'rating' => $this->feedback?->rating,
+                'comment' => $this->feedback?->comment,
+                'submitted_at' => $this->feedback?->created_at,
+            ]),
 
             'appointment_date' => $this->appointment_date,
             'appointment_time' => $this->appointment_time,

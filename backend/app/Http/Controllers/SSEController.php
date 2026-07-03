@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -11,7 +12,7 @@ class SSEController extends Controller
 {
     public function stream(Request $request): StreamedResponse
     {
-        $token = $request->query('token');
+        $token = $this->resolveBearerToken($request);
 
         if (! $token) {
             return response()->stream(function () {
@@ -73,5 +74,16 @@ class SSEController extends Controller
             'Connection' => 'keep-alive',
             'X-Accel-Buffering' => 'no',
         ]);
+    }
+
+    private function resolveBearerToken(Request $request): ?string
+    {
+        $header = $request->header('Authorization', '');
+
+        if (Str::startsWith($header, 'Bearer ')) {
+            return Str::substr($header, 7);
+        }
+
+        return $request->query('token');
     }
 }

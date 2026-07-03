@@ -224,6 +224,8 @@ class AnalyticsController extends Controller
         ])
             ->whereIn('status', ['completed', 'approved'])
             ->whereBetween('appointment_date', [$range['from'], $range['to']])
+            ->whereTime('appointment_time', '>=', '09:00:00')
+            ->whereTime('appointment_time', '<=', '19:00:00')
             ->groupBy('hour')
             ->orderBy('hour')
             ->get()
