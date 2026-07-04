@@ -17,6 +17,7 @@ class ModuleSeeder extends Seeder
             ['key' => 'history', 'name' => 'History'],
             ['key' => 'reports', 'name' => 'Reports'],
             ['key' => 'feedback', 'name' => 'Feedback'],
+            ['key' => 'crm', 'name' => 'Customers'],
         ];
 
         foreach ($modules as $module) {

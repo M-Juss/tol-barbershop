@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRealtimeEvent } from "@/contexts/RealtimeContext";
-import { Calendar, LayoutDashboard, History, UserPlus, MessageSquareText, Settings, BarChart3 } from "lucide-react";
+import { Calendar, LayoutDashboard, History, UserPlus, MessageSquareText, Settings, BarChart3, Contact } from "lucide-react";
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
@@ -52,6 +52,12 @@ const allNavItems = [
     href: "/admin/feedback",
     icon: MessageSquareText,
     label: "Feedback",
+  },
+  {
+    key: "crm",
+    href: "/admin/customers",
+    icon: Contact,
+    label: "Customers",
   },
 ];
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\AppointmentFeedbackController;
 use App\Http\Controllers\BarberController;
 use App\Http\Controllers\ClosedDatesController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\EditUserController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\LoginController;
@@ -60,6 +61,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/analytics/peak-hours', [AnalyticsController::class, 'peakHours'])->middleware('throttle:300,1');
             Route::get('/analytics/day-of-week', [AnalyticsController::class, 'dayOfWeek'])->middleware('throttle:300,1');
             Route::get('/feedback', [AppointmentFeedbackController::class, 'index'])->middleware('throttle:300,1');
+            Route::get('/customers', [CustomerController::class, 'index'])->middleware('throttle:300,1');
+            Route::get('/customers/{id}', [CustomerController::class, 'show'])->middleware('throttle:300,1');
         });
 
         Route::apiResource('/services', ServiceController::class)

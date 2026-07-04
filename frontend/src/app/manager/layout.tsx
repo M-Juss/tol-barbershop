@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   BarChart3,
   MessageSquareText,
+  Contact,
 } from "lucide-react";
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { Toaster } from "@/components/ui/sonner";
@@ -58,6 +59,12 @@ const navItems = [
     href: "/manager/feedback",
     icon: MessageSquareText,
     label: "Feedback",
+  },
+  {
+    key: "crm",
+    href: "/manager/customers",
+    icon: Contact,
+    label: "Customers",
   },
 ];
 
