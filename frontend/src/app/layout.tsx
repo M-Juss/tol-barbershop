@@ -22,7 +22,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Tols Barbershop",
+  title: "Tol Barbershop",
   description: "Premium barbershop experience",
   manifest: "/manifest.json",
   icons: {
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
 },
   appleWebApp: {
     capable: true,
-    title: "TOLS Barbershop",
+    title: "Tol Barbershop",
     statusBarStyle: "default",
   },
 };

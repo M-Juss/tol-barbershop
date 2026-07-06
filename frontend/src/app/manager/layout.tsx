@@ -10,12 +10,14 @@ import {
   BarChart3,
   MessageSquareText,
   Contact,
+  Headset,
 } from "lucide-react";
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
 import { getPendingAppointmentCount } from "@/services/manager/admin.api";
+import { getWaitingCount } from "@/services/manager/support.api";
 
 const navItems = [
   {
@@ -66,6 +68,12 @@ const navItems = [
     icon: Contact,
     label: "Customers",
   },
+  {
+    key: "customer-service",
+    href: "/manager/customer-service",
+    icon: Headset,
+    label: "Customer Service",
+  },
 ];
 
 export default function ManagerLayout({
@@ -75,8 +83,11 @@ export default function ManagerLayout({
 }) {
   useRoleRoutePersistence("/manager");
   const [pendingCount, setPendingCount] = useState(0);
+  const [waitingCount, setWaitingCount] = useState(0);
   const prevCountRef = useRef(0);
+  const prevWaitingRef = useRef(0);
   const isFirstLoadRef = useRef(true);
+  const isFirstWaitingLoadRef = useRef(true);
 
   const fetchPendingCount = useCallback(async () => {
     try {
@@ -98,22 +109,48 @@ export default function ManagerLayout({
     } catch {}
   }, []);
 
+  const fetchWaitingCount = useCallback(async () => {
+    try {
+      const count = await getWaitingCount();
+      if (!isFirstWaitingLoadRef.current && count > prevWaitingRef.current) {
+        const diff = count - prevWaitingRef.current;
+        toast(`${diff} New Waiting Ticket${diff > 1 ? "s" : ""}`, {
+          description: `A customer is waiting in the support queue.`,
+          action: {
+            label: "View",
+            onClick: () => (window.location.href = "/manager/customer-service"),
+          },
+          duration: 8000,
+        });
+      }
+      isFirstWaitingLoadRef.current = false;
+      prevWaitingRef.current = count;
+      setWaitingCount(count);
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetchPendingCount();
-    const interval = setInterval(fetchPendingCount, 30000);
+    fetchWaitingCount();
+    const interval = setInterval(() => {
+      fetchPendingCount();
+      fetchWaitingCount();
+    }, 30000);
     const onAppointmentsUpdated = () => fetchPendingCount();
     window.addEventListener("appointments:updated", onAppointmentsUpdated);
     return () => {
       clearInterval(interval);
       window.removeEventListener("appointments:updated", onAppointmentsUpdated);
     };
-  }, [fetchPendingCount]);
+  }, [fetchPendingCount, fetchWaitingCount]);
 
   useRealtimeEvent('appointments', fetchPendingCount);
 
-  const items = navItems.map((item) =>
-    item.key === "appointment" ? { ...item, badgeCount: pendingCount } : item,
-  );
+  const items = navItems.map((item) => {
+    if (item.key === "appointment") return { ...item, badgeCount: pendingCount };
+    if (item.key === "customer-service") return { ...item, badgeCount: waitingCount };
+    return item;
+  });
 
   return (
     <div className="flex h-dvh overflow-hidden">

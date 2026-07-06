@@ -336,7 +336,7 @@ export function Overview() {
         <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-3xl p-6 sm:max-w-[560px] sm:p-8" showCloseButton={false}>
           <DialogHeader className="items-center gap-4 text-center">
             <DialogTitle className="text-3xl font-bold text-primary sm:text-4xl">
-              Rate your TOLS Barbershop booking
+              Rate your Tol Barbershop booking
             </DialogTitle>
             <DialogDescription className="max-w-md text-base leading-7 text-gray-600">
               Your {currentFeedback?.service_name ?? "barbershop service"} with{" "}

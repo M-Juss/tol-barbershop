@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRealtimeEvent } from "@/contexts/RealtimeContext";
-import { Calendar, LayoutDashboard, History, UserPlus, MessageSquareText, Settings, BarChart3, Contact } from "lucide-react";
+import { Calendar, LayoutDashboard, History, UserPlus, MessageSquareText, Settings, BarChart3, Contact, Headset } from "lucide-react";
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPendingAppointmentCount } from "@/services/manager/admin.api";
+import { getWaitingCount } from "@/services/manager/support.api";
 
 const allNavItems = [
   {
@@ -59,6 +60,12 @@ const allNavItems = [
     icon: Contact,
     label: "Customers",
   },
+  {
+    key: "customer-service",
+    href: "/admin/customer-service",
+    icon: Headset,
+    label: "Customer Service",
+  },
 ];
 
 export default function AdminLayout({
@@ -69,8 +76,11 @@ export default function AdminLayout({
   useRoleRoutePersistence("/admin");
   const { user } = useAuth();
   const [pendingCount, setPendingCount] = useState(0);
+  const [waitingCount, setWaitingCount] = useState(0);
   const prevCountRef = useRef(0);
+  const prevWaitingRef = useRef(0);
   const isFirstLoadRef = useRef(true);
+  const isFirstWaitingLoadRef = useRef(true);
 
   const fetchPendingCount = useCallback(async () => {
     try {
@@ -92,25 +102,51 @@ export default function AdminLayout({
     } catch {}
   }, []);
 
+  const fetchWaitingCount = useCallback(async () => {
+    try {
+      const count = await getWaitingCount();
+      if (!isFirstWaitingLoadRef.current && count > prevWaitingRef.current) {
+        const diff = count - prevWaitingRef.current;
+        toast(`${diff} New Waiting Ticket${diff > 1 ? "s" : ""}`, {
+          description: `A customer is waiting in the support queue.`,
+          action: {
+            label: "View",
+            onClick: () => (window.location.href = "/admin/customer-service"),
+          },
+          duration: 8000,
+        });
+      }
+      isFirstWaitingLoadRef.current = false;
+      prevWaitingRef.current = count;
+      setWaitingCount(count);
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetchPendingCount();
-    const interval = setInterval(fetchPendingCount, 30000);
+    fetchWaitingCount();
+    const interval = setInterval(() => {
+      fetchPendingCount();
+      fetchWaitingCount();
+    }, 30000);
     const onAppointmentsUpdated = () => fetchPendingCount();
     window.addEventListener("appointments:updated", onAppointmentsUpdated);
     return () => {
       clearInterval(interval);
       window.removeEventListener("appointments:updated", onAppointmentsUpdated);
     };
-  }, [fetchPendingCount]);
+  }, [fetchPendingCount, fetchWaitingCount]);
 
   useRealtimeEvent('appointments', fetchPendingCount);
 
   const navItems = (user?.permissions
     ? allNavItems.filter((item) => item.key === "dashboard" || user.permissions?.includes(item.key))
     : allNavItems
-  ).map((item) =>
-    item.key === "appointment" ? { ...item, badgeCount: pendingCount } : item,
-  );
+  ).map((item) => {
+    if (item.key === "appointment") return { ...item, badgeCount: pendingCount };
+    if (item.key === "customer-service") return { ...item, badgeCount: waitingCount };
+    return item;
+  });
 
   return (
     <div className="flex h-dvh overflow-hidden">

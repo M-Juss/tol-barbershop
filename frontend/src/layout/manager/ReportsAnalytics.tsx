@@ -164,7 +164,7 @@ export function ReportsAnalytics() {
       XLSX.utils.book_append_sheet(workbook, appointmentsSheet, "Appointments");
       XLSX.writeFile(
         workbook,
-        `tols-summary-${period}-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        `tol-summary-${period}-${new Date().toISOString().slice(0, 10)}.xlsx`,
       );
       toast.success("Exported successfully");
     } catch (error) {

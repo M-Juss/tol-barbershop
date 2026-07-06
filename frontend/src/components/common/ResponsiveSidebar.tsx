@@ -146,7 +146,7 @@ export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
           <div className="flex space-x-2 items-center">
             <Image src="/logo.svg" alt="Logo" height={40} width={40} />
             <h1 className="font-bold text-primary-foreground text-xl">
-              Tols Barbershop
+              Tol Barbershop
             </h1>
           </div>
           {/* Close Button - Mobile Only */}

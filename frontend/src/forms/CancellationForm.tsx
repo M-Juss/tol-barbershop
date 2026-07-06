@@ -161,7 +161,7 @@ export function CancellationForm({
               <Clock className="w-3.5 h-3.5 text-gray-400" />
               <span className="text-gray-600">
                 <span className="font-medium text-gray-800">Time:</span>{" "}
-                {formatTime(appointment.appointment_time)}
+              {formatTime(appointment.appointment_time)}
               </span>
             </div>
           </div>

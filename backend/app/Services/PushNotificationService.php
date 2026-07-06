@@ -16,7 +16,7 @@ class PushNotificationService
     {
         $auth = [
             'VAPID' => [
-                'subject' => env('VAPID_SUBJECT', 'mailto:admin@tolsbarbershop.com'),
+                'subject' => env('VAPID_SUBJECT', 'mailto:admin@tolbarbershop.com'),
                 'publicKey' => env('VAPID_PUBLIC_KEY'),
                 'privateKey' => env('VAPID_PRIVATE_KEY'),
             ],

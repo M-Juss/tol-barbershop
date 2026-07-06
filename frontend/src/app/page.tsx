@@ -129,7 +129,7 @@ export default function Home() {
         <div className="flex space-x-2 items-center">
           <Image src="/logo.svg" alt="Logo" height={40} width={40} />
           <h1 className="font-bold text-primary-foreground text-md">
-            Tols Barbershop
+            Tol Barbershop
           </h1>
         </div>
 
@@ -160,7 +160,7 @@ export default function Home() {
           className="relative min-h-screen w-full overflow-hidden"
         >
               <Image
-                src="/Tols-Hero-Image.png"
+                src="/Tol-Hero-Image.png"
                 alt="Barber shop"
                 fill
                 sizes="100vw"
@@ -259,7 +259,7 @@ export default function Home() {
             </p>
 
             <p className="text-neutral-landing">
-              Since 2009, Tols Barbershop has been the cornestone of gentleman&apos;s
+              Since 2009, Tol Barbershop has been the cornestone of gentleman&apos;s
               grooming in the city. Our master barbers combine time-honord
               techniques with contemporary styles to deliver an unparalleled
               experience.
@@ -373,7 +373,7 @@ export default function Home() {
                   <div className="text-left">
                     <p>{currentTestimonial.customer_name}</p>
                     <p className="text-xs text-neutral-landing">
-                      {currentTestimonial.service_name ?? "TOLS Barbershop Customer"}
+                      {currentTestimonial.service_name ?? "Tol Barbershop Customer"}
                     </p>
                   </div>
                 </div>
@@ -411,7 +411,7 @@ export default function Home() {
           <div className="flex flex-col">
             <div className="flex items-center gap-3 mb-5 ">
               <Image src="/logo.svg" alt="Logo" height={50} width={50} />
-              <p className="text-xl">Tols Barbershop</p>
+              <p className="text-xl">Tol Barbershop</p>
             </div>
             <p className="text-sm">
               Where traditional barbering meets modern style. Experience the
@@ -436,7 +436,7 @@ export default function Home() {
 
             <div className="flex items-center space-x-3">
               <Mail />
-              <p className="text-sm">info@tolsbarbershop.com</p>
+              <p className="text-sm">info@tolbarbershop.com</p>
             </div>
           </div>
 
@@ -460,7 +460,7 @@ export default function Home() {
 
         <div className="flex flex-col sm:flex-row justify-between items-center gap-3 px-4 sm:px-8 py-4 border-t border-white/10 text-center">
           <p className="text-sm text-neutral">
-            &copy; 2024 Tols Barbershop. All rights reserved.
+            &copy; 2024 Tol Barbershop. All rights reserved.
           </p>
           <div className="flex justify-center items-center space-x-3 sm:text-sm  text-xs">
             <a href="#" className=" text-neutral">

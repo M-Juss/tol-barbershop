@@ -21,9 +21,9 @@ class DefaultDataSeeder extends Seeder
     ];
 
     private array $barbersData = [
-        ['fullname' => 'Juan Dela Cruz', 'email' => 'juan@tolsbarber.com', 'contact_number' => '09171234567'],
-        ['fullname' => 'Pedro Santos', 'email' => 'pedro@tolsbarber.com', 'contact_number' => '09181234567'],
-        ['fullname' => 'Mario Reyes', 'email' => 'mario@tolsbarber.com', 'contact_number' => '09191234567'],
+        ['fullname' => 'Juan Dela Cruz', 'email' => 'juan@tolbarber.com', 'contact_number' => '09171234567'],
+        ['fullname' => 'Pedro Santos', 'email' => 'pedro@tolbarber.com', 'contact_number' => '09181234567'],
+        ['fullname' => 'Mario Reyes', 'email' => 'mario@tolbarber.com', 'contact_number' => '09191234567'],
     ];
 
     private array $customersData = [

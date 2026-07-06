@@ -18,6 +18,7 @@ use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SSEController;
+use App\Http\Controllers\SupportTicketController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -78,6 +79,29 @@ Route::prefix('v1')->group(function () {
             ->middlewareFor(['index', 'show'], 'throttle:300,1')
             ->middlewareFor(['store', 'update', 'destroy'], 'throttle:30,1');
         Route::get('/modules', [ModuleController::class, 'index'])->middleware(['role:manager', 'throttle:300,1']);
+
+        Route::prefix('support')->group(function () {
+            // Shared routes (accessible by all roles — controllers handle internal auth)
+            Route::middleware('role:customer,admin,manager')->group(function () {
+                Route::get('/tickets/{id}', [SupportTicketController::class, 'show'])->middleware('throttle:300,1');
+                Route::get('/tickets/{id}/messages', [SupportTicketController::class, 'getMessages'])->middleware('throttle:60,1');
+                Route::post('/tickets/{id}/messages', [SupportTicketController::class, 'sendMessage'])->middleware('throttle:60,1');
+                Route::post('/tickets/{id}/cancel', [SupportTicketController::class, 'cancel'])->middleware('throttle:30,1');
+            });
+
+            Route::middleware('role:customer')->group(function () {
+                Route::get('/tickets', [SupportTicketController::class, 'index'])->middleware('throttle:60,1');
+                Route::post('/tickets', [SupportTicketController::class, 'store'])->middleware('throttle:30,1');
+            });
+
+            Route::middleware('role:admin,manager')->group(function () {
+                Route::get('/queue', [SupportTicketController::class, 'queue'])->middleware('throttle:60,1');
+                Route::get('/queue/count', [SupportTicketController::class, 'waitingCount'])->middleware('throttle:300,1');
+                Route::post('/tickets/{id}/accept', [SupportTicketController::class, 'accept'])->middleware('throttle:30,1');
+                Route::post('/tickets/{id}/resolve', [SupportTicketController::class, 'resolve'])->middleware('throttle:30,1');
+                Route::get('/customer/{customerId}', [SupportTicketController::class, 'customerTickets'])->middleware('throttle:300,1');
+            });
+        });
         Route::apiResource('/barber', BarberController::class)
             ->middlewareFor(['index'], ['role:admin,manager,customer', 'throttle:300,1'])
             ->middlewareFor(['show'], ['role:admin,manager,customer', 'throttle:300,1'])
