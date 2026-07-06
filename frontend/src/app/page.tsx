@@ -1,5 +1,5 @@
 "use client";
-import { Mail, MapPin, Phone, Scissors, Star } from "lucide-react";
+import { Mail, MapPin, Phone, Scissors, Star, Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -73,6 +73,7 @@ export default function Home() {
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [services, setServices] = useState<LandingService[]>([]);
   const [testimonials, setTestimonials] = useState<LandingFeedback[]>([]);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!isAutoPlaying || testimonials.length <= 1) return;
@@ -127,32 +128,88 @@ export default function Home() {
     <div className="w-full">
       <header className="fixed z-10 w-full top-0 flex items-center text-sm justify-between px-4 sm:px-6 py-3 bg-accent/70 backdrop-blur">
         <div className="flex space-x-2 items-center">
-          <Image src="/logo.svg" alt="Logo" height={40} width={40} />
+          <Image src="/Tol-Logo-White-Bg.png" alt="Logo" height={40} width={40} className="rounded-lg" />
           <h1 className="font-bold text-primary-foreground text-md">
             Tol Barbershop
           </h1>
         </div>
 
-        <nav className="hidden md:flex items-center md:gap-4 lg:gap-8 text-white">
+        <nav className="hidden md:flex items-center md:gap-4 lg:gap-8">
           {navLinks.map((link) => (
             <a
               key={link.name}
               href={link.href}
-              className=" hover:text-primary/90 transition-colors duration-300 relative group"
+              className="text-white hover:text-primary-foreground transition-colors duration-300 relative group"
             >
               {link.name}
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary/90 group-hover:w-full transition-all duration-300"></span>
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary-foreground group-hover:w-full opacity-0 group-hover:opacity-100 transition-all duration-300"></span>
             </a>
           ))}
         </nav>
 
         <Link
           href="/login"
-          className="bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md"
+          className="hidden md:inline-block bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md"
         >
           Login
         </Link>
+
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="md:hidden p-2 text-white"
+          aria-label="Open menu"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
       </header>
+
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="absolute top-0 right-0 h-full w-64 bg-primary flex flex-col p-6 shadow-xl">
+            <div className="flex justify-end mb-6">
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 text-white"
+                aria-label="Close menu"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <nav className="flex flex-col space-y-4 flex-1">
+              {navLinks.map((link) => (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-white hover:text-primary/90 transition-colors text-lg"
+                >
+                  {link.name}
+                </a>
+              ))}
+            </nav>
+            <div className="mt-auto space-y-3">
+              <Link
+                href="/login"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block w-full text-center bg-primary hover:bg-primary/90 text-white py-2.5 px-4 rounded-md border border-white/20"
+              >
+                Login
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block w-full text-center bg-accent hover:bg-accent/90 text-accent-foreground py-2.5 px-4 rounded-md"
+              >
+                Register
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main>
         <section
@@ -169,18 +226,18 @@ export default function Home() {
               />
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-center px-4 sm:px-6">
                 <div>
-                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-1 sm:mb-2 ">
+                  <h1 className="text-5xl sm:text-6xl lg:text-6xl font-extrabold text-white mb-1 sm:mb-2 leading-tight">
                     WHERE STYLE
                   </h1>
-                  <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-accent mb-3 sm:mb-4 ">
+                  <h1 className="text-5xl sm:text-6xl lg:text-6xl font-extrabold text-accent mb-2 sm:mb-2 leading-tight">
                     MEETS PRECISION
                   </h1>
-                  <p className="text-white/80 mb-6 text-sm sm:text-base">
+                <p className="text-white/80 mb-4 text-base sm:text-lg lg:text-lg">
                     Where classic meets modern style
                   </p>
                   <Link
                     href="/login"
-                    className="bg-accent/80 text-accent-foreground px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl inline-block text-sm sm:text-base"
+                    className="bg-accent/80 text-accent-foreground md:px-6 md:text-sm md:py-2 px-7 py-3 rounded-xl inline-block text-base sm:text-lg font-semibold"
                   >
                     Book Appointment
                   </Link>
@@ -410,7 +467,7 @@ export default function Home() {
           {/*Column 1*/}
           <div className="flex flex-col">
             <div className="flex items-center gap-3 mb-5 ">
-              <Image src="/logo.svg" alt="Logo" height={50} width={50} />
+              <Image src="/Tol-Logo-White-Bg.png" alt="Logo" height={50} width={50} className="rounded-lg" />
               <p className="text-xl">Tol Barbershop</p>
             </div>
             <p className="text-sm">

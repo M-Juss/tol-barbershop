@@ -166,8 +166,8 @@ class AppointmentController extends Controller
                     $pushService->send($admin, [
                         'title' => $pushTitle,
                         'body' => $pushBody,
-                        'icon' => '/logo.svg',
-                        'badge' => '/logo.svg',
+                        'icon' => '/Tol-Logo-White-Bg.png',
+                        'badge' => '/Tol-Logo-White-Bg.png',
                         'data' => [
                             'url' => '/'.$admin->role.'/appointment',
                             'appointment_id' => $appointment->id,
@@ -306,8 +306,8 @@ class AppointmentController extends Controller
                 $pushService->send($appointment->user, [
                     'title' => $pushTitle,
                     'body' => $pushBody,
-                    'icon' => '/logo.svg',
-                    'badge' => '/logo.svg',
+                    'icon' => '/Tol-Logo-White-Bg.png',
+                    'badge' => '/Tol-Logo-White-Bg.png',
                     'data' => [
                         'url' => '/customer/notification',
                         'appointment_id' => $appointment->id,
@@ -444,9 +444,8 @@ class AppointmentController extends Controller
             $time24 = substr((string) $appointment->appointment_time, 0, 5);
             $time12 = Carbon::createFromFormat('H:i', $time24)->format('g:i A');
 
-            $slotMap[$time12] = [
+            $slotMap[$time12][] = [
                 'id' => $appointment->id,
-                'time' => $time12,
                 'customer' => $appointment->user?->fullname,
                 'customer_email' => $appointment->user?->email,
                 'customer_contact' => $appointment->user?->contact_number,
@@ -463,19 +462,11 @@ class AppointmentController extends Controller
         $slots = [];
         for ($hour = 9; $hour <= 19; $hour++) {
             $time12 = Carbon::createFromTime($hour, 0)->format('g:i A');
-            $slots[] = $slotMap[$time12] ?? [
-                'id' => null,
+            $appts = $slotMap[$time12] ?? [];
+            $slots[] = [
                 'time' => $time12,
-                'customer' => null,
-                'customer_email' => null,
-                'customer_contact' => null,
-                'service' => null,
-                'barber' => null,
-                'price' => null,
-                'notes' => null,
-                'appointment_date' => null,
-                'appointment_time' => null,
-                'status' => 'available',
+                'appointments' => $appts,
+                'status' => count($appts) > 0 ? 'booked' : 'available',
             ];
         }
 

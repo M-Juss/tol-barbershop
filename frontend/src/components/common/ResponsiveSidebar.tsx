@@ -23,11 +23,16 @@ type NavItem = {
   badgeCount?: number;
 };
 
+type NavSection = {
+  label: string;
+  items: NavItem[];
+};
+
 interface ResponsiveSidebarProps {
-  navItems: NavItem[];
+  sections: NavSection[];
 }
 
-export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
+export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
   const pathname = usePathname();
   const { logout } = useAuth();
   const router = useRouter();
@@ -89,7 +94,7 @@ export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
     };
   }, [isOpen, isMobile]);
 
-  const totalBadgeCount = navItems.reduce((sum, item) => sum + (item.badgeCount ?? 0), 0);
+  const totalBadgeCount = sections.reduce((sum, section) => sum + section.items.reduce((s, item) => s + (item.badgeCount ?? 0), 0), 0);
 
   const handleNavClick = () => {
     if (isMobile) {
@@ -144,7 +149,7 @@ export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
         {/* Logo Section */}
         <div className="flex items-center justify-between p-4 border-b border-slate-600">
           <div className="flex space-x-2 items-center">
-            <Image src="/logo.svg" alt="Logo" height={40} width={40} />
+            <Image src="/Tol-Logo-White-Bg.png" alt="Logo" height={40} width={40} className="rounded-lg" />
             <h1 className="font-bold text-primary-foreground text-xl">
               Tol Barbershop
             </h1>
@@ -160,29 +165,36 @@ export function ResponsiveSidebar({ navItems }: ResponsiveSidebarProps) {
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto overscroll-contain">
-          {navItems.map((item) => (
-            <Link
-              key={item.key}
-              href={item.href}
-              onClick={handleNavClick}
-              className={`
-                w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
-                ${
-                  pathname === item.href
-                    ? "bg-slate-800 text-white"
-                    : "text-gray-300 hover:bg-slate-800 hover:text-white"
-                }
-              `}
-            >
-              <item.icon className="w-5 h-5 shrink-0" />
-              <span className="flex-1">{item.label}</span>
-              {item.badgeCount && item.badgeCount > 0 ? (
-                <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                  {item.badgeCount > 99 ? "99+" : item.badgeCount}
-                </span>
-              ) : null}
-            </Link>
+        <nav className="flex-1 p-4 overflow-y-auto overscroll-contain">
+          {sections.map((section) => (
+            <div key={section.label} className="mb-4 last:mb-0">
+              <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                {section.label}
+              </p>
+              {section.items.map((item) => (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  onClick={handleNavClick}
+                  className={`
+                    w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors
+                    ${
+                      pathname === item.href
+                        ? "bg-slate-800 text-white"
+                        : "text-gray-300 hover:bg-slate-800 hover:text-white"
+                    }
+                  `}
+                >
+                  <item.icon className="w-5 h-5 shrink-0" />
+                  <span className="flex-1">{item.label}</span>
+                  {item.badgeCount && item.badgeCount > 0 ? (
+                    <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      {item.badgeCount > 99 ? "99+" : item.badgeCount}
+                    </span>
+                  ) : null}
+                </Link>
+              ))}
+            </div>
           ))}
         </nav>
 

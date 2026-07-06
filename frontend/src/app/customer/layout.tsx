@@ -47,41 +47,35 @@ export default function CustomerLayout({
 
   useRealtimeEvent('notifications', loadUnreadCount);
 
-  const navItems = useMemo(
+  const sections = useMemo(
     () => [
       {
-        key: "overview",
-        href: "/customer",
-        icon: LayoutDashboard,
         label: "Overview",
+        items: [
+          { key: "overview", href: "/customer", icon: LayoutDashboard, label: "Overview" },
+        ],
       },
       {
-        key: "book-appointment",
-        href: "/customer/appointment",
-        icon: CalendarPlus,
-        label: "Book Appointment",
+        label: "Appointments",
+        items: [
+          { key: "book-appointment", href: "/customer/appointment", icon: CalendarPlus, label: "Book Appointment" },
+          { key: "appointments", href: "/customer/history", icon: Calendar, label: "My Appointment" },
+        ],
       },
       {
-        key: "appointments",
-        href: "/customer/history",
-        icon: Calendar,
-        label: "My Appointment",
+        label: "Account",
+        items: [
+          { key: "notification", href: "/customer/notification", icon: Bell, label: "Notification", badgeCount: unreadCount },
+          { key: "profile", href: "/customer/profile", icon: User, label: "Profile" },
+        ],
       },
-      {
-        key: "notification",
-        href: "/customer/notification",
-        icon: Bell,
-        label: "Notification",
-        badgeCount: unreadCount,
-      },
-      { key: "profile", href: "/customer/profile", icon: User, label: "Profile" },
     ],
     [unreadCount],
   );
 
   return (
     <div className="flex h-dvh overflow-hidden">
-      <ResponsiveSidebar navItems={navItems} />
+      <ResponsiveSidebar sections={sections} />
       <main className="min-h-0 flex-1 overflow-y-auto bg-gray-100 md:pl-0 pt-[calc(4rem+env(safe-area-inset-top))] md:pt-0 pb-[calc(5rem+env(safe-area-inset-bottom))] overscroll-contain">
         {children}
         <SupportFab />

@@ -11,60 +11,40 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getPendingAppointmentCount } from "@/services/manager/admin.api";
 import { getWaitingCount } from "@/services/manager/support.api";
 
-const allNavItems = [
+const navSections = [
   {
-    key: "dashboard",
-    href: "/admin",
-    icon: LayoutDashboard,
-    label: "Dashboard",
+    label: "Overview",
+    items: [
+      { key: "dashboard", href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
+    ],
   },
   {
-    key: "management",
-    href: "/admin/management",
-    icon: Settings,
-    label: "Management",
+    label: "Operations",
+    items: [
+      { key: "appointment", href: "/admin/appointment", icon: Calendar, label: "Appointment" },
+      { key: "walkin", href: "/admin/walkin", icon: UserPlus, label: "Walkin" },
+      { key: "history", href: "/admin/history", icon: History, label: "History" },
+    ],
   },
   {
-    key: "appointment",
-    href: "/admin/appointment",
-    icon: Calendar,
-    label: "Appointment",
+    label: "Analytics",
+    items: [
+      { key: "reports", href: "/admin/reports", icon: BarChart3, label: "Reports" },
+      { key: "feedback", href: "/admin/feedback", icon: MessageSquareText, label: "Feedback" },
+    ],
   },
   {
-    key: "walkin",
-    href: "/admin/walkin",
-    icon: UserPlus,
-    label: "Walkin",
+    label: "Relations",
+    items: [
+      { key: "crm", href: "/admin/customers", icon: Contact, label: "Customers" },
+      { key: "customer-service", href: "/admin/customer-service", icon: Headset, label: "Customer Service" },
+    ],
   },
   {
-    key: "history",
-    href: "/admin/history",
-    icon: History,
-    label: "History",
-  },
-  {
-    key: "reports",
-    href: "/admin/reports",
-    icon: BarChart3,
-    label: "Reports",
-  },
-  {
-    key: "feedback",
-    href: "/admin/feedback",
-    icon: MessageSquareText,
-    label: "Feedback",
-  },
-  {
-    key: "crm",
-    href: "/admin/customers",
-    icon: Contact,
-    label: "Customers",
-  },
-  {
-    key: "customer-service",
-    href: "/admin/customer-service",
-    icon: Headset,
-    label: "Customer Service",
+    label: "Administration",
+    items: [
+      { key: "management", href: "/admin/management", icon: Settings, label: "Management" },
+    ],
   },
 ];
 
@@ -139,18 +119,26 @@ export default function AdminLayout({
 
   useRealtimeEvent('appointments', fetchPendingCount);
 
-  const navItems = (user?.permissions
-    ? allNavItems.filter((item) => item.key === "dashboard" || user.permissions?.includes(item.key))
-    : allNavItems
-  ).map((item) => {
-    if (item.key === "appointment") return { ...item, badgeCount: pendingCount };
-    if (item.key === "customer-service") return { ...item, badgeCount: waitingCount };
-    return item;
-  });
+  const sections = navSections
+    .map((section) => ({
+      ...section,
+      items: user?.permissions
+        ? section.items.filter((item) => item.key === "dashboard" || user.permissions?.includes(item.key))
+        : section.items,
+    }))
+    .filter((section) => section.items.length > 0)
+    .map((section) => ({
+      ...section,
+      items: section.items.map((item) => {
+        if (item.key === "appointment") return { ...item, badgeCount: pendingCount };
+        if (item.key === "customer-service") return { ...item, badgeCount: waitingCount };
+        return item;
+      }),
+    }));
 
   return (
     <div className="flex h-dvh overflow-hidden">
-      <ResponsiveSidebar navItems={navItems} />
+      <ResponsiveSidebar sections={sections} />
       <main className="min-h-0 flex-1 overflow-y-auto bg-gray-100 md:pl-0 pt-[calc(4rem+env(safe-area-inset-top))] md:pt-0 pb-[calc(5rem+env(safe-area-inset-bottom))] overscroll-contain">
         {children}
       </main>

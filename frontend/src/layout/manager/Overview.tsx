@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AppointmentStatusBadge } from "@/components/common/AppointmentStatusBadge";
-import { formatBookingId } from "@/lib/booking";
 import {
   CheckCircle2,
   User,
@@ -18,7 +17,6 @@ import {
   AlertCircle,
   Mail,
   Phone,
-  Tag,
   StickyNote,
   Star,
 } from "lucide-react";
@@ -27,7 +25,8 @@ import {
   getMonthlyRevenue,
   getServiceStats,
   getTimeSlotsForDate,
-  type TimeSlotAppointment,
+  type SlotAppointment,
+  type TimeSlot,
   type OverviewStats,
 } from "@/services/manager/overview.api";
 import { getClosedDates } from "@/services/manager/close.date.api";
@@ -91,141 +90,176 @@ function getStatusColor(status: string): string {
 }
 
 function AppointmentDetailModal({
-  appt,
+  slot,
   open,
   onClose,
 }: {
-  appt: TimeSlotAppointment | null;
+  slot: TimeSlot | null;
   open: boolean;
   onClose: () => void;
 }) {
-  if (!appt) return null;
+  if (!slot) return null;
+  const { appointments } = slot;
+  const isMulti = appointments.length > 1;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Tag className="w-5 h-5 text-blue-500" />
-            {formatBookingId(appt.id)}
+            <Clock className="w-5 h-5 text-blue-500" />
+            {slot.time}
+            {isMulti && (
+              <span className="text-sm font-normal text-gray-400 ml-1">
+                ({appointments.length} appointments)
+              </span>
+            )}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500">Status</span>
-            <AppointmentStatusBadge status={appt.status as any} />
-          </div>
-
-          <div className="border-t border-gray-100" />
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <User className="w-4 h-4 text-gray-400 shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">
-                  {appt.customer || "—"}
-                </p>
-                <p className="text-xs text-gray-500">Customer</p>
+        {appointments.map((appt, i) => (
+          <div key={appt.id}>
+            {i > 0 && <div className="border-t border-gray-100 my-3" />}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-500">
+                  Appointment #{i + 1}
+                </span>
+                <AppointmentStatusBadge status={appt.status as any} />
               </div>
-            </div>
 
-            <div className="flex items-center gap-3">
-              <Mail className="w-4 h-4 text-gray-400 shrink-0" />
-              <div>
-                <p className="text-sm text-gray-900">
-                  {appt.customer_email || "—"}
-                </p>
-                <p className="text-xs text-gray-500">Email</p>
-              </div>
-            </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <User className="w-4 h-4 text-gray-400 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {appt.customer || "—"}
+                    </p>
+                    <p className="text-xs text-gray-500">Customer</p>
+                  </div>
+                </div>
 
-            <div className="flex items-center gap-3">
-              <Phone className="w-4 h-4 text-gray-400 shrink-0" />
-              <div>
-                <p className="text-sm text-gray-900">
-                  {appt.customer_contact || "—"}
-                </p>
-                <p className="text-xs text-gray-500">Contact</p>
-              </div>
-            </div>
-          </div>
+                <div className="flex items-center gap-3">
+                  <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm text-gray-900 truncate">
+                      {appt.customer_email || "—"}
+                    </p>
+                    <p className="text-xs text-gray-500">Email</p>
+                  </div>
+                </div>
 
-          <div className="border-t border-gray-100" />
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-xs text-gray-500">Service</p>
-              <p className="text-sm font-medium text-gray-900">
-                {appt.service || "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Barber</p>
-              <p className="text-sm font-medium text-gray-900">
-                {appt.barber || "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Date</p>
-              <p className="text-sm font-medium text-gray-900">
-                {formatDate(appt.appointment_date)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Time</p>
-              <p className="text-sm font-medium text-gray-900">
-                {formatTime(appt.appointment_time)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Price</p>
-              <p className="text-sm font-medium text-gray-900">
-                {appt.price != null ? `₱${appt.price.toLocaleString()}` : "—"}
-              </p>
-            </div>
-          </div>
-
-          {appt.notes && (
-            <>
-              <div className="border-t border-gray-100" />
-              <div className="flex items-start gap-3">
-                <StickyNote className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs text-gray-500">Notes</p>
-                  <p className="text-sm text-gray-900">{appt.notes}</p>
+                <div className="flex items-center gap-3">
+                  <Phone className="w-4 h-4 text-gray-400 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm text-gray-900 truncate">
+                      {appt.customer_contact || "—"}
+                    </p>
+                    <p className="text-xs text-gray-500">Contact</p>
+                  </div>
                 </div>
               </div>
-            </>
-          )}
-        </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-gray-500">Service</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {appt.service || "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Barber</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {appt.barber || "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Date</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {formatDate(appt.appointment_date)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Time</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {formatTime(appt.appointment_time)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Price</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {appt.price != null ? `₱${appt.price.toLocaleString()}` : "—"}
+                  </p>
+                </div>
+              </div>
+
+              {appt.notes && (
+                <div className="flex items-start gap-3">
+                  <StickyNote className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500">Notes</p>
+                    <p className="text-sm text-gray-900 break-words">
+                      {appt.notes}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
       </DialogContent>
     </Dialog>
   );
 }
 
 function TimeSlotCard({
-  appt,
+  slot,
   onClick,
 }: {
-  appt: TimeSlotAppointment;
+  slot: TimeSlot;
   onClick: () => void;
 }) {
-  const isAvailable = appt.status === "available";
+  const isAvailable = slot.status === "available";
+  const count = slot.appointments.length;
 
   if (isAvailable) {
     return (
-      <div
-        className={`flex items-center gap-3 rounded-xl border p-3 ${getStatusColor(appt.status)}`}
-      >
+      <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3">
         <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-white/50">
           <Clock className="w-4 h-4 text-gray-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-900 text-sm">{appt.time}</p>
+          <p className="font-semibold text-gray-900 text-sm">{slot.time}</p>
           <p className="text-xs text-gray-400">Available</p>
         </div>
       </div>
+    );
+  }
+
+  if (count === 1) {
+    const appt = slot.appointments[0];
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`flex items-center gap-3 rounded-xl border p-3 text-left w-full transition-shadow hover:shadow-md cursor-pointer ${getStatusColor(appt.status)}`}
+      >
+        <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-white/50">
+          <Clock className="w-4 h-4 text-gray-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="sm:hidden">
+            <p className="font-semibold text-gray-900 text-sm">{slot.time}</p>
+            <p className="text-xs text-gray-500 mt-0.5 capitalize">
+              {appt.status.replace("_", " ")}
+            </p>
+          </div>
+          <div className="hidden sm:flex items-center gap-2">
+            <p className="font-semibold text-gray-900 text-sm">{slot.time}</p>
+            <AppointmentStatusBadge status={appt.status as any} />
+          </div>
+        </div>
+      </button>
     );
   }
 
@@ -233,22 +267,16 @@ function TimeSlotCard({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-3 rounded-xl border p-3 text-left w-full transition-shadow hover:shadow-md cursor-pointer ${getStatusColor(appt.status)}`}
+      className="flex items-center gap-3 rounded-xl border border-purple-200 bg-purple-50 p-3 text-left w-full transition-shadow hover:shadow-md cursor-pointer"
     >
-      <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-white/50">
-        <Clock className="w-4 h-4 text-gray-600" />
+      <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-purple-100">
+        <Clock className="w-4 h-4 text-purple-600" />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="sm:hidden">
-          <p className="font-semibold text-gray-900 text-sm">{appt.time}</p>
-          <p className="text-xs text-gray-500 mt-0.5 capitalize">
-            {appt.status.replace("_", " ")}
-          </p>
-        </div>
-        <div className="hidden sm:flex items-center gap-2">
-          <p className="font-semibold text-gray-900 text-sm">{appt.time}</p>
-          <AppointmentStatusBadge status={appt.status as any} />
-        </div>
+        <p className="font-semibold text-gray-900 text-sm">{slot.time}</p>
+        <p className="text-xs text-purple-600 font-medium">
+          {count} Appointments
+        </p>
       </div>
     </button>
   );
@@ -271,12 +299,12 @@ export function Overview() {
   const [serviceStats, setServiceStats] = useState<
     { service_name: string; completed_count: number }[]
   >([]);
-  const [timeSlots, setTimeSlots] = useState<TimeSlotAppointment[]>([]);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [closedDates, setClosedDates] = useState<string[]>([]);
   const [kpi, setKpi] = useState<AnalyticsKPI | null>(null);
   const [loading, setLoading] = useState(true);
-  const [detailAppointment, setDetailAppointment] =
-    useState<TimeSlotAppointment | null>(null);
+  const [detailSlot, setDetailSlot] =
+    useState<TimeSlot | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -425,11 +453,11 @@ export function Overview() {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {timeSlots.map((appt, i) => (
+              {timeSlots.map((slot, i) => (
                 <TimeSlotCard
                   key={i}
-                  appt={appt}
-                  onClick={() => setDetailAppointment(appt)}
+                  slot={slot}
+                  onClick={() => setDetailSlot(slot)}
                 />
               ))}
             </div>
@@ -440,9 +468,9 @@ export function Overview() {
       <div className="h-8" ></div>
 
       <AppointmentDetailModal
-        appt={detailAppointment}
-        open={detailAppointment !== null}
-        onClose={() => setDetailAppointment(null)}
+        slot={detailSlot}
+        open={detailSlot !== null}
+        onClose={() => setDetailSlot(null)}
       />
     </div>
   );

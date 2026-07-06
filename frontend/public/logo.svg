@@ -1,8 +1,3 @@
-<svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="192" height="192" rx="48" fill="#1F3A5F"/>
-  <path d="M60 78C66 66 84 66 96 78C108 66 126 66 132 78C126 84 114 90 96 90C78 90 66 84 60 78Z" fill="#C0392B"/>
-  <circle cx="72" cy="120" r="12" fill="white"/>
-  <circle cx="120" cy="120" r="12" fill="white"/>
-  <path d="M81 111L111 81" stroke="white" stroke-width="6" stroke-linecap="round"/>
-  <path d="M111 111L81 81" stroke="white" stroke-width="6" stroke-linecap="round"/>
+<svg width="192" height="192" viewBox="0 0 1254 1254" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <image href="/Tol-Logo-White-Bg.png" width="1254" height="1254" preserveAspectRatio="xMidYMid meet" />
 </svg>

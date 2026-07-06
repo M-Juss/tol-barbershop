@@ -18,19 +18,24 @@ export interface ServiceStats {
   completed_count: number;
 }
 
-export interface TimeSlotAppointment {
-  id: number | null;
-  time: string;
+export interface SlotAppointment {
+  id: number;
   customer: string | null;
   customer_email: string | null;
   customer_contact: string | null;
   service: string | null;
   barber: string | null;
-  price: number | null;
+  price: number;
   notes: string | null;
-  appointment_date: string | null;
-  appointment_time: string | null;
-  status: "completed" | "approved" | "pending" | "no_show" | "available";
+  appointment_date: string;
+  appointment_time: string;
+  status: "completed" | "approved" | "pending" | "no_show";
+}
+
+export interface TimeSlot {
+  time: string;
+  appointments: SlotAppointment[];
+  status: "available" | "booked";
 }
 
 export interface ExportStats {
@@ -81,7 +86,7 @@ export const getServiceStats = async (): Promise<ServiceStats[]> => {
 
 export const getTimeSlotsForDate = async (
   date: Date,
-): Promise<TimeSlotAppointment[]> => {
+): Promise<TimeSlot[]> => {
   const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   const encodedDate = encodeURIComponent(dateKey);
 

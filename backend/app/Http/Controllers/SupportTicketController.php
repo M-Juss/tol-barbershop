@@ -146,8 +146,8 @@ class SupportTicketController extends Controller
                         '%s has submitted a support request.',
                         $user->fullname
                     ),
-                    'icon' => '/logo.svg',
-                    'badge' => '/logo.svg',
+                    'icon' => '/Tol-Logo-White-Bg.png',
+                    'badge' => '/Tol-Logo-White-Bg.png',
                     'data' => [
                         'url' => '/'.$admin->role.'/customer-service',
                         'ticket_id' => $ticket->id,
@@ -281,8 +281,8 @@ class SupportTicketController extends Controller
             $pushService->send($ticket->customer, [
                 'title' => 'Your Turn!',
                 'body' => 'Your ticket has been accepted. A representative has joined the conversation.',
-                'icon' => '/logo.svg',
-                'badge' => '/logo.svg',
+                'icon' => '/Tol-Logo-White-Bg.png',
+                'badge' => '/Tol-Logo-White-Bg.png',
                 'data' => [
                     'url' => '/customer',
                     'ticket_id' => $ticket->id,
@@ -347,8 +347,8 @@ class SupportTicketController extends Controller
             $pushService->send($ticket->customer, [
                 'title' => 'Ticket Resolved',
                 'body' => 'Your support ticket has been resolved.',
-                'icon' => '/logo.svg',
-                'badge' => '/logo.svg',
+                'icon' => '/Tol-Logo-White-Bg.png',
+                'badge' => '/Tol-Logo-White-Bg.png',
                 'data' => [
                     'url' => '/customer',
                     'ticket_id' => $ticket->id,
