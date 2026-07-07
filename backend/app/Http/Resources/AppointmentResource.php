@@ -17,9 +17,10 @@ class AppointmentResource extends JsonResource
 
             'customer' => [
                 'id' => $this->is_walkin ? null : $this->user?->id,
-                'fullname' => $this->is_walkin
-                    ? ($this->walkin_customer_name ?? $this->user?->fullname)
-                    : $this->user?->fullname,
+                'fullname' => $this->customer_name
+                    ?? ($this->is_walkin
+                        ? ($this->walkin_customer_name ?? $this->user?->fullname)
+                        : $this->user?->fullname),
                 'email' => $this->is_walkin ? null : $this->user?->email,
                 'contact_number' => $this->is_walkin
                     ? ($this->walkin_customer_contact_number ?? $this->user?->contact_number)
@@ -52,6 +53,8 @@ class AppointmentResource extends JsonResource
             'price' => $this->price,
             'status' => $this->status,
             'is_walkin' => (bool) $this->is_walkin,
+            'batch_id' => $this->batch_id,
+            'customer_name' => $this->customer_name,
 
             'notes' => $this->notes,
             'cancellation_reason' => $this->cancellation_reason,

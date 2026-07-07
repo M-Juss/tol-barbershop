@@ -76,6 +76,38 @@ export const cancellationReasonSchema = z.object({
     .optional(),
 });
 
+const batchSlotSchema = z.object({
+  customer_name: z.string().max(255).nullable(),
+  service_id: z.number().int().positive(),
+  appointment_time: z
+    .string()
+    .regex(time24Pattern, "Appointment time must use 24-hour format (HH:mm)."),
+  duration_minutes: z.number().int().min(1).optional(),
+  price: z.number().int("Price must be a whole number").min(0),
+});
+
+export const batchAppointmentSchema = z.object({
+  barber_user_id: z.number().int().positive(),
+  appointment_date: z
+    .string()
+    .min(1)
+    .refine((value) => !Number.isNaN(new Date(value).getTime()), {
+      message: "Appointment date must be a valid date.",
+    })
+    .refine(
+      (value) => {
+        const date = new Date(value);
+        date.setHours(0, 0, 0, 0);
+        return date >= today;
+      },
+      {
+        message: "Appointment date must be today or a future date.",
+      },
+    ),
+  notes: z.string().nullable().optional(),
+  appointments: z.array(batchSlotSchema).min(2).max(11),
+});
+
 export type CreateAppointmentSchemaValues = z.infer<
   typeof createAppointmentSchema
 >;
@@ -85,3 +117,4 @@ export type UpdateAppointmentSchemaValues = z.infer<
 export type CancellationReasonSchemaFormValues = z.infer<
   typeof cancellationReasonSchema
 >;
+export type BatchAppointmentSchemaValues = z.infer<typeof batchAppointmentSchema>;

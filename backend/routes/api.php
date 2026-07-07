@@ -17,6 +17,7 @@ use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SSEController;
 use App\Http\Controllers\SupportTicketController;
 use Illuminate\Support\Facades\Route;
@@ -33,6 +34,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->middleware('throttle:30,1');
     Route::get('/public-services', [ServiceController::class, 'publicIndex'])->middleware('throttle:300,1');
     Route::get('/public-feedback', [AppointmentFeedbackController::class, 'publicIndex'])->middleware('throttle:300,1');
+    Route::get('/public-booking-settings', [SettingsController::class, 'publicBookingSettings'])->middleware('throttle:300,1');
 
     Route::get('/events/stream', [SSEController::class, 'stream'])->middleware('throttle:10,1');
 
@@ -111,6 +113,7 @@ Route::prefix('v1')->group(function () {
             ->middlewareFor('index', ['role:admin,manager,customer', 'throttle:300,1'])
             ->middlewareFor('store', ['role:manager', 'throttle:30,1'])
             ->middlewareFor('update', ['role:manager', 'throttle:30,1']);
+        Route::post('/appointments/batch', [AppointmentController::class, 'storeBatch'])->middleware(['role:admin,manager,customer', 'throttle:30,1']);
         Route::apiResource('/appointments', AppointmentController::class)
             ->middlewareFor('index', ['role:admin,manager,customer', 'throttle:300,1'])
             ->middlewareFor('store', ['role:admin,manager,customer', 'throttle:60,1'])

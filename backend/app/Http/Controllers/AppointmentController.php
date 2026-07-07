@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\AppointmentRequest;
+use App\Http\Requests\BatchAppointmentRequest;
 use App\Http\Resources\AppointmentResource;
 use App\Models\Appointment;
 use App\Models\Notification;
@@ -184,6 +185,149 @@ class AppointmentController extends Controller
         EntityChange::dispatch('appointments');
 
         return new AppointmentResource($appointment);
+    }
+
+    public function storeBatch(BatchAppointmentRequest $request)
+    {
+        $validated = $request->validated();
+        $authUser = $request->user();
+        $canManage = in_array($authUser?->role, ['admin', 'manager'], true);
+
+        if (! $canManage && $authUser?->role !== 'customer') {
+            abort(403, 'Unauthorized.');
+        }
+
+        $slots = $validated['appointments'];
+        $barberUserId = (int) $validated['barber_user_id'];
+        $appointmentDate = $validated['appointment_date'];
+        $batchId = 'BATCH-' . now()->timestamp . '-' . ($authUser->id ?? 'guest');
+
+        $services = Service::whereIn('id', collect($slots)->pluck('service_id'))->get()->keyBy('id');
+
+        foreach ($slots as $slot) {
+            $service = $services->get($slot['service_id']);
+            if (! $service) {
+                return response()->json(['message' => 'Invalid service selected.'], 422);
+            }
+        }
+
+        $existingAppointments = Appointment::where('barber_user_id', $barberUserId)
+            ->where('appointment_date', $appointmentDate)
+            ->whereIn('status', ['pending', 'approved'])
+            ->get()
+            ->keyBy(function ($appt) {
+                return substr((string) $appt->appointment_time, 0, 5);
+            });
+
+        $slotTimes = [];
+        foreach ($slots as $slot) {
+            $time = $slot['appointment_time'];
+
+            if (isset($existingAppointments[$time])) {
+                return response()->json([
+                    'message' => "The time slot {$time} is already booked.",
+                ], 422);
+            }
+
+            if (in_array($time, $slotTimes, true)) {
+                return response()->json([
+                    'message' => "Duplicate time slot {$time} in your booking.",
+                ], 422);
+            }
+
+            $slotTimes[] = $time;
+        }
+
+        $createdAppointments = DB::transaction(function () use ($slots, $barberUserId, $appointmentDate, $batchId, $services, $authUser, $validated) {
+            $appointments = [];
+
+            foreach ($slots as $slot) {
+                $service = $services->get($slot['service_id']);
+
+                $appointment = Appointment::create([
+                    'user_id' => $authUser->id,
+                    'service_id' => $slot['service_id'],
+                    'barber_user_id' => $barberUserId,
+                    'appointment_date' => $appointmentDate,
+                    'appointment_time' => $slot['appointment_time'],
+                    'duration_minutes' => $service->duration,
+                    'price' => $service->price,
+                    'status' => 'pending',
+                    'batch_id' => $batchId,
+                    'customer_name' => $slot['customer_name'] ?? null,
+                    'notes' => $validated['notes'] ?? null,
+                ]);
+
+                $appointments[] = $appointment;
+            }
+
+            return $appointments;
+        });
+
+        if ($authUser->role === 'customer') {
+            $appointmentNames = collect($createdAppointments)->map(function ($appt) {
+                return ($appt->customer_name ?? $appt->user?->fullname) . ' — ' . ($appt->service?->name ?? 'Service');
+            })->implode(', ');
+
+            $adminUsers = User::whereIn('role', ['admin', 'manager'])->get();
+
+            foreach ($adminUsers as $admin) {
+                Notification::create([
+                    'user_id' => $admin->id,
+                    'type' => 'new_pending_appointment',
+                    'title' => 'New Group Booking Request',
+                    'message' => sprintf(
+                        'Group booking from %s (%d appointments): %s.',
+                        $authUser->fullname,
+                        count($createdAppointments),
+                        $appointmentNames
+                    ),
+                    'payload' => [
+                        'batch_id' => $batchId,
+                        'customer_name' => $authUser->fullname,
+                        'customer_email' => $authUser->email,
+                        'barber_name' => $createdAppointments[0]->barber?->fullname,
+                        'appointment_date' => $appointmentDate,
+                        'appointment_count' => count($createdAppointments),
+                    ],
+                    'created_by_user_id' => $authUser->id,
+                ]);
+            }
+
+            try {
+                $pushService = new PushNotificationService;
+                $pushTitle = 'New Group Booking Request';
+                $pushBody = sprintf(
+                    'Group booking from %s (%d appointments).',
+                    $authUser->fullname,
+                    count($createdAppointments)
+                );
+
+                foreach ($adminUsers as $admin) {
+                    $pushService->send($admin, [
+                        'title' => $pushTitle,
+                        'body' => $pushBody,
+                        'icon' => '/Tol-Logo-White-Bg.png',
+                        'badge' => '/Tol-Logo-White-Bg.png',
+                        'data' => [
+                            'url' => '/'.$admin->role.'/appointment',
+                            'batch_id' => $batchId,
+                        ],
+                    ]);
+                }
+            } catch (\Exception $e) {
+                logger()->error('Push notification failed: '.$e->getMessage());
+            }
+
+            EntityChange::dispatch('notifications');
+        }
+
+        EntityChange::dispatch('appointments');
+
+        $createdAppointments[0]->load(['user', 'barber', 'service']);
+        $createdAppointments[0]->loadMissing(['user', 'barber', 'service']);
+
+        return AppointmentResource::collection(collect($createdAppointments));
     }
 
     /**

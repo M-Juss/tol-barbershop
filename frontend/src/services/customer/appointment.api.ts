@@ -1,4 +1,4 @@
-import { authFetch } from "@/lib/api";
+import { authFetch, publicFetch } from "@/lib/api";
 
 export interface Barber {
   id: number;
@@ -54,6 +54,8 @@ export interface Appointment {
   price: number | string;
   status: AppointmentStatus;
   is_walkin: boolean;
+  batch_id: string | null;
+  customer_name: string | null;
   notes: string | null;
   cancellation_reason: string | null;
   approved_at: string | null;
@@ -89,6 +91,28 @@ export interface UpdateAppointmentData {
   status?: AppointmentStatus;
   notes?: string | null;
   cancellation_reason?: string | null;
+}
+
+export interface BatchAppointmentSlot {
+  customer_name: string | null;
+  service_id: number;
+  appointment_time: string;
+  duration_minutes?: number;
+  price: number;
+}
+
+export interface CreateBatchAppointmentData {
+  barber_user_id: number;
+  appointment_date: string;
+  notes?: string | null;
+  appointments: BatchAppointmentSlot[];
+}
+
+export interface BookingSettings {
+  opening_time: string;
+  closing_time: string;
+  slot_interval_minutes: number;
+  max_slots_per_booking: number;
 }
 
 // Fetch active barbers
@@ -133,6 +157,28 @@ export const updateAppointment = async (
       method: "PUT",
       body: JSON.stringify(data),
     },
+  );
+
+  return response.data;
+};
+
+export const createBatchAppointment = async (
+  data: CreateBatchAppointmentData,
+): Promise<Appointment[]> => {
+  const response = await authFetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/appointments/batch`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+  );
+
+  return response.data;
+};
+
+export const getBookingSettings = async (): Promise<BookingSettings> => {
+  const response = await publicFetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/public-booking-settings`,
   );
 
   return response.data;

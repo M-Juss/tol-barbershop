@@ -13,6 +13,7 @@ import {
   X,
   CheckCircle2,
   UserX,
+  Scissors,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { GroupPendingCard } from "@/components/common/GroupPendingCard";
 import { SectionCard } from "@/components/common/SectionCard";
 import {
   getAppointments,
@@ -44,10 +46,15 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 
-type DateGroup = {
+type BarberGroup = {
+  barberName: string;
+  appointments: Appointment[];
+};
+
+type DateBarberGroup = {
   label: string;
   sortKey: string;
-  appointments: Appointment[];
+  barberGroups: BarberGroup[];
 };
 
 function formatDateLabel(date: string): string {
@@ -232,9 +239,7 @@ function AppointmentRow({
           </div>
         </div>
         <p className="text-xs text-gray-500 truncate">
-          Service: {appt.service.name}
-          <span className="mx-2 text-gray-300">•</span>
-          Barber: {appt.barber.fullname}
+          {appt.service.name}
           <span className="mx-2 text-gray-300">•</span>
           ₱{Number(appt.price).toLocaleString()}
         </p>
@@ -323,8 +328,8 @@ function PendingCard({
   );
 }
 
-function toDateGroups(appointments: Appointment[]): DateGroup[] {
-  const grouped = appointments.reduce<Record<string, Appointment[]>>(
+function toDateBarberGroups(appointments: Appointment[]): DateBarberGroup[] {
+  const byDate = appointments.reduce<Record<string, Appointment[]>>(
     (acc, appt) => {
       const key = appt.appointment_date;
       if (!acc[key]) acc[key] = [];
@@ -334,14 +339,29 @@ function toDateGroups(appointments: Appointment[]): DateGroup[] {
     {},
   );
 
-  return Object.entries(grouped)
-    .map(([sortKey, appts]) => ({
-      label: formatDateLabel(sortKey),
-      sortKey,
-      appointments: [...appts].sort((a, b) =>
-        a.appointment_time.localeCompare(b.appointment_time),
-      ),
-    }))
+  return Object.entries(byDate)
+    .map(([sortKey, appts]) => {
+      const byBarber = appts.reduce<Record<string, Appointment[]>>(
+        (acc, appt) => {
+          const key = appt.barber.fullname ?? "Unknown";
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(appt);
+          return acc;
+        },
+        {},
+      );
+
+      const barberGroups: BarberGroup[] = Object.entries(byBarber)
+        .map(([barberName, barberAppts]) => ({
+          barberName,
+          appointments: [...barberAppts].sort((a, b) =>
+            a.appointment_time.localeCompare(b.appointment_time),
+          ),
+        }))
+        .sort((a, b) => a.barberName.localeCompare(b.barberName));
+
+      return { label: formatDateLabel(sortKey), sortKey, barberGroups };
+    })
     .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
 }
 
@@ -363,6 +383,10 @@ export function Appointment() {
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
   const [rescheduleAppointment, setRescheduleAppointment] =
     useState<Appointment | null>(null);
+  const [updatingBatchIds, setUpdatingBatchIds] = useState<string[]>([]);
+  const [batchRejectDialogOpen, setBatchRejectDialogOpen] = useState(false);
+  const [batchRejectTarget, setBatchRejectTarget] = useState<Appointment[] | null>(null);
+  const [batchRejectReason, setBatchRejectReason] = useState("");
 
   const loadAppointments = async () => {
     try {
@@ -391,6 +415,44 @@ export function Appointment() {
     [appointments],
   );
 
+  const pendingGroups = useMemo(() => {
+    const grouped = new Map<string, Appointment[]>();
+    const individuals: Appointment[] = [];
+
+    for (const appt of pending) {
+      if (appt.batch_id) {
+        const existing = grouped.get(appt.batch_id);
+        if (existing) {
+          existing.push(appt);
+        } else {
+          grouped.set(appt.batch_id, [appt]);
+        }
+      } else {
+        individuals.push(appt);
+      }
+    }
+
+    const groups = Array.from(grouped.values())
+      .filter((g) => g.length > 1)
+      .sort((a, b) => {
+        const aTime = a.reduce(
+          (earliest, s) => (s.appointment_time < earliest ? s.appointment_time : earliest),
+          a[0]?.appointment_time ?? "",
+        );
+        const bTime = b.reduce(
+          (earliest, s) => (s.appointment_time < earliest ? s.appointment_time : earliest),
+          b[0]?.appointment_time ?? "",
+        );
+        return aTime.localeCompare(bTime);
+      });
+
+    individuals.sort((a, b) =>
+      a.appointment_time.localeCompare(b.appointment_time),
+    );
+
+    return { groups, individuals };
+  }, [pending]);
+
   const approvedAppointments = useMemo(
     () => appointments.filter((a) => a.status === "approved"),
     [appointments],
@@ -409,7 +471,7 @@ export function Appointment() {
   );
 
   const pastDueGroups = useMemo(
-    () => toDateGroups(pastDueApproved),
+    () => toDateBarberGroups(pastDueApproved),
     [pastDueApproved],
   );
 
@@ -418,7 +480,7 @@ export function Appointment() {
   const paginatedApprovedGroups = useMemo(() => {
     const start = (approvedPage - 1) * approvedPageSize;
     const paginated = upcomingApproved.slice(start, start + approvedPageSize);
-    return toDateGroups(paginated);
+    return toDateBarberGroups(paginated);
   }, [upcomingApproved, approvedPage]);
 
   const runUpdate = async (
@@ -481,6 +543,108 @@ export function Appointment() {
       return false;
     } finally {
       setUpdatingIds((prev) => prev.filter((id) => id !== appt.id));
+    }
+  };
+
+  const handleBatchApprove = async (appts: Appointment[]) => {
+    const batchId = appts[0]?.batch_id;
+    if (!batchId) return;
+
+    try {
+      setUpdatingBatchIds((prev) => [...prev, batchId]);
+
+      const results = await Promise.allSettled(
+        appts.map((appt) => {
+          const payload = {
+            user_id: appt.customer.id!,
+            service_id: appt.service.id!,
+            barber_user_id: appt.barber.id!,
+            appointment_date: appt.appointment_date,
+            appointment_time: normalizeToHHmm(appt.appointment_time),
+            duration_minutes: appt.duration_minutes,
+            price: Number(appt.price),
+            notes: appt.notes,
+            status: "approved" as const,
+          };
+          return updateAppointment(appt.id, payload);
+        }),
+      );
+
+      const succeeded = results.filter((r) => r.status === "fulfilled").length;
+      const failed = results.filter((r) => r.status === "rejected").length;
+
+      if (succeeded > 0) {
+        toast.success(`${succeeded} appointment${succeeded > 1 ? "s" : ""} approved`);
+      }
+      if (failed > 0) {
+        toast.error(`${failed} appointment${failed > 1 ? "s" : ""} failed to approve`);
+      }
+
+      await loadAppointments();
+      window.dispatchEvent(new CustomEvent("appointments:updated"));
+    } catch (error) {
+      console.error("Failed to batch approve:", error);
+      toast.error("Failed to approve group");
+    } finally {
+      setUpdatingBatchIds((prev) => prev.filter((id) => id !== batchId));
+    }
+  };
+
+  const handleBatchRejectClick = (appts: Appointment[]) => {
+    setBatchRejectTarget(appts);
+    setBatchRejectReason("");
+    setBatchRejectDialogOpen(true);
+  };
+
+  const handleBatchRejectSubmit = async () => {
+    const appts = batchRejectTarget;
+    if (!appts || appts.length === 0) return;
+
+    const batchId = appts[0]?.batch_id;
+
+    try {
+      setUpdatingBatchIds((prev) => [...prev, batchId ?? ""]);
+
+      const reason = batchRejectReason.trim() || null;
+
+      const results = await Promise.allSettled(
+        appts.map((appt) => {
+          const payload = {
+            user_id: appt.customer.id!,
+            service_id: appt.service.id!,
+            barber_user_id: appt.barber.id!,
+            appointment_date: appt.appointment_date,
+            appointment_time: normalizeToHHmm(appt.appointment_time),
+            duration_minutes: appt.duration_minutes,
+            price: Number(appt.price),
+            notes: appt.notes,
+            cancellation_reason: reason,
+            status: "rejected" as const,
+          };
+          return updateAppointment(appt.id, payload);
+        }),
+      );
+
+      const succeeded = results.filter((r) => r.status === "fulfilled").length;
+      const failed = results.filter((r) => r.status === "rejected").length;
+
+      if (succeeded > 0) {
+        toast.success(`${succeeded} appointment${succeeded > 1 ? "s" : ""} rejected`);
+      }
+      if (failed > 0) {
+        toast.error(`${failed} appointment${failed > 1 ? "s" : ""} failed to reject`);
+      }
+
+      setBatchRejectDialogOpen(false);
+      setBatchRejectTarget(null);
+      setBatchRejectReason("");
+      await loadAppointments();
+      window.dispatchEvent(new CustomEvent("appointments:updated"));
+    } catch (error) {
+      console.error("Failed to batch reject:", error);
+      toast.error("Failed to reject group");
+    } finally {
+      setUpdatingBatchIds((prev) => prev.filter((id) => id !== batchId));
     }
   };
 
@@ -589,7 +753,24 @@ export function Appointment() {
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {pending.map((req) => (
+              {pendingGroups.groups.map((group) => {
+                const batchId = group[0]?.batch_id ?? "";
+                const isUpdating = updatingBatchIds.includes(batchId);
+                return (
+                  <div
+                    key={batchId}
+                    className={isUpdating ? "opacity-60" : ""}
+                  >
+                    <GroupPendingCard
+                      appointments={group}
+                      onApproveAll={handleBatchApprove}
+                      onRejectAll={handleBatchRejectClick}
+                      disabled={isUpdating}
+                    />
+                  </div>
+                );
+              })}
+              {pendingGroups.individuals.map((req) => (
                 <div
                   key={req.id}
                   className={updatingIds.includes(req.id) ? "opacity-60" : ""}
@@ -641,27 +822,40 @@ export function Appointment() {
                               {group.label}
                             </span>
                             <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                              {group.appointments.length} appointment
-                              {group.appointments.length !== 1 ? "s" : ""}
+                              {group.barberGroups.reduce((sum, bg) => sum + bg.appointments.length, 0)} appointment
+                              {group.barberGroups.reduce((sum, bg) => sum + bg.appointments.length, 0) !== 1 ? "s" : ""}
                             </span>
                           </div>
-                          <div className="flex flex-col gap-2">
-                            {group.appointments.map((appt) => (
-                              <div
-                                key={appt.id}
-                                className={
-                                  updatingIds.includes(appt.id) ? "opacity-60" : ""
-                                }
-                              >
-                                <AppointmentRow
-                                  appt={appt}
-                                  onStatusChange={(item, status) => {
-                                    setConfirmActionTarget({ appt: item, status });
-                                    setConfirmActionOpen(true);
-                                  }}
-                                  onCancel={handleCancelClick}
-                                  onReschedule={handleRescheduleClick}
-                                />
+                          <div className="flex flex-col gap-4">
+                            {group.barberGroups.map((bg) => (
+                              <div key={bg.barberName}>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Scissors className="w-3.5 h-3.5 text-gray-400" />
+                                  <span className="font-semibold text-gray-800 text-sm">{bg.barberName}</span>
+                                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
+                                    {bg.appointments.length}
+                                  </span>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                  {bg.appointments.map((appt) => (
+                                    <div
+                                      key={appt.id}
+                                      className={
+                                        updatingIds.includes(appt.id) ? "opacity-60" : ""
+                                      }
+                                    >
+                                      <AppointmentRow
+                                        appt={appt}
+                                        onStatusChange={(item, status) => {
+                                          setConfirmActionTarget({ appt: item, status });
+                                          setConfirmActionOpen(true);
+                                        }}
+                                        onCancel={handleCancelClick}
+                                        onReschedule={handleRescheduleClick}
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -759,26 +953,39 @@ export function Appointment() {
                                 {group.label}
                               </span>
                               <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-red-50 text-red-600">
-                                {group.appointments.length} appointment
-                                {group.appointments.length !== 1 ? "s" : ""}
+                                {group.barberGroups.reduce((sum, bg) => sum + bg.appointments.length, 0)} appointment
+                                {group.barberGroups.reduce((sum, bg) => sum + bg.appointments.length, 0) !== 1 ? "s" : ""}
                               </span>
                             </div>
-                            <div className="flex flex-col gap-2">
-                              {group.appointments.map((appt) => (
-                                <AppointmentRow
-                                  key={appt.id}
-                                  appt={appt}
-                                  onStatusChange={(item, status) => {
-                                    setConfirmActionTarget({ appt: item, status });
-                                    setConfirmActionOpen(true);
-                                  }}
-                                  onCancel={handleCancelClick}
-                                  onReschedule={handleRescheduleClick}
-                                  className={
-                                    (updatingIds.includes(appt.id) ? "opacity-60" : "") +
-                                    " !border-red-300 !bg-red-50"
-                                  }
-                                />
+                            <div className="flex flex-col gap-4">
+                              {group.barberGroups.map((bg) => (
+                                <div key={bg.barberName}>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Scissors className="w-3.5 h-3.5 text-gray-400" />
+                                    <span className="font-semibold text-gray-800 text-sm">{bg.barberName}</span>
+                                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-600">
+                                      {bg.appointments.length}
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-col gap-2">
+                                    {bg.appointments.map((appt) => (
+                                      <AppointmentRow
+                                        key={appt.id}
+                                        appt={appt}
+                                        onStatusChange={(item, status) => {
+                                          setConfirmActionTarget({ appt: item, status });
+                                          setConfirmActionOpen(true);
+                                        }}
+                                        onCancel={handleCancelClick}
+                                        onReschedule={handleRescheduleClick}
+                                        className={
+                                          (updatingIds.includes(appt.id) ? "opacity-60" : "") +
+                                          " !border-red-300 !bg-red-50"
+                                        }
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
                               ))}
                             </div>
                           </div>
@@ -860,6 +1067,69 @@ export function Appointment() {
               {confirmActionTarget?.status === "completed"
                 ? "Complete"
                 : "Mark No-show"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={batchRejectDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBatchRejectDialogOpen(false);
+            setBatchRejectTarget(null);
+            setBatchRejectReason("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject Group Booking</DialogTitle>
+            <DialogDescription>
+              Reject {batchRejectTarget?.length ?? 0} appointments from{" "}
+              {batchRejectTarget?.[0]?.customer.fullname ?? "this customer"}.
+            </DialogDescription>
+          </DialogHeader>
+          {batchRejectTarget && (
+            <div className="rounded-lg border border-gray-200 p-4 space-y-2 text-sm">
+              <p className="font-medium text-gray-700">Appointments to reject:</p>
+              {batchRejectTarget.map((appt) => (
+                <div key={appt.id} className="flex items-center justify-between text-gray-600">
+                  <span>{appt.customer_name ?? appt.customer.fullname}</span>
+                  <span>{appt.service.name} at {formatTime(appt.appointment_time)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="space-y-2">
+            <label htmlFor="batch-reject-reason" className="text-sm font-medium text-gray-700">
+              Reason (optional)
+            </label>
+            <textarea
+              id="batch-reject-reason"
+              rows={3}
+              value={batchRejectReason}
+              onChange={(e) => setBatchRejectReason(e.target.value)}
+              placeholder="Reason for rejection..."
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100"
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBatchRejectDialogOpen(false);
+                setBatchRejectTarget(null);
+                setBatchRejectReason("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-red-500 hover:bg-red-600"
+              onClick={handleBatchRejectSubmit}
+            >
+              Reject All
             </Button>
           </DialogFooter>
         </DialogContent>

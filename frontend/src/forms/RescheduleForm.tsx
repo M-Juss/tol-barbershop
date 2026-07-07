@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { CalendarDays, Clock, User, Scissors } from "lucide-react";
 import { useForm, type SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,9 +21,11 @@ import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
 import {
   getActiveBarbers,
   getAppointments,
+  getBookingSettings,
   type Appointment,
 } from "@/services/customer/appointment.api";
 import { sanitizeText } from "@/lib/sanitizer";
+import { generateTimeOptions } from "@/lib/time-slots";
 import { toast } from "sonner";
 
 const rescheduleSchema = z.object({
@@ -52,20 +54,6 @@ interface RescheduleFormProps {
   onSubmit: (data: RescheduleSubmitData) => Promise<void>;
   appointment: Appointment;
 }
-
-const timeOptions = [
-  { value: "9:00 AM", label: "9:00 AM" },
-  { value: "10:00 AM", label: "10:00 AM" },
-  { value: "11:00 AM", label: "11:00 AM" },
-  { value: "12:00 PM", label: "12:00 PM" },
-  { value: "1:00 PM", label: "1:00 PM" },
-  { value: "2:00 PM", label: "2:00 PM" },
-  { value: "3:00 PM", label: "3:00 PM" },
-  { value: "4:00 PM", label: "4:00 PM" },
-  { value: "5:00 PM", label: "5:00 PM" },
-  { value: "6:00 PM", label: "6:00 PM" },
-  { value: "7:00 PM", label: "7:00 PM" },
-];
 
 function convert12HourTo24Hour(value: string): string {
   const match = value.match(/^(\d{1,2}):([0-5]\d)\s(AM|PM)$/i);
@@ -146,6 +134,7 @@ export function RescheduleForm({
   const [loadingData, setLoadingData] = useState(false);
   const [unavailableTimes, setUnavailableTimes] = useState<string[]>([]);
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  const [timeSlots, setTimeSlots] = useState<{ value: string; label: string }[]>([]);
 
   const initialTime12 = convert24HourTo12Hour(appointment.appointment_time);
 
@@ -172,24 +161,34 @@ export function RescheduleForm({
 
   useEffect(() => {
     if (!open) return;
-    const fetchBarbers = async () => {
+    const fetchData = async () => {
       try {
         setLoadingData(true);
-        const data = await getActiveBarbers();
-        const normalized = data
+        const [barbersData, settings] = await Promise.all([
+          getActiveBarbers(),
+          getBookingSettings(),
+        ]);
+        const normalized = barbersData
           .filter((b) => b.is_active)
           .map((b) => ({
             value: b.id.toString(),
             label: b.fullname,
           }));
         setBarbers(normalized);
+        setTimeSlots(
+          generateTimeOptions(
+            settings.opening_time,
+            settings.closing_time,
+            settings.slot_interval_minutes,
+          ),
+        );
       } catch {
-        toast.error("Failed to load barbers");
+        toast.error("Failed to load booking data");
       } finally {
         setLoadingData(false);
       }
     };
-    fetchBarbers();
+    fetchData();
   }, [open]);
 
   useEffect(() => {
@@ -388,7 +387,7 @@ export function RescheduleForm({
               id="time"
               label="New Time"
               placeholder="Select time"
-              options={timeOptions.map((time) => ({
+              options={timeSlots.map((time) => ({
                 ...time,
                 disabled:
                   unavailableTimes.includes(time.value) ||

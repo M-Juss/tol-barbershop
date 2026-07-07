@@ -63,6 +63,7 @@ type Row = {
     comment: string | null;
     submitted_at: string | null;
   } | null;
+  customer_name: string | null;
 };
 
 function formatDate(date: string): string {
@@ -105,7 +106,9 @@ export function MyAppointment() {
         )
         .map((appt: Appointment) => ({
           id: appt.id,
-          service: appt.service.name ?? "Unknown service",
+          service: appt.customer_name
+            ? `${appt.service.name ?? "Unknown service"} (${appt.customer_name})`
+            : (appt.service.name ?? "Unknown service"),
           barber: appt.barber.fullname ?? "Unknown barber",
           barber_id: appt.barber.id,
           date: formatDate(appt.appointment_date),
@@ -121,6 +124,7 @@ export function MyAppointment() {
                 submitted_at: appt.feedback.submitted_at,
               }
             : null,
+          customer_name: appt.customer_name ?? null,
         }))
         .sort(
           (a, b) =>
@@ -153,7 +157,8 @@ export function MyAppointment() {
         !keyword ||
         row.service.toLowerCase().includes(keyword) ||
         row.barber.toLowerCase().includes(keyword) ||
-        String(row.id).includes(keyword);
+        String(row.id).includes(keyword) ||
+        (row.customer_name ?? "").toLowerCase().includes(keyword);
 
       return matchesStatus && matchesSearch;
     });

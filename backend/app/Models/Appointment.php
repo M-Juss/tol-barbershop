@@ -26,6 +26,8 @@ class Appointment extends Model
         'completed_at',
         'cancelled_at',
         'rejected_at',
+        'batch_id',
+        'customer_name',
     ];
 
     protected $casts = [
