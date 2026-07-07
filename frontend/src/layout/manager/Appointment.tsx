@@ -31,6 +31,7 @@ import {
 } from "@/services/customer/appointment.api";
 import { updateAppointmentSchema } from "@/validations/appointment.validation";
 import { CancellationForm } from "@/forms/CancellationForm";
+import { RescheduleForm, type RescheduleSubmitData } from "@/forms/RescheduleForm";
 import { type CancellationReasonSchemaFormValues } from "@/validations/appointment.validation";
 import { toast } from "sonner";
 import {
@@ -98,10 +99,12 @@ const todayDate = new Date().toISOString().split("T")[0];
 function ActionMenu({
   onSelect,
   onCancel,
+  onReschedule,
   disabled,
 }: {
   onSelect: (action: "completed" | "no_show") => void;
   onCancel?: () => void;
+  onReschedule?: () => void;
   disabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -168,6 +171,17 @@ function ActionMenu({
           >
             <UserX className="w-4 h-4 text-red-400" /> No-show
           </button>
+          {onReschedule && (
+            <button
+              onClick={() => {
+                onReschedule();
+                setOpen(false);
+              }}
+              className="flex items-center gap-2 w-full px-3 py-2 hover:bg-gray-50 text-gray-700"
+            >
+              <CalendarDays className="w-4 h-4 text-blue-500" /> Re-schedule
+            </button>
+          )}
           {onCancel && (
             <button
               onClick={() => {
@@ -189,14 +203,17 @@ function AppointmentRow({
   appt,
   onStatusChange,
   onCancel,
+  onReschedule,
   className = "",
 }: {
   appt: Appointment;
   onStatusChange: (appt: Appointment, status: "completed" | "no_show") => void;
   onCancel?: (appt: Appointment) => void;
+  onReschedule?: (appt: Appointment) => void;
   className?: string;
 }) {
   const actionDisabled = appt.appointment_date.split("T")[0] > todayDate;
+  const canReschedule = appt.appointment_date.split("T")[0] >= todayDate;
   return (
     <div className={`flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 ${className}`}>
       <div className="flex flex-col gap-1 min-w-0 flex-1">
@@ -225,6 +242,7 @@ function AppointmentRow({
       <ActionMenu
         onSelect={(status) => onStatusChange(appt, status)}
         onCancel={() => onCancel?.(appt)}
+        onReschedule={canReschedule ? () => onReschedule?.(appt) : undefined}
         disabled={actionDisabled}
       />
     </div>
@@ -342,6 +360,9 @@ export function Appointment() {
     appt: Appointment;
     status: "completed" | "no_show";
   } | null>(null);
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [rescheduleAppointment, setRescheduleAppointment] =
+    useState<Appointment | null>(null);
 
   const loadAppointments = async () => {
     try {
@@ -495,6 +516,50 @@ export function Appointment() {
     }
   };
 
+  const handleRescheduleClick = (appt: Appointment) => {
+    setRescheduleAppointment(appt);
+    setRescheduleDialogOpen(true);
+  };
+
+  const handleRescheduleSubmit = async (data: RescheduleSubmitData) => {
+    if (!rescheduleAppointment) return;
+
+    try {
+      setUpdatingIds((prev) => [...prev, rescheduleAppointment.id]);
+
+      const payload = {
+        user_id: rescheduleAppointment.customer.id!,
+        service_id: rescheduleAppointment.service.id!,
+        barber_user_id: data.barber_user_id,
+        appointment_date: data.appointment_date,
+        appointment_time: data.appointment_time,
+        duration_minutes: rescheduleAppointment.duration_minutes,
+        price: Number(rescheduleAppointment.price),
+        notes: data.reason,
+        status: "approved" as const,
+      };
+
+      const validation = updateAppointmentSchema.safeParse(payload);
+      if (!validation.success) {
+        toast.error("Invalid reschedule data");
+        return;
+      }
+
+      await updateAppointment(rescheduleAppointment.id, validation.data);
+      toast.success("Appointment rescheduled successfully");
+
+      setRescheduleDialogOpen(false);
+      setRescheduleAppointment(null);
+      await loadAppointments();
+      window.dispatchEvent(new CustomEvent("appointments:updated"));
+    } catch (error) {
+      console.error("Failed to reschedule appointment:", error);
+      toast.error("Failed to reschedule appointment");
+    } finally {
+      setUpdatingIds((prev) => prev.filter((id) => id !== rescheduleAppointment.id));
+    }
+  };
+
   return (
     <div className="w-full bg-slate-100 p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
       <div className="mb-6">
@@ -595,6 +660,7 @@ export function Appointment() {
                                     setConfirmActionOpen(true);
                                   }}
                                   onCancel={handleCancelClick}
+                                  onReschedule={handleRescheduleClick}
                                 />
                               </div>
                             ))}
@@ -707,6 +773,7 @@ export function Appointment() {
                                     setConfirmActionOpen(true);
                                   }}
                                   onCancel={handleCancelClick}
+                                  onReschedule={handleRescheduleClick}
                                   className={
                                     (updatingIds.includes(appt.id) ? "opacity-60" : "") +
                                     " !border-red-300 !bg-red-50"
@@ -808,6 +875,18 @@ export function Appointment() {
           onSubmit={handleCancellationSubmit}
           appointment={selectedAppointment}
           mode={selectedAppointment.status === "pending" ? "reject" : "cancel"}
+        />
+      )}
+
+      {rescheduleAppointment && (
+        <RescheduleForm
+          open={rescheduleDialogOpen}
+          onClose={() => {
+            setRescheduleDialogOpen(false);
+            setRescheduleAppointment(null);
+          }}
+          onSubmit={handleRescheduleSubmit}
+          appointment={rescheduleAppointment}
         />
       )}
 

@@ -5,7 +5,7 @@ import { Bell, Calendar, CalendarPlus, LayoutDashboard, User } from "lucide-reac
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { SupportFab } from "@/components/common/SupportFab";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
-import { getNotifications } from "@/services/re.schedule.api";
+import { getNotifications } from "@/services/notification.api";
 
 export default function CustomerLayout({
   children,

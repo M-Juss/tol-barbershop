@@ -9,7 +9,7 @@ import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
   type NotificationItem,
-} from "@/services/re.schedule.api";
+} from "@/services/notification.api";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -367,19 +367,12 @@ export function Notification() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Status</p>
-                      <p className="text-sm text-gray-900">
-                        {selectedNotification.is_read ? "Read" : "Unread"}
-                      </p>
-                    </div>
-                    <div className="col-span-2">
                       <p className="text-xs text-gray-500">Received</p>
                       <p className="text-sm text-gray-900">
                         {formatDateTime(selectedNotification.created_at)}
                       </p>
                     </div>
                   </div>
-
 
                 </div>
               )}

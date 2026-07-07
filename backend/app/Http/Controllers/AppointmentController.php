@@ -220,6 +220,9 @@ class AppointmentController extends Controller
 
         $appointment = Appointment::findOrFail($id);
         $originalStatus = $appointment->status;
+        $originalBarberId = $appointment->barber_user_id;
+        $originalDate = $appointment->appointment_date;
+        $originalTime = $appointment->appointment_time;
         $validated = $request->validated();
         $nextStatus = $validated['status'] ?? null;
         $service = Service::findOrFail($validated['service_id']);
@@ -243,7 +246,32 @@ class AppointmentController extends Controller
             $validated['rejected_at'] = Carbon::now();
         }
 
+        $isRescheduling = (
+            $nextStatus === 'approved' || $nextStatus === null
+        ) && (
+            (string) $validated['barber_user_id'] !== (string) $originalBarberId ||
+            $validated['appointment_date'] !== $originalDate ||
+            $validated['appointment_time'] !== $originalTime
+        );
+
+        if ($isRescheduling) {
+            $hasConflict = Appointment::where('id', '!=', $id)
+                ->where('barber_user_id', $validated['barber_user_id'])
+                ->where('appointment_date', $validated['appointment_date'])
+                ->where('appointment_time', $validated['appointment_time'])
+                ->whereIn('status', ['pending', 'approved'])
+                ->exists();
+
+            if ($hasConflict) {
+                return response()->json([
+                    'message' => 'Selected barber already has an appointment at this time.',
+                ], 422);
+            }
+        }
+
         $appointment->update($validated);
+
+        $detailsChanged = $isRescheduling;
 
         if ($nextStatus && $nextStatus !== $originalStatus) {
             $appointment->loadMissing(['service:id,name', 'barber:id,fullname']);
@@ -306,6 +334,52 @@ class AppointmentController extends Controller
                 $pushService->send($appointment->user, [
                     'title' => $pushTitle,
                     'body' => $pushBody,
+                    'icon' => '/Tol-Logo-White-Bg.png',
+                    'badge' => '/Tol-Logo-White-Bg.png',
+                    'data' => [
+                        'url' => '/customer/notification',
+                        'appointment_id' => $appointment->id,
+                    ],
+                ]);
+            } catch (\Exception $e) {
+                logger()->error('Push notification failed: '.$e->getMessage());
+            }
+        } elseif ($detailsChanged) {
+            $appointment->loadMissing(['service:id,name', 'barber:id,fullname']);
+
+            Notification::create([
+                'user_id' => $appointment->user_id,
+                'type' => 'appointment_rescheduled',
+                'title' => 'Appointment Rescheduled',
+                'message' => sprintf(
+                    'Your %s appointment has been rescheduled to %s at %s with %s.',
+                    $appointment->service?->name ?? 'barbershop service',
+                    Carbon::parse($appointment->appointment_date)->format('F j, Y'),
+                    Carbon::parse($appointment->appointment_time)->format('g:i A'),
+                    $appointment->barber?->fullname ?? 'the barber'
+                ),
+                'payload' => [
+                    'appointment_id' => $appointment->id,
+                    'service_name' => $appointment->service?->name,
+                    'barber_name' => $appointment->barber?->fullname,
+                    'appointment_date' => $appointment->appointment_date,
+                    'appointment_time' => $appointment->appointment_time,
+                    'price' => $appointment->price,
+                ],
+                'created_by_user_id' => $request->user()?->id,
+            ]);
+
+            try {
+                $pushService = new PushNotificationService;
+                $pushService->send($appointment->user, [
+                    'title' => 'Appointment Rescheduled',
+                    'body' => sprintf(
+                        'Your %s appointment has been rescheduled to %s at %s with %s.',
+                        $appointment->service?->name ?? 'barbershop service',
+                        Carbon::parse($appointment->appointment_date)->format('F j, Y'),
+                        Carbon::parse($appointment->appointment_time)->format('g:i A'),
+                        $appointment->barber?->fullname ?? 'the barber'
+                    ),
                     'icon' => '/Tol-Logo-White-Bg.png',
                     'badge' => '/Tol-Logo-White-Bg.png',
                     'data' => [
