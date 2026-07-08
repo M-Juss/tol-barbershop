@@ -6,7 +6,7 @@ import {
   registerSchema,
   RegisterSchemaFormValues,
 } from "@/validations/auth.validation";
-import { registerCustomerRequest } from "@/services/auth.api";
+import { registerCustomerRequest } from "@/services/shared/auth.api";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useRateLimit } from "@/hooks/useRateLimit";
@@ -36,12 +36,7 @@ export function RegisterForm() {
     console.log("Register form submitted");
     console.log("Rate limit status:", rateLimit);
 
-    // Temporarily disable rate limiting for debugging
-    // if (!rateLimit.attempt()) {
-    //   console.log("Rate limit blocked the request");
-    //   return;
-    // }
-
+    
     try {
       const sanitizedData = {
         ...data,

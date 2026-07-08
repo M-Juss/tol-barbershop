@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 
-interface ResolveTicketDialogProps {
+type ResolveTicketDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onResolve: (data: { resolution_notes?: string | null }) => void;

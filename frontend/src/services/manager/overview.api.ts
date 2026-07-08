@@ -1,4 +1,5 @@
 import { authFetch } from "@/lib/api";
+import type { AppointmentStatus } from "@/services/customer/appointment.api";
 
 export interface OverviewStats {
   completed_appointments: number;
@@ -29,7 +30,7 @@ export interface SlotAppointment {
   notes: string | null;
   appointment_date: string;
   appointment_time: string;
-  status: "completed" | "approved" | "pending" | "no_show";
+  status: AppointmentStatus;
 }
 
 export interface TimeSlot {

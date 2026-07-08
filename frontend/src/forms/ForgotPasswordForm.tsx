@@ -1,7 +1,7 @@
 "use client";
 
 import { InputWithLabel } from "@/components/common/InputWithLabel";
-import { forgotPasswordRequest } from "@/services/auth.api";
+import { forgotPasswordRequest } from "@/services/shared/auth.api";
 import {
   ForgotPasswordSchemaFormValues,
   forgotPasswordSchema,

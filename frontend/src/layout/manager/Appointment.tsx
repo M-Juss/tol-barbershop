@@ -45,6 +45,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { cn } from "@/lib/utils";
 
 type BarberGroup = {
   barberName: string;
@@ -150,11 +151,7 @@ function ActionMenu({
                 ? "Can only mark as completed on or after the appointment date"
                 : undefined
             }
-            className={`flex items-center gap-2 w-full px-3 py-2 text-left ${
-              disabled
-                ? "text-gray-400 cursor-not-allowed"
-                : "hover:bg-gray-50 text-gray-700"
-            }`}
+            className={cn("flex items-center gap-2 w-full px-3 py-2 text-left", disabled ? "text-gray-400 cursor-not-allowed" : "hover:bg-gray-50 text-gray-700")}
           >
             <CheckCircle2 className="w-4 h-4 text-green-500" /> Completed
           </button>
@@ -170,11 +167,7 @@ function ActionMenu({
                 ? "Can only mark as no-show on or after the appointment date"
                 : undefined
             }
-            className={`flex items-center gap-2 w-full px-3 py-2 text-left ${
-              disabled
-                ? "text-gray-400 cursor-not-allowed"
-                : "hover:bg-gray-50 text-gray-700"
-            }`}
+            className={cn("flex items-center gap-2 w-full px-3 py-2 text-left", disabled ? "text-gray-400 cursor-not-allowed" : "hover:bg-gray-50 text-gray-700")}
           >
             <UserX className="w-4 h-4 text-red-400" /> No-show
           </button>
@@ -222,7 +215,7 @@ function AppointmentRow({
   const actionDisabled = appt.appointment_date.split("T")[0] > todayDate;
   const canReschedule = appt.appointment_date.split("T")[0] >= todayDate;
   return (
-    <div className={`flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 ${className}`}>
+    <div className={cn("flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3", className)}>
       <div className="flex flex-col gap-1 min-w-0 flex-1">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 shrink-0">

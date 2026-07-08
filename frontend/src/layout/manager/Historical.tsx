@@ -179,7 +179,6 @@ export function Historical() {
       </SectionCard>
 
       <div className="space-y-3">
-        {/* Mobile card view */}
         <div className="block md:hidden space-y-3">
           {loading ? (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center text-gray-400 text-sm">
@@ -223,7 +222,6 @@ export function Historical() {
           )}
         </div>
 
-        {/* Desktop table view */}
         <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
           <Table>
             <TableHeader className="bg-gray-50">

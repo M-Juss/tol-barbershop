@@ -1,4 +1,5 @@
 "use client";
+import { cn } from "@/lib/utils";
 import { Mail, MapPin, Phone, Scissors, Star, Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,7 +10,7 @@ import {
   getLandingServices,
   type LandingFeedback,
   type LandingService,
-} from "@/services/landing.api";
+} from "@/services/shared/landing.api";
 import { RedirectIfAuthenticated } from "@/components/common/RedirectIfAuthenticated";
 
 const navLinks = [
@@ -119,7 +120,6 @@ function HomeContent() {
           return;
         }
       } catch {
-        // ignore, fall through to fallback
       }
 
       try {
@@ -389,9 +389,10 @@ function HomeContent() {
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
-                className={`px-6 py-2 border border-white/10  rounded-full transition-all duration-300 transform hover:scale-105 ${
-                  activeCategory === category ? "bg-accent" : ""
-                }`}
+                className={cn(
+                  "px-6 py-2 border border-white/10 rounded-full transition-all duration-300 transform hover:scale-105",
+                  activeCategory === category ? "bg-accent" : "",
+                )}
               >
                 {category}
               </button>
@@ -442,11 +443,12 @@ function HomeContent() {
                     <Star
                       key={i}
                       size={50}
-                      className={`w-7 h-7 ${
+                      className={cn(
+                        "w-7 h-7",
                         i < currentTestimonial.rating
                           ? "text-accent fill-accent"
-                          : "text-gray-400"
-                      }`}
+                          : "text-gray-400",
+                      )}
                     />
                   ))}
                 </div>
@@ -474,11 +476,12 @@ function HomeContent() {
                       <button
                         key={item.id}
                         onClick={() => goToSlide(index)}
-                        className={`w-3 h-3 transition-all duration-300 rounded-full ${
+                        className={cn(
+                          "w-3 h-3 transition-all duration-300 rounded-full",
                           safeCurrentIndex === index
-                            ? "w-10 bg-accent "
-                            : "bg-white"
-                        }`}
+                            ? "w-10 bg-accent"
+                            : "bg-white",
+                        )}
                         aria-label={`Show feedback ${index + 1}`}
                       ></button>
                     ))}
@@ -521,7 +524,6 @@ function HomeContent() {
         className="flex flex-col border-y border-white/10 bg-primary text-white "
       >
         <div className="grid md:grid-cols-3 grid-cols-1 px-6 sm:px-8 lg:px-10 xl:px-32 py-12 gap-8 sm:gap-12">
-          {/*Column 1*/}
           <div className="flex flex-col">
             <div className="flex items-center gap-3 mb-5 ">
               <Image
@@ -539,7 +541,6 @@ function HomeContent() {
             </p>
           </div>
 
-          {/*Column 2*/}
           <div className="flex flex-col space-y-5 ">
             <p className="text-xl mb-5">Contact Us</p>
             <div className="flex items-center space-x-3">
@@ -560,7 +561,6 @@ function HomeContent() {
             </div>
           </div>
 
-          {/*Column 3*/}
           <div className="flex flex-col">
             <p className="text-xl mb-5">Opening Hours</p>
 

@@ -28,7 +28,7 @@ type NavSection = {
   items: NavItem[];
 };
 
-interface ResponsiveSidebarProps {
+type ResponsiveSidebarProps = {
   sections: NavSection[];
 }
 
@@ -40,7 +40,6 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
-  // Detect mobile screen size
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
@@ -52,7 +51,6 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Close sidebar when clicking outside on mobile
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -81,7 +79,6 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
     }
   }, [isOpen, isMobile]);
 
-  // Prevent body scroll when sidebar is open on mobile
   useEffect(() => {
     if (isOpen && isMobile) {
       document.body.style.overflow = "hidden";
@@ -111,7 +108,6 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
 
   return (
     <>
-      {/* Hamburger Menu Button - Mobile Only */}
       <button
         id="hamburger-button"
         onClick={() => setIsOpen(true)}
@@ -126,7 +122,6 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
         )}
       </button>
 
-      {/* Mobile Backdrop */}
       {isOpen && isMobile && (
         <div
           id="sidebar-backdrop"
@@ -135,7 +130,6 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         id="mobile-sidebar"
         className={`
@@ -146,7 +140,6 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
           flex flex-col
         `}
       >
-        {/* Logo Section */}
         <div className="flex items-center justify-between p-4 border-b border-slate-600">
           <div className="flex space-x-2 items-center">
             <Image src="/Tol-Logo-White-Bg.png" alt="Logo" height={40} width={40} className="rounded-lg" />
@@ -154,7 +147,6 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
               Tol Barbershop
             </h1>
           </div>
-          {/* Close Button - Mobile Only */}
           <button
             onClick={() => setIsOpen(false)}
             className="md:hidden p-2 rounded-lg hover:bg-slate-800 text-primary-foreground transition-colors"
@@ -164,7 +156,6 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
           </button>
         </div>
 
-        {/* Navigation Items */}
         <nav className="flex-1 p-4 overflow-y-auto overscroll-contain">
           {sections.map((section) => (
             <div key={section.label} className="mb-4 last:mb-0">
@@ -200,7 +191,6 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
           ))}
         </nav>
 
-        {/* Logout Section */}
         <div className="p-3 border-t border-slate-600">
           <button
             type="button"

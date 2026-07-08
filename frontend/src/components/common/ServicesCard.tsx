@@ -1,6 +1,7 @@
+import { cn } from "@/lib/utils";
 import { Clock, Pencil, Trash2 } from "lucide-react";
 
-interface ServiceCardProps {
+type ServiceCardProps = {
   id: number;
   name: string;
   description: string;
@@ -30,14 +31,9 @@ export function ServicesCard({
 }: ServiceCardProps) {
   return (
     <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col justify-between relative">
-      {/* Status Tag */}
       <div className="absolute top-3 right-3">
         <span
-          className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-            is_active === false
-              ? "bg-gray-100 text-gray-500"
-              : "bg-green-100 text-green-600"
-          }`}
+          className={cn("text-xs font-medium px-2.5 py-1 rounded-full", is_active === false ? "bg-gray-100 text-gray-500" : "bg-green-100 text-green-600")}
         >
           {is_active === false ? "Inactive" : "Active"}
         </span>

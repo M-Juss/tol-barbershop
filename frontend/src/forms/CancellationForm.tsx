@@ -24,7 +24,7 @@ import { type Appointment } from "@/services/customer/appointment.api";
 import { sanitizeText } from "@/lib/sanitizer";
 import { toast } from "sonner";
 
-interface CancellationFormProps {
+type CancellationFormProps = {
   open: boolean;
   onClose: () => void;
   onSubmit?: (data: CancellationReasonSchemaFormValues) => void | Promise<void>;
@@ -104,7 +104,6 @@ export function CancellationForm({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Booking Information */}
         <div className="bg-gray-50 rounded-lg p-4 space-y-3 mb-4">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-semibold text-gray-500">Booking ID:</span>

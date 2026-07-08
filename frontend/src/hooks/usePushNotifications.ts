@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import {
   subscribePush,
   unsubscribeAllPush,
-} from "@/services/push.api";
+} from "@/services/shared/push.api";
 
 function isIOSNoPWA(): boolean {
   if (typeof window === "undefined") return false;

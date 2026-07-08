@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { ManagerRevenueChart } from "@/components/common/ManagerRevenueChart";
 import { ManagerServiceChart } from "@/components/common/ManagerServiceChart";
@@ -25,7 +26,6 @@ import {
   getMonthlyRevenue,
   getServiceStats,
   getTimeSlotsForDate,
-  type SlotAppointment,
   type TimeSlot,
   type OverviewStats,
 } from "@/services/manager/overview.api";
@@ -125,7 +125,7 @@ function AppointmentDetailModal({
                 <span className="text-sm font-medium text-gray-500">
                   Appointment #{i + 1}
                 </span>
-                <AppointmentStatusBadge status={appt.status as any} />
+                <AppointmentStatusBadge status={appt.status} />
               </div>
 
               <div className="space-y-2">
@@ -242,7 +242,7 @@ function TimeSlotCard({
       <button
         type="button"
         onClick={onClick}
-        className={`flex items-center gap-3 rounded-xl border p-3 text-left w-full transition-shadow hover:shadow-md cursor-pointer ${getStatusColor(appt.status)}`}
+        className={cn("flex items-center gap-3 rounded-xl border p-3 text-left w-full transition-shadow hover:shadow-md cursor-pointer", getStatusColor(appt.status))}
       >
         <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-white/50">
           <Clock className="w-4 h-4 text-gray-600" />
@@ -256,7 +256,7 @@ function TimeSlotCard({
           </div>
           <div className="hidden sm:flex items-center gap-2">
             <p className="font-semibold text-gray-900 text-sm">{slot.time}</p>
-            <AppointmentStatusBadge status={appt.status as any} />
+            <AppointmentStatusBadge status={appt.status} />
           </div>
         </div>
       </button>

@@ -5,7 +5,7 @@ import { Bell, Calendar, CalendarPlus, LayoutDashboard, User } from "lucide-reac
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { SupportFab } from "@/components/common/SupportFab";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
-import { getNotifications } from "@/services/notification.api";
+import { getNotifications } from "@/services/shared/notification.api";
 
 export default function CustomerLayout({
   children,
@@ -25,7 +25,9 @@ export default function CustomerLayout({
   }, []);
 
   useEffect(() => {
-    loadUnreadCount();
+    queueMicrotask(() => {
+      loadUnreadCount();
+    });
 
     const timer = setInterval(loadUnreadCount, 30000);
 

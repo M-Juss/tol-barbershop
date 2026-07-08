@@ -51,7 +51,9 @@ export function useActionCooldown(key: string, options: Options = {}) {
   }, [storageKey]);
 
   useEffect(() => {
-    setRemainingSeconds(readRemaining());
+    queueMicrotask(() => {
+      setRemainingSeconds(readRemaining());
+    });
 
     const timer = window.setInterval(() => {
       setRemainingSeconds(readRemaining());

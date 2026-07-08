@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import {
   Plus,
@@ -116,7 +118,6 @@ export function Barber() {
 
   return (
     <div className="w-full h-full p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
-      {/* Header */}
       <div className="flex justify-end mb-4">
         <button
           onClick={openAddModal}
@@ -128,7 +129,6 @@ export function Barber() {
         </button>
       </div>
 
-      {/* Barbers Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <p className="text-gray-500">Loading barbers...</p>
@@ -140,26 +140,28 @@ export function Barber() {
               key={barber.id}
               className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col items-center relative"
             >
-              {/* Status Tag */}
               <div className="absolute top-3 right-3">
                 <span
-                  className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                  className={cn(
+                    "text-xs font-medium px-2.5 py-1 rounded-full",
                     !isActiveValue(barber.is_active)
                       ? "bg-gray-100 text-gray-500"
-                      : "bg-green-100 text-green-600"
-                  }`}
+                      : "bg-green-100 text-green-600",
+                  )}
                 >
                   {!isActiveValue(barber.is_active) ? "Inactive" : "Active"}
                 </span>
               </div>
 
-              {/* Avatar */}
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden mb-3 sm:mb-4 bg-gray-200 shrink-0">
+              <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden mb-3 sm:mb-4 bg-gray-200 shrink-0">
                 {barber.image ? (
-                  <img
+                  <Image
                     src={getImageUrl(barber.image)}
                     alt={barber.fullname}
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="96px"
+                    className="object-cover"
+                    unoptimized
                     onError={(e) => {
                       e.currentTarget.src = "";
                       e.currentTarget.style.backgroundColor = "#f3f4f6";
@@ -172,12 +174,10 @@ export function Barber() {
                 )}
               </div>
 
-              {/* Name */}
               <p className="font-bold text-gray-900 text-base sm:text-lg mb-3 text-center">
                 {barber.fullname}
               </p>
 
-              {/* Details */}
               <div className="w-full space-y-2 mb-4">
                 <div className="flex items-center gap-2 text-gray-500 text-sm">
                   <Mail className="w-4 h-4 shrink-0" strokeWidth={1.8} />
@@ -189,7 +189,6 @@ export function Barber() {
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="w-full border-t border-gray-100 pt-3 flex items-center gap-2">
                 <button
                   onClick={() => openEditModal(barber)}
@@ -228,7 +227,6 @@ export function Barber() {
         title={editingBarber ? "Edit Barber" : "Add New Barber"}
       />
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <DialogContent>
           <DialogHeader>

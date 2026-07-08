@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
   Calendar,
@@ -92,7 +93,7 @@ function StatusBadge({ status }: { status: string }) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${c.className}`}
+      className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", c.className)}
     >
       {c.label}
     </span>
@@ -121,7 +122,7 @@ function InlineBar({
       </span>
       <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-500 ${color}`}
+          className={cn("h-full rounded-full transition-all duration-500", color)}
           style={{ width: `${width}%`, minWidth: percentage > 0 ? "16px" : "0" }}
         />
       </div>
@@ -135,7 +136,7 @@ function InlineBar({
   );
 }
 
-interface CustomerDetailProps {
+type CustomerDetailProps = {
   id: string;
 }
 
@@ -204,7 +205,6 @@ export function CustomerDetail({ id }: CustomerDetailProps) {
 
   return (
     <div className="w-full h-full bg-slate-100 p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
-      {/* Back button */}
       <button
         onClick={() => router.push("/manager/customers")}
         className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-4 transition"
@@ -213,7 +213,6 @@ export function CustomerDetail({ id }: CustomerDetailProps) {
         Back to Customers
       </button>
 
-      {/* Profile header */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-6 mb-4">
         <div className="flex items-start gap-4">
           <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-lg font-bold text-blue-700 shrink-0">
@@ -225,11 +224,7 @@ export function CustomerDetail({ id }: CustomerDetailProps) {
                 {customer.fullname}
               </h1>
               <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                  customer.is_active
-                    ? "bg-green-100 text-green-700"
-                    : "bg-gray-100 text-gray-500"
-                }`}
+              className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", customer.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500")}
               >
                 {customer.is_active ? "Active" : "Inactive"}
               </span>
@@ -252,7 +247,6 @@ export function CustomerDetail({ id }: CustomerDetailProps) {
         </div>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <StatCard
           label="Total Visits"
@@ -288,7 +282,6 @@ export function CustomerDetail({ id }: CustomerDetailProps) {
         />
       </div>
 
-      {/* Appointment Breakdown */}
       <SectionCard title="Appointment Breakdown" className="mb-4">
         <div className="grid grid-cols-3 gap-4 mt-2">
           <div className="text-center p-3 bg-green-50 rounded-xl">
@@ -324,7 +317,6 @@ export function CustomerDetail({ id }: CustomerDetailProps) {
         )}
       </SectionCard>
 
-      {/* Service & Barber Preferences */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <SectionCard title="Service Preferences">
           {customer.service_preferences.length > 0 ? (
@@ -365,11 +357,9 @@ export function CustomerDetail({ id }: CustomerDetailProps) {
         </SectionCard>
       </div>
 
-      {/* Recent Appointments */}
       <SectionCard title="Last 3 Recent Appointments">
         {customer.recent_appointments.length > 0 ? (
           <>
-            {/* Desktop table view */}
             <div className="hidden md:block mt-3 overflow-x-auto">
               <Table>
                 <TableHeader className="bg-gray-50">
@@ -409,7 +399,6 @@ export function CustomerDetail({ id }: CustomerDetailProps) {
               </Table>
             </div>
 
-            {/* Mobile card view */}
             <div className="block md:hidden space-y-3 mt-3">
               {customer.recent_appointments.map((appt) => (
                 <div

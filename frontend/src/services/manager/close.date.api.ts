@@ -36,11 +36,10 @@ export const getClosedDates = async (
     `${process.env.NEXT_PUBLIC_API_URL}/closed-dates?page=${page}&per_page=${perPage}`,
   );
 
-  // The backend now returns: { success: true, message: "...", data: { data: [...], current_page: 1, last_page: 1, ... } }
   const paginatedData = response.data;
 
   return {
-    data: paginatedData?.data || [], // The actual items array
+    data: paginatedData?.data || [],
     current_page: paginatedData?.current_page || 1,
     last_page: paginatedData?.last_page || 1,
     per_page: paginatedData?.per_page || perPage,

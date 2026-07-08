@@ -1,7 +1,7 @@
 "use client";
 
 import { InputWithLabel } from "@/components/common/InputWithLabel";
-import { resetPasswordRequest } from "@/services/auth.api";
+import { resetPasswordRequest } from "@/services/shared/auth.api";
 import {
   resetPasswordSchema,
   ResetPasswordSchemaFormValues,

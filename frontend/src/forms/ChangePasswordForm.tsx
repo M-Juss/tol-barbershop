@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
-interface ChangePasswordFormProps {
+type ChangePasswordFormProps = {
   open: boolean;
   onClose: () => void;
   onSubmit?: (payload: ChangePasswordSchemaFormValues) => Promise<void> | void;

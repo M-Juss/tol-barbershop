@@ -161,7 +161,7 @@ export function SupportHistory() {
                       <SupportChatBubble
                         key={msg.id}
                         message={msg.message}
-                        isCustomer={msg.sender.role === "customer"}
+                        isOwn={msg.sender.role === "customer"}
                         senderName={msg.sender.fullname}
                         createdAt={msg.created_at}
                       />

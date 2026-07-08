@@ -1,5 +1,30 @@
 import { publicFetch, authFetch } from "@/lib/api";
 
+export type AuthUser = {
+  id: number;
+  fullname: string;
+  email: string;
+  contact_number: string;
+  role: string;
+  image?: string | null;
+  created_at?: string;
+  permissions?: string[] | null;
+};
+
+export type LoginResponse = {
+  success: boolean;
+  message?: string;
+  data: {
+    user: AuthUser;
+  };
+};
+
+type CurrentUserResponse = {
+  success: boolean;
+  message?: string;
+  data: AuthUser;
+};
+
 export const registerCustomerRequest = async (data: {
   fullname: string;
   contact_number: string;
@@ -16,7 +41,7 @@ export const registerCustomerRequest = async (data: {
 export const loginRequest = async (data: {
   email: string;
   password: string;
-}) => {
+}): Promise<LoginResponse> => {
   return publicFetch(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
     method: "POST",
     body: JSON.stringify(data),
@@ -29,7 +54,7 @@ export const logoutRequest = async () => {
   });
 };
 
-export const getCurrentUserRequest = async () => {
+export const getCurrentUserRequest = async (): Promise<CurrentUserResponse> => {
   return authFetch(`${process.env.NEXT_PUBLIC_API_URL}/user`);
 };
 

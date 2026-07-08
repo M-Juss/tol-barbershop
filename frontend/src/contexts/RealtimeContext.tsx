@@ -161,7 +161,10 @@ export function useRealtime() {
 export function useRealtimeEvent(entityType: string, callback: EventCallback) {
   const { subscribe } = useRealtime();
   const callbackRef = useRef(callback);
-  callbackRef.current = callback;
+
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
 
   useEffect(() => {
     const unsub = subscribe(entityType, () => {

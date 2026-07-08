@@ -2,7 +2,7 @@
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/SelectWithLabel";
 import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
-import { useForm, type SubmitErrorHandler } from "react-hook-form";
+import { useForm, useWatch, type SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   serviceSchema,
@@ -21,13 +21,13 @@ import { Button } from "@/components/ui/button";
 import { sanitizeString, sanitizeText } from "@/lib/sanitizer";
 import { toast } from "sonner";
 
-interface ServiceFormProps {
+type ServiceFormProps = {
   open: boolean;
   onClose: () => void;
   onSubmit?: (data: ServiceSchemaFormValues) => void;
   initialData?: ServiceSchemaFormValues;
   title?: string;
-}
+};
 
 const statusOptions = [
   { value: "true", label: "Active" },
@@ -47,7 +47,7 @@ export function ServiceForm({
     formState: { errors, isSubmitting },
     reset,
     setValue,
-    watch,
+    control,
   } = useForm<ServiceSchemaFormValues>({
     resolver: zodResolver(serviceSchema),
     defaultValues: {
@@ -58,6 +58,7 @@ export function ServiceForm({
       is_active: true,
     },
   });
+  const isActive = useWatch({ control, name: "is_active" });
 
   useEffect(() => {
     if (initialData) {
@@ -105,7 +106,6 @@ export function ServiceForm({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onFormSubmit, onFormInvalid)} className="space-y-5">
-          {/* Service Name */}
           <div className="relative ">
             <InputWithLabel
               id="name"
@@ -119,7 +119,6 @@ export function ServiceForm({
             )}
           </div>
 
-          {/* Description */}
           <div className="relative ">
             <TextAreaWithLabel
               id="description"
@@ -136,7 +135,6 @@ export function ServiceForm({
             )}
           </div>
 
-          {/* Duration & Price */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="relative ">
               <InputWithLabel
@@ -166,17 +164,15 @@ export function ServiceForm({
             </div>
           </div>
 
-          {/* Status */}
           <SelectWithLabel
             id="is_active"
             label="Status"
             placeholder="Select status"
             options={statusOptions}
-            value={watch("is_active") ? "true" : "false"}
+            value={isActive ? "true" : "false"}
             onValueChange={(value) => setValue("is_active", value === "true")}
           />
 
-          {/* Actions */}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel

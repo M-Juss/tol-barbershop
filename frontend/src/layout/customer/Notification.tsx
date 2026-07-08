@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 import { CalendarDays, CheckCheck, Clock, Scissors, User } from "lucide-react";
 import { formatBookingId, formatTicketId } from "@/lib/booking";
 import { toast } from "sonner";
@@ -9,7 +10,7 @@ import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
   type NotificationItem,
-} from "@/services/notification.api";
+} from "@/services/shared/notification.api";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -202,11 +203,10 @@ export function Notification() {
               return (
                 <div
                   key={item.id}
-                  className={`rounded-xl border transition-shadow hover:shadow-sm ${
-                    isUnread
-                      ? "bg-amber-50 border-amber-200"
-                      : "bg-white border-gray-200"
-                  }`}
+                  className={cn(
+                    "rounded-xl border transition-shadow hover:shadow-sm",
+                    isUnread ? "bg-amber-50 border-amber-200" : "bg-white border-gray-200",
+                  )}
                 >
                   <div className="px-4 py-3">
                     <div className="flex items-stretch justify-between gap-3">
@@ -215,7 +215,7 @@ export function Notification() {
                         onClick={() => handleNotificationClick(item)}
                         className="text-left flex-1"
                       >
-                        <p className={`text-sm font-semibold ${isUnread ? "text-gray-900" : "text-gray-700"}`}>
+                        <p className={cn("text-sm font-semibold", isUnread ? "text-gray-900" : "text-gray-700")}>
                           {item.title}
                         </p>
                         <p className="text-sm text-gray-600 mt-1 line-clamp-2">{item.message}</p>

@@ -3,7 +3,8 @@ import { Toaster } from "@/components/ui/sonner"
 import { Poppins } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RealtimeProvider } from "@/contexts/RealtimeContext";
-import { PushNotificationProvider } from "@/components/common/PushNotificationProvider";
+import { PushNotificationProvider } from "@/contexts/PushNotificationProvider";
+import { cn } from "@/lib/utils";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -42,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${poppins.variable} h-full antialiased`}>
+    <html lang="en" className={cn(poppins.variable, "h-full", "antialiased")}>
       <body className="min-h-dvh flex flex-col bg-background font-sans">
         <AuthProvider>
           <RealtimeProvider>

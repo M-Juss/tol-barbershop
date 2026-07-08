@@ -61,6 +61,11 @@ export interface Appointment {
   barber_name_snapshot: string | null;
   notes: string | null;
   cancellation_reason: string | null;
+  feedback?: {
+    rating: number;
+    comment: string | null;
+    submitted_at: string | null;
+  } | null;
   approved_at: string | null;
   completed_at: string | null;
   cancelled_at: string | null;
@@ -118,13 +123,11 @@ export interface BookingSettings {
   max_slots_per_booking: number;
 }
 
-// Fetch active barbers
 export const getActiveBarbers = async (): Promise<Barber[]> => {
   const response = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/barber`);
   return response.data?.data ?? response.data;
 };
 
-// Fetch active services
 export const getActiveServices = async (): Promise<Service[]> => {
   const response = await authFetch(
     `${process.env.NEXT_PUBLIC_API_URL}/services`,

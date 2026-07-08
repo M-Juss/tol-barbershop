@@ -1,6 +1,12 @@
 import { Activity } from "lucide-react";
 
-export function ActivityLog({ action, details, time }: any) {
+type ActivityLogProps = {
+  action: string;
+  details: string;
+  time: string;
+};
+
+export function ActivityLog({ action, details, time }: ActivityLogProps) {
   return (
     <div className="flex items-start gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
       <div className="p-2 bg-white rounded-lg border border-gray-200">

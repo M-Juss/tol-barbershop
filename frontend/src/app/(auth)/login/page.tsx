@@ -21,7 +21,7 @@ export default function LoginPage() {
 
           <LoginForm />
           <p>
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <a href="/register" className="text-accent hover:underline">
               Register
             </a>

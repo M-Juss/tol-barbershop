@@ -35,6 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import {
   Users,
   UserPlus,
@@ -76,11 +77,7 @@ function StarRating({ rating }: { rating: number | null }) {
 function StatusBadge({ active }: { active: boolean }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-        active
-          ? "bg-green-100 text-green-700"
-          : "bg-gray-100 text-gray-500"
-      }`}
+      className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500")}
     >
       {active ? "Active" : "Inactive"}
     </span>
@@ -152,7 +149,7 @@ export function CustomerDirectory() {
       <div className="flex items-center gap-1">
         {children}
         {sort === field && (
-          <ArrowUpDown className={`h-3 w-3 ${dir === "desc" ? "rotate-180" : ""}`} />
+          <ArrowUpDown className={cn("h-3 w-3", dir === "desc" ? "rotate-180" : "")} />
         )}
       </div>
     </TableHead>
@@ -169,7 +166,6 @@ export function CustomerDirectory() {
         </p>
       </div>
 
-      {/* KPI Stat Cards */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <StatCard
@@ -231,7 +227,6 @@ export function CustomerDirectory() {
       </SectionCard>
 
       <div className="space-y-3">
-        {/* Mobile card view */}
         <div className="block md:hidden space-y-3">
           {loading ? (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center text-gray-400 text-sm">
@@ -292,7 +287,6 @@ export function CustomerDirectory() {
           )}
         </div>
 
-        {/* Desktop table view */}
         <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
           <Table>
             <TableHeader className="bg-gray-50">

@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { useRateLimit } from "@/hooks/useRateLimit";
 import { sanitizeText } from "@/lib/sanitizer";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 import { generateTimeOptions } from "@/lib/time-slots";
 
 type BarberWithFallbackId = Barber & {
@@ -408,22 +409,14 @@ export function NewAppointmentForm() {
           <button
             type="button"
             onClick={() => setMode("single")}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${
-              mode === "single"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
+            className={cn("px-4 py-1.5 rounded-md text-sm font-medium transition", mode === "single" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}
           >
             Single
           </button>
           <button
             type="button"
             onClick={() => setMode("group")}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${
-              mode === "group"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
+            className={cn("px-4 py-1.5 rounded-md text-sm font-medium transition", mode === "group" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}
           >
             Group
           </button>
@@ -558,11 +551,7 @@ export function NewAppointmentForm() {
                       }}
                       disabled={index === 0}
                       placeholder="Full name"
-                      className={`w-full rounded-lg border px-3 py-2 text-sm ${
-                        index === 0
-                          ? "border-gray-200 bg-gray-100 text-gray-500"
-                          : "border-gray-200 bg-white text-gray-900"
-                      } placeholder:text-gray-400 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100`}
+                      className={cn("w-full rounded-lg border px-3 py-2 text-sm", index === 0 ? "border-gray-200 bg-gray-100 text-gray-500" : "border-gray-200 bg-white text-gray-900", "placeholder:text-gray-400 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100")}
                     />
                   </div>
                   <SelectWithLabel

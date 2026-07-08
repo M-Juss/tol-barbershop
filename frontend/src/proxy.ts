@@ -20,9 +20,6 @@ export function proxy(request: NextRequest) {
   const role = request.cookies.get("auth_role")?.value;
   const allowedBasePath = role ? roleBasePath[role] : undefined;
 
-  // Landing page and auth pages — always accessible.
-  // Client-side AuthContext handles session validation and redirects.
-  // This avoids redirect loops caused by stale auth_role cookies.
   if (pathname === "/") {
     return NextResponse.next();
   }
@@ -37,7 +34,6 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Protected routes — redirect to landing if no auth_role cookie
   const requestedBasePath = getRequestedBasePath(pathname);
 
   if (!requestedBasePath) {

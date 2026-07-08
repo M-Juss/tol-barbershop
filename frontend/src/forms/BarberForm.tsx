@@ -1,7 +1,8 @@
 "use client";
+import Image from "next/image";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/SelectWithLabel";
-import { SubmitErrorHandler, useForm } from "react-hook-form";
+import { SubmitErrorHandler, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   barberSchema,
@@ -26,13 +27,13 @@ import {
 } from "@/lib/sanitizer";
 import { getImageUrl } from "@/lib/image";
 
-interface BarberFormProps {
+type BarberFormProps = {
   open: boolean;
   onClose: () => void;
   onSubmit?: (data: BarberSchemaFormValues & { image?: File }) => void;
   initialData?: BarberSchemaFormValues;
   title?: string;
-}
+};
 
 const statusOptions = [
   { value: "true", label: "Active" },
@@ -52,7 +53,7 @@ export function BarberForm({
     formState: { errors, isSubmitting },
     reset,
     setValue,
-    watch,
+    control,
   } = useForm<BarberSchemaFormValues>({
     resolver: zodResolver(barberSchema),
     defaultValues: {
@@ -66,11 +67,16 @@ export function BarberForm({
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
+  const isActive = useWatch({ control, name: "is_active" });
 
   useEffect(() => {
-    const newImagePreview = getImageUrl(initialData?.image);
-    setImagePreview(newImagePreview);
-    setImageFile(null);
+    const newImagePreview = typeof initialData?.image === "string"
+      ? getImageUrl(initialData.image)
+      : "";
+    queueMicrotask(() => {
+      setImagePreview(newImagePreview);
+      setImageFile(null);
+    });
 
     if (initialData) {
       reset({
@@ -92,7 +98,7 @@ export function BarberForm({
   }, [initialData, open, reset]);
 
   const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif"];
-  const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3MB
+  const MAX_IMAGE_SIZE = 3 * 1024 * 1024;
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -154,14 +160,16 @@ export function BarberForm({
           onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
           className="space-y-4"
         >
-          {/* Profile Image */}
           <div className="flex flex-col items-center gap-4">
-            <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 border-2 border-gray-300">
+            <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-200 border-2 border-gray-300">
               {imagePreview ? (
-                <img
+                <Image
                   src={imagePreview}
                   alt="Profile preview"
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="96px"
+                  className="object-cover"
+                  unoptimized
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -186,7 +194,6 @@ export function BarberForm({
             </div>
           </div>
 
-          {/* Full Name */}
           <div className="relative ">
             <InputWithLabel
               id="fullname"
@@ -200,7 +207,6 @@ export function BarberForm({
             )}
           </div>
 
-          {/* Email */}
           <div className="relative ">
             <InputWithLabel
               id="email"
@@ -215,7 +221,6 @@ export function BarberForm({
             )}
           </div>
 
-          {/* Contact Number */}
           <div className="relative ">
             <InputWithLabel
               id="contact_number"
@@ -237,17 +242,15 @@ export function BarberForm({
             )}
           </div>
 
-          {/* Status */}
           <SelectWithLabel
             id="is_active"
             label="Status"
             placeholder="Select status"
             options={statusOptions}
-            value={watch("is_active") ? "true" : "false"}
+            value={isActive ? "true" : "false"}
             onValueChange={(value) => setValue("is_active", value === "true")}
           />
 
-          {/* Actions */}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel

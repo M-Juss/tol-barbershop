@@ -24,7 +24,6 @@ export function Profile() {
 
   return (
     <div className="w-full h-full bg-slate-100 p-4 sm:p-6 pb-24 font-sans">
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
         <p className="text-gray-500 mt-1">
@@ -34,14 +33,12 @@ export function Profile() {
 
       <AccountInformationForm />
 
-      {/* Account Control */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
         <h2 className="text-base font-bold text-gray-900">Account Control</h2>
         <p className="text-gray-500 text-sm mt-0.5 mb-6">
           Manage your account settings and security
         </p>
 
-        {/* Email Notifications */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-5 border-b border-gray-100">
           <div>
             <p className="text-sm font-bold text-gray-900">
@@ -51,7 +48,6 @@ export function Profile() {
               Receive email confirmations when booking an appointment
             </p>
           </div>
-          {/* Toggle — ON state */}
           <div className="relative inline-flex items-center cursor-pointer">
             <div className="w-12 h-6 bg-gray-900 rounded-full flex items-center px-0.5">
               <div className="w-5 h-5 bg-white rounded-full shadow ml-auto" />
@@ -59,7 +55,6 @@ export function Profile() {
           </div>
         </div>
 
-        {/* Password */}
         <div className="flex flex-col items-start sm:flex-row sm:items-center sm:justify-between gap-3 py-5 border-b border-gray-100">
           <div>
             <p className="text-sm font-bold text-gray-900">Password</p>
@@ -76,7 +71,6 @@ export function Profile() {
           </button>
         </div>
 
-        {/* Delete Account */}
         <div className="flex flex-col items-start sm:flex-row sm:items-center sm:justify-between gap-3 pt-5">
           <div>
             <p className="text-sm font-bold text-red-500">Delete Account</p>
@@ -94,7 +88,6 @@ export function Profile() {
         </div>
       </div>
 
-      {/* Delete Account Confirmation */}
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <DialogContent>
           <DialogHeader>

@@ -2,12 +2,12 @@
 
 import { cn } from "@/lib/utils";
 
-interface SupportChatBubbleProps {
+type SupportChatBubbleProps = {
   message: string;
   isOwn: boolean;
   senderName: string;
   createdAt: string;
-}
+};
 
 function formatTime(dateString: string): string {
   const date = new Date(dateString);

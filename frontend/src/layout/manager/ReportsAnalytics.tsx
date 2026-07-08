@@ -52,6 +52,7 @@ import {
   type DayOfWeekStat,
 } from "@/services/manager/analytics.api";
 import { getOverviewExportSummary } from "@/services/manager/overview.api";
+import { cn } from "@/lib/utils";
 
 const periods: { key: Period; label: string }[] = [
   { key: "daily", label: "Daily" },
@@ -175,7 +176,6 @@ export function ReportsAnalytics() {
     }
   };
 
-  // Chart configs
   const revenueConfig = {
     revenue: { label: "Revenue", color: "#f59e0b" },
   } satisfies ChartConfig;
@@ -251,11 +251,7 @@ export function ReportsAnalytics() {
               <button
                 key={p.key}
                 onClick={() => setPeriod(p.key)}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition ${
-                  period === p.key
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
+                className={cn("px-3 py-1.5 text-sm font-medium rounded-md transition", period === p.key ? "bg-blue-600 text-white shadow-sm" : "text-gray-600 hover:text-gray-900")}
               >
                 {p.label}
               </button>
@@ -272,7 +268,6 @@ export function ReportsAnalytics() {
         </div>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
         <StatCard
           label="Revenue"
@@ -328,9 +323,7 @@ export function ReportsAnalytics() {
         />
       </div>
 
-      {/* Charts Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {/* Revenue Trend */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
           <h2 className="text-base font-bold text-gray-900 mb-4">
             Revenue Trend
@@ -391,7 +384,6 @@ export function ReportsAnalytics() {
           )}
         </div>
 
-        {/* Appointment Volume */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
           <h2 className="text-base font-bold text-gray-900 mb-4">
             Appointment Volume
@@ -453,7 +445,6 @@ export function ReportsAnalytics() {
           )}
         </div>
 
-        {/* Service Distribution */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:col-span-2">
           <h2 className="text-base font-bold text-gray-900 mb-4">
             Service Distribution
@@ -557,7 +548,6 @@ export function ReportsAnalytics() {
           )}
         </div>
 
-        {/* Status Breakdown */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
           <h2 className="text-base font-bold text-gray-900 mb-4">
             Status Breakdown
@@ -598,7 +588,6 @@ export function ReportsAnalytics() {
           )}
         </div>
 
-        {/* Rating Distribution */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
           <h2 className="text-base font-bold text-gray-900 mb-4">
             Rating Distribution
@@ -637,7 +626,6 @@ export function ReportsAnalytics() {
           )}
         </div>
 
-        {/* Peak Hours */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:col-span-2">
           <h2 className="text-base font-bold text-gray-900 mb-4">Peak Hours</h2>
           {loading ? (
@@ -692,7 +680,6 @@ export function ReportsAnalytics() {
           )}
         </div>
 
-        {/* Barber Performance (Count) */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
           <h2 className="text-base font-bold text-gray-900 mb-4">
             Barber Performance
@@ -742,7 +729,6 @@ export function ReportsAnalytics() {
           )}
         </div>
 
-        {/* Barber Revenue */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
           <h2 className="text-base font-bold text-gray-900 mb-4">
             Barber Revenue
@@ -798,7 +784,6 @@ export function ReportsAnalytics() {
           )}
         </div>
 
-        {/* Day of Week */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:col-span-2">
           <h2 className="text-base font-bold text-gray-900 mb-4">
             Day of Week

@@ -12,6 +12,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { StatCard } from "@/components/common/StatCard";
 import { AppointmentCardCustomer } from "@/components/common/AppointmentCardCustomer";
 import {
@@ -139,7 +140,7 @@ export function Overview() {
     };
 
     fetchAppointments();
-  }, []);
+  }, [authUser?.id]);
 
   const refreshAppointments = useCallback(async () => {
     try {
@@ -355,11 +356,7 @@ export function Overview() {
                 aria-label={`Rate ${rating} star${rating === 1 ? "" : "s"}`}
               >
                 <Star
-                  className={`size-9 sm:size-11 ${
-                    rating <= feedbackRating
-                      ? "fill-accent text-accent"
-                      : "fill-white text-gray-300"
-                  }`}
+                  className={cn("size-9 sm:size-11", rating <= feedbackRating ? "fill-accent text-accent" : "fill-white text-gray-300")}
                   strokeWidth={1.8}
                 />
               </button>

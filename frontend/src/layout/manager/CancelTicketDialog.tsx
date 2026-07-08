@@ -29,7 +29,7 @@ const CANCEL_REASONS = [
   { value: "other", label: "Other" },
 ];
 
-interface CancelTicketDialogProps {
+type CancelTicketDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCancel: (reason: string) => void;

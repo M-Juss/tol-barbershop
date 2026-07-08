@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm, type SubmitErrorHandler } from "react-hook-form";
+import { useForm, useWatch, type SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { DatePickerWithLabel } from "@/components/common/DatePickerWithLabel";
@@ -23,13 +23,13 @@ import {
 import { sanitizeText } from "@/lib/sanitizer";
 import { toast } from "sonner";
 
-interface ClosedDateFormProps {
+type ClosedDateFormProps = {
   open: boolean;
   onClose: () => void;
   onSubmit?: (data: ClosedDateSchemaFormValues) => void | Promise<void>;
   initialData?: ClosedDateSchemaFormValues;
   title?: string;
-}
+};
 
 export function ClosedDateForm({
   open,
@@ -44,7 +44,7 @@ export function ClosedDateForm({
     formState: { errors, isSubmitting },
     reset,
     setValue,
-    watch,
+    control,
   } = useForm<ClosedDateSchemaFormValues>({
     resolver: zodResolver(closedDateSchema),
     defaultValues: {
@@ -52,6 +52,7 @@ export function ClosedDateForm({
       reason: "",
     },
   });
+  const dateClosed = useWatch({ control, name: "date_closed" });
 
   useEffect(() => {
     if (initialData) {
@@ -97,7 +98,7 @@ export function ClosedDateForm({
               id="date_closed"
               label="Closed Date"
               placeholder="Select closure date"
-              date={watch("date_closed")}
+              date={dateClosed}
               onDateChange={(date) =>
                 setValue("date_closed", date as Date, {
                   shouldValidate: true,

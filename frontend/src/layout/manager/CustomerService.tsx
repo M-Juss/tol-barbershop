@@ -244,7 +244,9 @@ export function CustomerService() {
     if (historySearch) {
       const q = historySearch.toLowerCase();
       const name = t.customer?.fullname?.toLowerCase() || "";
-      const category = CONCERN_CATEGORIES[t.category]?.toLowerCase() || t.category?.toLowerCase() || "";
+      const category = t.category
+        ? (CONCERN_CATEGORIES[t.category] ?? t.category).toLowerCase()
+        : "";
       if (!name.includes(q) && !category.includes(q)) return false;
     }
     return true;
@@ -615,7 +617,9 @@ export function CustomerService() {
                       </div>
                     ) : (
                       filteredHistory.map((ticket) => {
-                        const categoryLabel = CONCERN_CATEGORIES[ticket.category] || ticket.category || "General";
+                        const categoryLabel = ticket.category
+                          ? (CONCERN_CATEGORIES[ticket.category] ?? ticket.category)
+                          : "General";
 
                         return (
                           <button

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import {
   Plus,
   Clock,
@@ -19,8 +19,8 @@ import {
   getAllClosedDatesForActivityLog,
   ClosedDate,
 } from "@/services/manager/close.date.api";
+import { cn } from "@/lib/utils";
 
-// Helper function to format date consistently (local timezone)
 const formatDateToLocal = (date: Date): string => {
   return (
     date.getFullYear() +
@@ -79,14 +79,12 @@ export function Slots() {
     },
   ];
 
-  const fetchClosedDates = async (page: number = 1) => {
+  const fetchClosedDates = useCallback(async (page: number = 1) => {
     try {
       setLoading(true);
 
-      // Fetch main closed dates (non-removed only)
       const response = await getClosedDates(page, 5);
 
-      // Check if response and response.data exist before proceeding
       if (!response || !response.data) {
         console.error("Invalid response structure:", response);
         setClosedDates([]);
@@ -95,7 +93,6 @@ export function Slots() {
         return;
       }
 
-      // Set main closed dates (backend already filters out removed ones)
       setClosedDates(response.data);
       setCurrentPage(response.current_page || 1);
       setTotalPages(response.last_page || 1);
@@ -104,16 +101,14 @@ export function Slots() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchActivityLogs = async (page: number = 1) => {
+  const fetchActivityLogs = useCallback(async (page: number = 1) => {
     try {
       setActivityLoading(true);
 
-      // Fetch all closed dates for activity log
       const activityResponse = await getAllClosedDatesForActivityLog(page, 5);
 
-      // Generate activity logs from all closed dates (including removed ones)
       if (activityResponse && activityResponse.data) {
         const logs = activityResponse.data.map((date: ClosedDate) => {
           const formattedDate = new Date(date.date_closed).toLocaleDateString(
@@ -150,18 +145,18 @@ export function Slots() {
     } finally {
       setActivityLoading(false);
     }
-  };
+  }, []);
 
-  const fetchAllData = async (page: number = 1) => {
+  const fetchAllData = useCallback(async (page: number = 1) => {
     await Promise.all([
       fetchClosedDates(page),
       fetchActivityLogs(activityCurrentPage),
     ]);
-  };
+  }, [activityCurrentPage, fetchActivityLogs, fetchClosedDates]);
 
   useEffect(() => {
     fetchAllData();
-  }, []);
+  }, [fetchAllData]);
 
   const openClosedDateModal = () => {
     setShowClosedDateModal(true);
@@ -180,7 +175,6 @@ export function Slots() {
       await fetchAllData(currentPage);
       closeClosedDateModal();
 
-      // Show success toast
       const formattedDate = data.date_closed!.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
@@ -200,10 +194,8 @@ export function Slots() {
         reason: `${dateClosed} is now available to be booked`,
         is_removed: true,
       });
-      // Automatic refetch after update to refresh pagination and data
       await fetchAllData(currentPage);
 
-      // Show success toast
       const date = new Date(dateClosed);
       const formattedDate = date.toLocaleDateString("en-US", {
         year: "numeric",
@@ -220,7 +212,6 @@ export function Slots() {
   return (
     <div className="w-full h-full p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Closed Dates Card */}
         <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col">
           <div className="relative mb-4">
             <p className="font-semibold">Closed Dates</p>
@@ -294,7 +285,6 @@ export function Slots() {
           )}
         </div>
 
-        {/* Schedule Overview Card */}
         <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col">
           <div className="mb-5">
             <p className="font-semibold text-gray-900">Schedule Overview</p>
@@ -310,9 +300,9 @@ export function Slots() {
                   key={label}
                   className="flex items-center gap-3 rounded-xl border border-gray-100 bg-slate-50 px-4 py-3.5 hover:bg-slate-100 transition-colors"
                 >
-                  <div className={`${iconBg} rounded-lg p-2 shrink-0`}>
+                  <div className={cn(iconBg, "rounded-lg p-2 shrink-0")}>
                     <Icon
-                      className={`w-4 h-4 ${accent.split(" ")[1]}`}
+                      className={cn("w-4 h-4", accent.split(" ")[1])}
                       strokeWidth={2}
                     />
                   </div>
@@ -329,7 +319,6 @@ export function Slots() {
             )}
           </div>
 
-          {/* Subtle divider + status pill */}
           <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
             <p className="text-xs text-gray-400">Last updated today</p>
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
@@ -340,7 +329,6 @@ export function Slots() {
         </div>
       </div>
 
-      {/* Activity Log */}
       <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
         <p className="font-semibold">Activity Log</p>
         <p className="text-gray-700 mb-6">
@@ -363,7 +351,6 @@ export function Slots() {
           )}
         </div>
 
-        {/* Activity Log Pagination */}
         {activityTotalPages > 1 && (
           <div className="flex justify-between items-center mt-4">
             <button

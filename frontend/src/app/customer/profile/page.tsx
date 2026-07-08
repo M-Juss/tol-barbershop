@@ -12,7 +12,6 @@ export default function Profile() {
 
   return (
     <div className="w-full h-full bg-slate-100 p-4 sm:p-6 pb-24 font-sans">
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
           Profile
@@ -24,14 +23,12 @@ export default function Profile() {
 
       <AccountInformationForm />
 
-      {/* Account Control */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
         <h2 className="text-base font-bold text-gray-900">Account Control</h2>
         <p className="text-gray-500 text-sm mt-0.5 ">
           Manage your account settings and security
         </p>
 
-        {/* Password */}
         <div className="flex flex-col items-start sm:flex-row sm:items-center sm:justify-between gap-3 py-5 border-b border-gray-100">
           <div>
             <p className="text-sm font-bold text-gray-900">Password</p>
@@ -48,7 +45,6 @@ export default function Profile() {
           </button>
         </div>
 
-        {/* Delete Account */}
         <div className="flex flex-col items-start sm:flex-row sm:items-center sm:justify-between gap-3 pt-5">
           <div>
             <p className="text-sm font-bold text-red-500">Delete Account</p>

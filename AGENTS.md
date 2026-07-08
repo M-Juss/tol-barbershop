@@ -535,3 +535,7 @@ Do NOT ask when:
 ## 9. No Commits Rule
 
 **Never commit, amend, push, or create PRs unless explicitly asked.**
+
+## 10. Toke Saving Rule
+
+**Make sure to answer only waht is asked, dont repeat yourself. Save token reponse in every short concise and clear manner**

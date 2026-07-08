@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { CalendarDays } from "lucide-react";
 
 export type AppointmentStatus =
@@ -7,7 +8,7 @@ export type AppointmentStatus =
   | "Cancelled"
   | "No-show";
 
-interface AppointmentCardProps {
+type AppointmentCardProps = {
   service: string;
   barber: string;
   price: number;
@@ -40,7 +41,7 @@ export function AppointmentCard({
 }: AppointmentCardProps) {
   return (
     <div
-      className={`bg-white rounded-xl p-5 shadow-sm border border-gray-100 ${className}`}
+      className={cn("bg-white rounded-xl p-5 shadow-sm border border-gray-100", className)}
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
@@ -64,7 +65,7 @@ export function AppointmentCard({
         <div className="flex flex-col items-end gap-1.5">
           <p className="font-bold text-gray-900 text-lg">₱{price}</p>
           <span
-            className={`text-xs font-medium px-3 py-1 rounded-full ${statusBadge[status]}`}
+            className={cn("text-xs font-medium px-3 py-1 rounded-full", statusBadge[status])}
           >
             {status}
           </span>

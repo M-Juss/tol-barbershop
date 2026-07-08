@@ -3,13 +3,12 @@
 import { useMemo, useState, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 
-import { Button } from "../ui/button";
-import { Calendar } from "../ui/calendar";
-import { Label } from "../ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getClosedDates } from "@/services/manager/close.date.api";
 
-// Helper function to format date consistently (local timezone)
 const formatDateToLocal = (date: Date): string => {
   return (
     date.getFullYear() +
@@ -61,11 +60,10 @@ export function DatePickerWithLabel({
     return { today: start, maxDate: max };
   }, [maxDaysAhead]);
 
-  // Fetch closed dates when component mounts
   useEffect(() => {
     const fetchClosedDates = async () => {
       try {
-        const response = await getClosedDates(1, 100); // Get all closed dates
+        const response = await getClosedDates(1, 100);
         if (response && response.data) {
           const dates = response.data.map(
             (closedDate) => closedDate.date_closed,
@@ -131,7 +129,6 @@ export function DatePickerWithLabel({
                 const isAfterMax = maxDate && day > maxDate;
                 const isSunday = disableSundays && day.getDay() === 0;
 
-                // Check if the date is a closed date (using local timezone)
                 const dayString = formatDateToLocal(day);
                 const isClosedDate = closedDates.includes(dayString);
 

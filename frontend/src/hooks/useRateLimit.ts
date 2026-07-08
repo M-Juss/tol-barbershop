@@ -3,23 +3,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 
-interface RateLimitOptions {
+type RateLimitOptions = {
   maxAttempts?: number;
   cooldownMinutes?: number;
   storageKey?: string;
-}
+};
 
-interface RateLimitState {
+type RateLimitState = {
   canAttempt: boolean;
   remainingAttempts: number;
   cooldownRemaining: number;
   isCooldown: boolean;
-}
+};
 
-/**
- * Custom hook for rate limiting button clicks
- * Prevents spamming of crucial actions with cooldown period
- */
 export function useRateLimit(options: RateLimitOptions = {}) {
   const {
     maxAttempts = 5,
@@ -44,7 +40,6 @@ export function useRateLimit(options: RateLimitOptions = {}) {
     });
   }, [storageKey, maxAttempts]);
 
-  // Load state from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(storageKey);
     if (stored) {
@@ -52,11 +47,9 @@ export function useRateLimit(options: RateLimitOptions = {}) {
         const data = JSON.parse(stored);
         const now = Date.now();
 
-        // Check if cooldown has expired
         if (data.cooldownEnd && now < data.cooldownEnd) {
           const remaining = Math.ceil((data.cooldownEnd - now) / 1000);
 
-          // Use requestAnimationFrame to defer setState
           requestAnimationFrame(() => {
             setState({
               canAttempt: false,
@@ -66,7 +59,6 @@ export function useRateLimit(options: RateLimitOptions = {}) {
             });
           });
 
-          // Start countdown timer
           const interval = setInterval(() => {
             const currentRemaining = Math.ceil(
               (data.cooldownEnd - Date.now()) / 1000,
@@ -84,7 +76,6 @@ export function useRateLimit(options: RateLimitOptions = {}) {
 
           return () => clearInterval(interval);
         } else {
-          // Cooldown expired, reset
           localStorage.removeItem(storageKey);
         }
       } catch (error) {
@@ -119,7 +110,6 @@ export function useRateLimit(options: RateLimitOptions = {}) {
       }
     }
 
-    // Check if max attempts reached
     if (attempts >= maxAttempts) {
       const cooldownEnd = Date.now() + cooldownMinutes * 60 * 1000;
       const cooldownData = {
@@ -141,7 +131,6 @@ export function useRateLimit(options: RateLimitOptions = {}) {
         `Too many attempts. Please wait ${cooldownMinutes} minute${cooldownMinutes !== 1 ? "s" : ""} before trying again.`,
       );
 
-      // Start countdown timer
       const interval = setInterval(() => {
         const currentRemaining = Math.ceil((cooldownEnd - Date.now()) / 1000);
         if (currentRemaining <= 0) {
@@ -158,7 +147,6 @@ export function useRateLimit(options: RateLimitOptions = {}) {
       return false;
     }
 
-    // Update attempts
     const newData = {
       attempts,
       firstAttemptTime,

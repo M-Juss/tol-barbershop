@@ -3,7 +3,7 @@
 import { type ReactNode } from "react";
 import { X } from "lucide-react";
 
-interface SupportChatSheetProps {
+type SupportChatSheetProps = {
   isOpen: boolean;
   onClose: () => void;
   title: string;

@@ -5,6 +5,7 @@ import { Admin } from "@/layout/manager/Admin";
 import { Barber } from "@/layout/manager/Barber";
 import { Slots } from "@/layout/manager/Slots";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 
 type ManagementTab = "Service" | "Admin" | "Barber" | "Slots";
 
@@ -33,11 +34,7 @@ export default function Management() {
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`rounded-lg py-2 text-sm font-semibold transition-colors ${
-                  activeTab === tab
-                    ? "bg-gray-100 text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
+                className={cn("rounded-lg py-2 text-sm font-semibold transition-colors", activeTab === tab ? "bg-gray-100 text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}
               >
                 {tab}
               </button>

@@ -1,7 +1,8 @@
 "use client";
+import Image from "next/image";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/SelectWithLabel";
-import { SubmitErrorHandler, useForm } from "react-hook-form";
+import { SubmitErrorHandler, useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   adminCreateSchema,
@@ -35,14 +36,14 @@ import {
 import { getImageUrl } from "@/lib/image";
 import type { Role } from "@/services/manager/role.api";
 
-interface AdminFormProps {
+type AdminFormProps = {
   open: boolean;
   onClose: () => void;
   onSubmit?: (data: AdminSchemaFormValues & { image?: File }) => void;
   initialData?: AdminSchemaFormValues;
   title?: string;
   roles?: Role[];
-}
+};
 
 const statusOptions = [
   { value: "true", label: "Active" },
@@ -58,15 +59,18 @@ export function AdminForm({
   roles = [],
 }: AdminFormProps) {
   const isEditMode = Boolean(initialData);
+  const resolver = zodResolver(
+    isEditMode ? adminUpdateSchema : adminCreateSchema,
+  ) as Resolver<AdminSchemaFormValues>;
   const {
     register: formRegister,
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
     setValue,
-    watch,
+    control,
   } = useForm<AdminSchemaFormValues>({
-    resolver: zodResolver(isEditMode ? adminUpdateSchema : adminCreateSchema) as any,
+    resolver,
     defaultValues: {
       fullname: "",
       email: "",
@@ -81,11 +85,17 @@ export function AdminForm({
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
+  const isActive = useWatch({ control, name: "is_active" });
+  const roleId = useWatch({ control, name: "role_id" });
 
   useEffect(() => {
-    const newImagePreview = getImageUrl(initialData?.image);
-    setImagePreview(newImagePreview);
-    setImageFile(null);
+    const newImagePreview = typeof initialData?.image === "string"
+      ? getImageUrl(initialData.image)
+      : "";
+    queueMicrotask(() => {
+      setImagePreview(newImagePreview);
+      setImageFile(null);
+    });
 
     if (initialData) {
       reset({
@@ -113,7 +123,7 @@ export function AdminForm({
   }, [initialData, open, reset]);
 
   const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif"];
-  const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3MB
+  const MAX_IMAGE_SIZE = 3 * 1024 * 1024;
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -175,14 +185,16 @@ export function AdminForm({
           onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
           className="space-y-4"
         >
-          {/* Profile Image */}
           <div className="flex flex-col items-center gap-4">
-            <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 border-2 border-gray-300">
+            <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-200 border-2 border-gray-300">
               {imagePreview ? (
-                <img
+                <Image
                   src={imagePreview}
                   alt="Profile preview"
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="96px"
+                  className="object-cover"
+                  unoptimized
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -207,7 +219,6 @@ export function AdminForm({
             </div>
           </div>
 
-          {/* Full Name */}
           <div className="relative ">
             <InputWithLabel
               id="fullname"
@@ -221,7 +232,6 @@ export function AdminForm({
             )}
           </div>
 
-          {/* Email */}
           <div className="relative ">
             <InputWithLabel
               id="email"
@@ -236,7 +246,6 @@ export function AdminForm({
             )}
           </div>
 
-          {/* Contact Number */}
           <div className="relative ">
             <InputWithLabel
               id="contact_number"
@@ -300,23 +309,21 @@ export function AdminForm({
             )}
           </div>
 
-          {/* Status */}
           <SelectWithLabel
             id="is_active"
             label="Status"
             placeholder="Select status"
             options={statusOptions}
-            value={watch("is_active") ? "true" : "false"}
+            value={isActive ? "true" : "false"}
             onValueChange={(value) => setValue("is_active", value === "true")}
           />
 
-          {/* Role */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Role
             </label>
             <Select
-              value={watch("role_id") != null ? String(watch("role_id")) : ""}
+              value={roleId != null ? String(roleId) : ""}
               onValueChange={(value) =>
                 setValue("role_id", value ? Number(value) : null)
               }
@@ -334,7 +341,6 @@ export function AdminForm({
             </Select>
           </div>
 
-          {/* Actions */}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel

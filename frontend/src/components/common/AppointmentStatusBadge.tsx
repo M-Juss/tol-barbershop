@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { type AppointmentStatus } from "@/services/customer/appointment.api";
 
 type AppointmentStatusBadgeProps = {
@@ -16,7 +17,7 @@ function getStatusBadgeClass(status: AppointmentStatus): string {
 export function AppointmentStatusBadge({ status }: AppointmentStatusBadgeProps) {
   return (
     <span
-      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${getStatusBadgeClass(status)}`}
+      className={cn("inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize", getStatusBadgeClass(status))}
     >
       {status.replace("_", "-")}
     </span>

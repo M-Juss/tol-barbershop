@@ -48,7 +48,7 @@ export interface RescheduleSubmitData {
   reason: string;
 }
 
-interface RescheduleFormProps {
+type RescheduleFormProps = {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: RescheduleSubmitData) => Promise<void>;

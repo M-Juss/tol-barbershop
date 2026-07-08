@@ -13,7 +13,6 @@ import {
   Headset,
 } from "lucide-react";
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
-import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
 import { getPendingAppointmentCount } from "@/services/manager/admin.api";
@@ -110,8 +109,10 @@ export default function ManagerLayout({
   }, []);
 
   useEffect(() => {
-    fetchPendingCount();
-    fetchWaitingCount();
+    queueMicrotask(() => {
+      fetchPendingCount();
+      fetchWaitingCount();
+    });
     const interval = setInterval(() => {
       fetchPendingCount();
       fetchWaitingCount();
@@ -141,7 +142,6 @@ export default function ManagerLayout({
       <main className="min-h-0 flex-1 overflow-y-auto bg-gray-100 md:pl-0 pt-[calc(4rem+env(safe-area-inset-top))] md:pt-0 pb-[calc(5rem+env(safe-area-inset-bottom))] overscroll-contain">
         {children}
       </main>
-      <Toaster />
     </div>
   );
 }

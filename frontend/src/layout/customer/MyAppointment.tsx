@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatBookingId } from "@/lib/booking";
+import { cn } from "@/lib/utils";
 import { Star, User as UserIcon } from "lucide-react";
 import {
   Dialog,
@@ -213,7 +214,6 @@ export function MyAppointment() {
       </SectionCard>
 
       <div className="space-y-3">
-        {/* Mobile card view */}
         <div className="block md:hidden space-y-3">
           {loading ? (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center text-gray-400 text-sm">
@@ -256,7 +256,6 @@ export function MyAppointment() {
           )}
         </div>
 
-        {/* Desktop table view */}
         <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
           <Table>
             <TableHeader className="bg-gray-50">
@@ -427,17 +426,13 @@ export function MyAppointment() {
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star
                           key={star}
-                          className={`w-4 h-4 ${
-                            star <= (selectedRow.feedback?.rating ?? 0)
-                              ? "fill-yellow-400 text-yellow-400"
-                              : "fill-white text-gray-300"
-                          }`}
+                          className={cn("w-4 h-4", star <= (selectedRow.feedback?.rating ?? 0) ? "fill-yellow-400 text-yellow-400" : "fill-white text-gray-300")}
                         />
                       ))}
                     </div>
                   </div>
                   {selectedRow.feedback.comment && (
-                    <p className="text-sm text-gray-600 italic">"{selectedRow.feedback.comment}"</p>
+                    <p className="text-sm text-gray-600 italic">&quot;{selectedRow.feedback.comment}&quot;</p>
                   )}
                   <p className="text-xs text-gray-400">
                     Submitted {selectedRow.feedback.submitted_at ? new Date(selectedRow.feedback.submitted_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""}

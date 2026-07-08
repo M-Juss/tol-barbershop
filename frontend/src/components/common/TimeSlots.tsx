@@ -1,6 +1,6 @@
 import { Clock, Edit, Trash2 } from "lucide-react";
 
-export function TimeSlots({ label }: any) {
+export function TimeSlots({ label }: { label: string }) {
   return (
     <div className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded-lg">
       <div className="flex items-center gap-2">

@@ -12,27 +12,18 @@ import {
   loginRequest,
   logoutRequest,
   getCurrentUserRequest,
-} from "@/services/auth.api";
+  type AuthUser,
+  type LoginResponse,
+} from "@/services/shared/auth.api";
 
-interface User {
-  id: number;
-  fullname: string;
-  email: string;
-  contact_number: string;
-  role: string;
-  image?: string | null;
-  created_at?: string;
-  permissions?: string[] | null;
-}
-
-interface AuthContextValue {
-  user: User | null;
+type AuthContextValue = {
+  user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (data: { email: string; password: string }) => Promise<any>;
+  login: (data: { email: string; password: string }) => Promise<LoginResponse>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-}
+};
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -47,7 +38,7 @@ function clearAuthRoleCookie(): void {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {

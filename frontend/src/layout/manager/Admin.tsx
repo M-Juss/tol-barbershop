@@ -54,6 +54,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 const isActiveValue = (value: unknown): boolean => {
@@ -254,7 +255,6 @@ export function Admin() {
 
   return (
     <div className="w-full h-full p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
-      {/* ===== Roles Section ===== */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -325,7 +325,6 @@ export function Admin() {
         )}
       </div>
 
-      {/* ===== Admins Section ===== */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -354,7 +353,6 @@ export function Admin() {
           </div>
         ) : (
           <>
-            {/* Mobile: stacked cards */}
             <div className="flex flex-col gap-3 md:hidden">
               {paginatedAdmins.map((admin) => (
                 <div
@@ -403,11 +401,7 @@ export function Admin() {
                       <span className="text-gray-400 text-xs italic">No role</span>
                     )}
                     <span
-                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        !isActiveValue(admin.is_active)
-                          ? "bg-gray-100 text-gray-500"
-                          : "bg-green-100 text-green-600"
-                      }`}
+                      className={cn("text-xs font-medium px-2 py-0.5 rounded-full", !isActiveValue(admin.is_active) ? "bg-gray-100 text-gray-500" : "bg-green-100 text-green-600")}
                     >
                       {!isActiveValue(admin.is_active) ? "Inactive" : "Active"}
                     </span>
@@ -416,7 +410,6 @@ export function Admin() {
               ))}
             </div>
 
-            {/* Desktop: table */}
             <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
               <Table>
                 <TableHeader className="bg-gray-50">
@@ -455,11 +448,7 @@ export function Admin() {
                       </TableCell>
                       <TableCell>
                         <span
-                          className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                            !isActiveValue(admin.is_active)
-                              ? "bg-gray-100 text-gray-500"
-                              : "bg-green-100 text-green-600"
-                          }`}
+                          className={cn("text-xs font-medium px-2.5 py-1 rounded-full", !isActiveValue(admin.is_active) ? "bg-gray-100 text-gray-500" : "bg-green-100 text-green-600")}
                         >
                           {!isActiveValue(admin.is_active) ? "Inactive" : "Active"}
                         </span>
@@ -486,7 +475,6 @@ export function Admin() {
               </Table>
             </div>
 
-            {/* Pagination (shared) */}
             {adminTotalPages > 1 && (
               <Pagination className="mt-4 overflow-hidden px-1">
                 <PaginationContent className="flex-nowrap gap-0.5">
@@ -552,7 +540,6 @@ export function Admin() {
         )}
       </div>
 
-      {/* Admin Form Dialog */}
       <AdminForm
         open={showAdminModal}
         onClose={closeAdminModal}
@@ -573,7 +560,6 @@ export function Admin() {
         title={editingAdmin ? "Edit Admin" : "Add New Admin"}
       />
 
-      {/* Delete Admin Confirmation */}
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <DialogContent>
           <DialogHeader>
@@ -600,7 +586,6 @@ export function Admin() {
         </DialogContent>
       </Dialog>
 
-      {/* Role Form Dialog */}
       <Dialog open={showRoleModal} onOpenChange={closeRoleModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -660,11 +645,7 @@ export function Admin() {
                               className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
                             >
                               <div
-                                className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                                  selectedModuleIds.includes(mod.id)
-                                    ? "bg-red-500 border-red-500"
-                                    : "border-gray-300"
-                                }`}
+                                className={cn("w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors", selectedModuleIds.includes(mod.id) ? "bg-red-500 border-red-500" : "border-gray-300")}
                               >
                                 {selectedModuleIds.includes(mod.id) && (
                                   <Check className="w-3 h-3 text-white" strokeWidth={3} />
@@ -698,7 +679,6 @@ export function Admin() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Role Confirmation */}
       <Dialog open={deleteRoleConfirmOpen} onOpenChange={setDeleteRoleConfirmOpen}>
         <DialogContent>
           <DialogHeader>

@@ -31,51 +31,6 @@ const isActiveValue = (value: unknown): boolean => {
   return false;
 };
 
-// const initialServices: Service[] = [
-//   {
-//     id: 1,
-//     name: "Regular Haircut",
-//     description: "Classic haircut with basic styling",
-//     duration: 30,
-//     price: 200,
-//   },
-//   {
-//     id: 2,
-//     name: "Premium Haircut",
-//     description: "Premium haircut with wash and styling",
-//     duration: 45,
-//     price: 250,
-//   },
-//   {
-//     id: 3,
-//     name: "Premium Haircut + Beard Trim",
-//     description: "Complete grooming package with haircut and beard styling",
-//     duration: 60,
-//     price: 350,
-//   },
-//   {
-//     id: 4,
-//     name: "Deluxe Haircut + Hot Towel",
-//     description: "Luxury haircut experience with hot towel treatment",
-//     duration: 60,
-//     price: 450,
-//   },
-//   {
-//     id: 5,
-//     name: "Beard Trim",
-//     description: "Professional beard trimming and shaping",
-//     duration: 20,
-//     price: 150,
-//   },
-//   {
-//     id: 6,
-//     name: "Hair Color",
-//     description: "Professional hair coloring service",
-//     duration: 120,
-//     price: 800,
-//   },
-// ];
-
 export function Service() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,7 +119,6 @@ export function Service() {
         </button>
       </div>
 
-      {/* Services Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <p className="text-gray-500">Loading services...</p>
@@ -205,7 +159,6 @@ export function Service() {
         title={editingService ? "Edit Service" : "Add New Service"}
       />
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <DialogContent>
           <DialogHeader>

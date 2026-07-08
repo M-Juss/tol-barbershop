@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { CalendarDays } from "lucide-react";
 
 export type AppointmentStatus =
@@ -40,7 +41,7 @@ export function AppointmentCardCustomer({
 }: AppointmentCardCustomerProps) {
   return (
     <div
-      className={`border border-gray-200 rounded-xl p-4 flex items-center justify-between ${className}`}
+      className={cn("border border-gray-200 rounded-xl p-4 flex items-center justify-between", className)}
     >
       <div className="flex items-center gap-4">
         <div className="bg-blue-100 rounded-xl p-2.5">
@@ -62,7 +63,7 @@ export function AppointmentCardCustomer({
       <div className="flex flex-col items-end gap-2">
         <p className="font-bold text-gray-900 text-base sm:text-lg">₱{price}</p>
         <span
-          className={`text-xs font-medium px-3 py-1 rounded-full ${statusBadge[status]}`}
+          className={cn("text-xs font-medium px-3 py-1 rounded-full", statusBadge[status])}
         >
           {status}
         </span>
