@@ -6,12 +6,6 @@ export const walkinSchema = z.object({
     .trim()
     .min(2, "Customer name is required.")
     .regex(/^[A-Za-z\s]+$/, "Customer name must only contain letters and spaces"),
-  phone: z
-    .string()
-    .trim()
-    .min(7, "Phone number is required.")
-    .regex(/^09\d{9}$/, "Phone number must be a valid PH mobile number (09XXXXXXXXX)")
-    .max(11, "Phone number must not exceed 11 digits"),
   service_id: z.number().int().positive("Please select a service."),
   barber_user_id: z.number().int().positive("Please select a barber."),
   price: z.number().int("Price must be a whole number").min(0, "Price must be valid."),

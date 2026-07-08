@@ -15,6 +15,7 @@ class AppointmentFeedback extends Model
         'rating',
         'comment',
         'is_featured',
+        'customer_name_snapshot',
     ];
 
     protected $casts = [

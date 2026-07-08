@@ -36,10 +36,13 @@ class WalkinAppointmentSeeder extends Seeder
             $hour = str_pad((string) random_int(9, 16), 2, '0', STR_PAD_LEFT);
             $time = $hour.':00';
 
+            $service = $services->random();
+            $barber = $barbers->random();
+
             Appointment::create([
                 'user_id' => null,
-                'service_id' => $services->random()->id,
-                'barber_user_id' => $barbers->random()->id,
+                'service_id' => $service->id,
+                'barber_user_id' => $barber->id,
                 'appointment_date' => $date->toDateString(),
                 'appointment_time' => $time,
                 'duration_minutes' => 30,
@@ -49,6 +52,9 @@ class WalkinAppointmentSeeder extends Seeder
                 'walkin_customer_name' => $walkin['name'],
                 'walkin_customer_contact_number' => $walkin['phone'],
                 'completed_at' => $date,
+                'customer_name_snapshot' => $walkin['name'],
+                'service_name_snapshot' => $service->name,
+                'barber_name_snapshot' => $barber->fullname,
             ]);
         }
     }

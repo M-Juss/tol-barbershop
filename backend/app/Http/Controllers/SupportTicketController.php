@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Notification;
-use App\Models\SupportTicket;
 use App\Models\SupportMessage;
+use App\Models\SupportTicket;
 use App\Models\User;
 use App\Services\PushNotificationService;
 use App\Support\EntityChange;
@@ -100,11 +100,13 @@ class SupportTicketController extends Controller
                 'status' => $status,
                 'category' => $validated['category'],
                 'queued_at' => Carbon::now(),
+                'customer_name_snapshot' => $user->fullname,
             ]);
 
             SupportMessage::create([
                 'support_ticket_id' => $ticket->id,
                 'sender_id' => $user->id,
+                'sender_name_snapshot' => $user->fullname,
                 'message' => $validated['message'],
             ]);
 
@@ -253,14 +255,18 @@ class SupportTicketController extends Controller
 
         $ticket->update([
             'assigned_to_id' => $user->id,
+            'assigned_staff_name_snapshot' => $user->fullname,
             'status' => 'active',
             'claimed_at' => Carbon::now(),
         ]);
 
+        $tkNumber = (($ticket->id * 54321 + 98765) % 90000) + 10000;
+
         SupportMessage::create([
             'support_ticket_id' => $ticket->id,
             'sender_id' => $user->id,
-            'message' => 'Your ticket has been accepted. A representative is now here to assist you.',
+            'sender_name_snapshot' => $user->fullname,
+            'message' => "Ticket TK-{$tkNumber} has been accepted. A representative is now here to assist you.",
         ]);
 
         $ticket->update(['last_message_at' => Carbon::now()]);
@@ -392,6 +398,7 @@ class SupportTicketController extends Controller
         $message = SupportMessage::create([
             'support_ticket_id' => $ticket->id,
             'sender_id' => $user->id,
+            'sender_name_snapshot' => $user->fullname,
             'message' => $validated['message'],
         ]);
 

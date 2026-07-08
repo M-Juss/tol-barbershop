@@ -8,11 +8,10 @@ import { SelectWithLabel } from "@/components/common/SelectWithLabel";
 import {
   getActiveBarbers,
   getActiveServices,
-  getAppointments,
+  getUnavailableSlots,
   getBookingSettings,
   createAppointment,
   createBatchAppointment,
-  type Appointment,
   type Barber,
   type Service,
   type BookingSettings,
@@ -54,14 +53,6 @@ function formatDateForApi(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-function normalizeApiDate(value: string): string {
-  if (!value) return value;
-  const base = value.includes("T") ? value.split("T")[0] : value;
-  const parsed = new Date(base);
-  if (Number.isNaN(parsed.getTime())) return base;
-  return formatDateForApi(parsed);
 }
 
 function isPastTime(time12hr: string, selectedDate: Date | undefined): boolean {
@@ -189,24 +180,15 @@ export function NewAppointmentForm() {
       }
       try {
         setIsCheckingAvailability(true);
-        const appointments = await getAppointments();
         const targetDate = formatDateForApi(selectedDate);
         const targetBarberId = Number(selectedBarber);
-        const blocked = appointments
-          .filter((appointment: Appointment) => {
-            const appointmentBarberId = appointment.barber.id;
-            return (
-              appointmentBarberId === targetBarberId &&
-              normalizeApiDate(appointment.appointment_date) === targetDate &&
-              (appointment.status === "pending" || appointment.status === "approved")
-            );
-          })
-          .map((appointment: Appointment) => {
-            const [h, m] = appointment.appointment_time.split(":").map(Number);
-            const period = h >= 12 ? "PM" : "AM";
-            const displayH = h % 12 || 12;
-            return `${displayH}:${String(m).padStart(2, "0")} ${period}`;
-          });
+        const times = await getUnavailableSlots(targetBarberId, targetDate);
+        const blocked = times.map((time: string) => {
+          const [h, m] = time.split(":").map(Number);
+          const period = h >= 12 ? "PM" : "AM";
+          const displayH = h % 12 || 12;
+          return `${displayH}:${String(m).padStart(2, "0")} ${period}`;
+        });
         setUnavailableTimes(blocked);
       } catch (error) {
         console.error("Failed to check appointment availability:", error);

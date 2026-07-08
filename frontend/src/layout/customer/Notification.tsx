@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarDays, CheckCheck, Clock, Scissors, User } from "lucide-react";
-import { formatBookingId } from "@/lib/booking";
+import { formatBookingId, formatTicketId } from "@/lib/booking";
 import { toast } from "sonner";
 import {
   getNotifications,
@@ -209,7 +209,7 @@ export function Notification() {
                   }`}
                 >
                   <div className="px-4 py-3">
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-stretch justify-between gap-3">
                       <button
                         type="button"
                         onClick={() => handleNotificationClick(item)}
@@ -219,26 +219,44 @@ export function Notification() {
                           {item.title}
                         </p>
                         <p className="text-sm text-gray-600 mt-1 line-clamp-2">{item.message}</p>
-                        <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" /> {formatDateTime(item.created_at)}
-                        </p>
+                        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                          {item.appointment_id && (
+                            <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-mono font-medium text-blue-700 ring-1 ring-inset ring-blue-200">
+                              {formatBookingId(item.appointment_id)}
+                            </span>
+                          )}
+                          {(item.type === "new_support_ticket" ||
+                            item.type === "ticket_cancelled" ||
+                            item.type === "ticket_promoted" ||
+                            item.type === "ticket_resolved") &&
+                            (item.payload as { ticket_id?: number })?.ticket_id && (
+                              <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-mono font-medium text-purple-700 ring-1 ring-inset ring-purple-200">
+                                {formatTicketId((item.payload as { ticket_id: number }).ticket_id)}
+                              </span>
+                            )}
+                        </div>
                       </button>
 
-                      <div className="flex items-center gap-2">
-                        {isUnread ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleMarkAsRead(item.id)}
-                          >
-                            Mark read
-                          </Button>
-                        ) : (
-                          <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-600">
-                            Read
-                          </span>
-                        )}
+                      <div className="flex flex-col items-end justify-between shrink-0">
+                        <div className="flex items-center gap-2">
+                          {isUnread ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleMarkAsRead(item.id)}
+                            >
+                              Mark read
+                            </Button>
+                          ) : (
+                            <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-600">
+                              Read
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" /> {formatDateTime(item.created_at)}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -359,19 +377,11 @@ export function Notification() {
                     <p className="text-xs text-gray-500">Message</p>
                     <p className="text-sm text-gray-700">{selectedNotification.message}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-xs text-gray-500">Type</p>
-                      <p className="text-sm capitalize text-gray-900">
-                        {selectedNotification.type.replace(/_/g, " ")}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Received</p>
-                      <p className="text-sm text-gray-900">
-                        {formatDateTime(selectedNotification.created_at)}
-                      </p>
-                    </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Received</p>
+                    <p className="text-sm text-gray-900">
+                      {formatDateTime(selectedNotification.created_at)}
+                    </p>
                   </div>
 
                 </div>

@@ -23,7 +23,6 @@ import { toast } from "sonner";
 import {
   sanitizeString,
   sanitizeText,
-  normalizePhone,
 } from "@/lib/sanitizer";
 
 type WalkinFormProps = {
@@ -45,7 +44,6 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
     resolver: zodResolver(walkinSchema),
     defaultValues: {
       customer_name: "",
-      phone: "",
       service_id: 0,
       barber_user_id: 0,
       price: 0,
@@ -107,13 +105,11 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
         appointment_date: appointmentDate,
         appointment_time: appointmentTime,
         walkin_customer_name: sanitizeString(data.customer_name),
-        walkin_customer_contact_number: normalizePhone(data.phone),
       });
 
       toast.success("Completed walk-in successfully");
       reset({
         customer_name: "",
-        phone: "",
         service_id: 0,
         barber_user_id: 0,
         price: 0,
@@ -160,27 +156,6 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
         </div>
 
         <div className="relative ">
-          <InputWithLabel
-            id="phone"
-            label="Phone Number *"
-            placeholder="09XX XXX XXXX"
-            type="tel"
-            inputMode="numeric"
-            className="h-10 border-gray-200 text-gray-500"
-            maxLength={11}
-            {...register("phone")}
-            onInput={(e: React.FormEvent<HTMLInputElement>) => {
-              e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");
-            }}
-          />
-          {errors.phone && (
-            <p className="absolute left-0 top-full  text-red-500 text-xs">
-              {errors.phone.message}
-            </p>
-          )}
-        </div>
-
-        <div className="relative ">
           <SelectWithLabel
             id="service"
             label="Service *"
@@ -201,7 +176,7 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
           )}
         </div>
 
-        <div className="col-span-2 relative ">
+        <div className="relative ">
           <SelectWithLabel
             id="barber"
             label="Barber *"

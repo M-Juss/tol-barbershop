@@ -29,6 +29,7 @@ import { CancelTicketDialog } from "@/layout/manager/CancelTicketDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatTicketId } from "@/lib/booking";
 import {
   getQueue,
   acceptTicket,
@@ -331,7 +332,10 @@ export function CustomerService() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          {ticket.customer?.fullname || "Unknown"}
+                          {ticket.customer_name_snapshot ?? ticket.customer?.fullname ?? "Unknown"}
+                          <span className="ml-2 inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-mono font-medium text-gray-500">
+                            {formatTicketId(ticket.id)}
+                          </span>
                         </p>
                         <p className="text-xs text-gray-400">
                           {timeAgo(ticket.created_at)}
@@ -388,7 +392,10 @@ export function CustomerService() {
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          {ticket.customer?.fullname || "Unknown"}
+                          {ticket.customer_name_snapshot ?? ticket.customer?.fullname ?? "Unknown"}
+                          <span className="ml-2 inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-mono font-medium text-gray-500">
+                            {formatTicketId(ticket.id)}
+                          </span>
                         </p>
                         <p className="text-xs text-gray-400">
                           {ticket.assigned_to_id === authUser?.id
@@ -450,7 +457,7 @@ export function CustomerService() {
                         key={msg.id}
                         message={msg.message}
                         isOwn={msg.sender_id === authUser?.id}
-                        senderName={msg.sender.fullname}
+                        senderName={msg.sender_name_snapshot ?? msg.sender.fullname}
                         createdAt={msg.created_at}
                       />
                     ))}
@@ -509,6 +516,9 @@ export function CustomerService() {
                     <span className="text-sm font-semibold text-gray-900 ml-2">
                       {historyDetailTicket.customer?.fullname || "Unknown"}
                     </span>
+                    <span className="inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-mono font-medium text-gray-500">
+                      {formatTicketId(historyDetailTicket.id)}
+                    </span>
                     <span
                       className={cn(
                         "text-[10px] font-medium px-2 py-0.5 rounded-full capitalize",
@@ -523,15 +533,15 @@ export function CustomerService() {
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {historyDetailTicket.resolved_at && historyDetailTicket.status === "resolved" && (
-                      <p className="text-xs text-green-600 font-medium">
-                        Resolved {formatDateShort(historyDetailTicket.resolved_at)}
-                      </p>
-                    )}
-                    {historyDetailTicket.resolved_at && historyDetailTicket.status === "cancelled" && (
-                      <p className="text-xs text-gray-500">
-                        Cancelled {formatDateShort(historyDetailTicket.resolved_at)}
-                      </p>
+                    {(historyDetailTicket.status === "resolved" || historyDetailTicket.status === "cancelled") && historyDetailTicket.resolved_at && (
+                      <div className="flex items-center justify-between text-xs">
+                        <p className={historyDetailTicket.status === "resolved" ? "text-green-600 font-medium" : "text-gray-500"}>
+                          {historyDetailTicket.status === "resolved" ? "Resolved" : "Cancelled"} {formatDateShort(historyDetailTicket.resolved_at)}
+                        </p>
+                        <p className="text-gray-500">
+                          by {historyDetailTicket.assigned_to?.fullname ?? historyDetailTicket.customer_name_snapshot ?? historyDetailTicket.customer?.fullname ?? "Unknown"}
+                        </p>
+                      </div>
                     )}
                     {historyDetailTicket.cancel_reason && (
                       <p className="text-xs text-gray-500">
@@ -559,7 +569,7 @@ export function CustomerService() {
                             key={msg.id}
                             message={msg.message}
                             isOwn={msg.sender_id === authUser?.id}
-                            senderName={msg.sender.fullname}
+                            senderName={msg.sender_name_snapshot ?? msg.sender.fullname}
                             createdAt={msg.created_at}
                           />
                         ))}
@@ -585,7 +595,7 @@ export function CustomerService() {
                       </div>
                       <div className="w-full sm:w-36">
                         <Select value={historyFilter} onValueChange={setHistoryFilter}>
-                          <SelectTrigger className="h-8 text-xs border-gray-200">
+                          <SelectTrigger className="w-full h-8 text-xs border-gray-200">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -621,7 +631,10 @@ export function CustomerService() {
                             )}
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-900 truncate">
-                                {ticket.customer?.fullname || "Unknown"}
+                                {ticket.customer_name_snapshot ?? ticket.customer?.fullname ?? "Unknown"}
+                                <span className="ml-2 inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-mono font-medium text-gray-500">
+                                  {formatTicketId(ticket.id)}
+                                </span>
                               </p>
                               <p className="text-[10px] text-gray-500 truncate">
                                 {categoryLabel}

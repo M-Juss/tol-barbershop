@@ -20,7 +20,7 @@ import { DatePickerWithLabel } from "@/components/common/DatePickerWithLabel";
 import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
 import {
   getActiveBarbers,
-  getAppointments,
+  getUnavailableSlots,
   getBookingSettings,
   type Appointment,
 } from "@/services/customer/appointment.api";
@@ -81,14 +81,6 @@ function formatDateForApi(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-function normalizeApiDate(value: string): string {
-  if (!value) return value;
-  const base = value.includes("T") ? value.split("T")[0] : value;
-  const parsed = new Date(base);
-  if (Number.isNaN(parsed.getTime())) return base;
-  return formatDateForApi(parsed);
 }
 
 function isPastTime(time12hr: string, selectedDate: Date | undefined): boolean {
@@ -210,23 +202,16 @@ export function RescheduleForm({
       }
       try {
         setIsCheckingAvailability(true);
-        const appointments = await getAppointments();
         const targetDate = selectedDate.includes("T")
           ? selectedDate.split("T")[0]
           : selectedDate;
         const targetBarberId = Number(selectedBarber);
+        const times = await getUnavailableSlots(targetBarberId, targetDate);
 
-        const blocked = appointments
-          .filter((a: Appointment) => {
-            const barberId = a.barber.id;
-            return (
-              barberId === targetBarberId &&
-              normalizeApiDate(a.appointment_date) === targetDate &&
-              (a.status === "pending" || a.status === "approved") &&
-              a.id !== appointment.id
-            );
-          })
-          .map((a: Appointment) => convert24HourTo12Hour(a.appointment_time));
+        const currentTime12 = convert24HourTo12Hour(appointment.appointment_time);
+        const blocked = times
+          .map((time: string) => convert24HourTo12Hour(time))
+          .filter((time: string) => time !== currentTime12);
 
         setUnavailableTimes(blocked);
       } catch {
@@ -238,7 +223,7 @@ export function RescheduleForm({
     };
 
     fetchUnavailableTimes();
-  }, [selectedBarber, selectedDate, appointment.id]);
+  }, [selectedBarber, selectedDate, appointment.id, appointment.appointment_time]);
 
   useEffect(() => {
     if (

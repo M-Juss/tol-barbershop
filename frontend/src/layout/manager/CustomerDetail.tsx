@@ -220,7 +220,7 @@ export function CustomerDetail({ id }: CustomerDetailProps) {
             {customer.initials}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2  justify-between">
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                 {customer.fullname}
               </h1>
@@ -253,7 +253,7 @@ export function CustomerDetail({ id }: CustomerDetailProps) {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <StatCard
           label="Total Visits"
           value={customer.completed_count.toLocaleString()}

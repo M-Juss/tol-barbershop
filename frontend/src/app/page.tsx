@@ -10,6 +10,7 @@ import {
   type LandingFeedback,
   type LandingService,
 } from "@/services/landing.api";
+import { RedirectIfAuthenticated } from "@/components/common/RedirectIfAuthenticated";
 
 const navLinks = [
   { name: "Home", href: "#home" },
@@ -61,6 +62,14 @@ const galleryCards = [
 ];
 
 export default function Home() {
+  return (
+    <RedirectIfAuthenticated>
+      <HomeContent />
+    </RedirectIfAuthenticated>
+  );
+}
+
+function HomeContent() {
   const categories = ["All", "Interior", "Products", "Tools", "Services"];
 
   const [activeCategory, setActiveCategory] = useState("All");

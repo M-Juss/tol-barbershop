@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\SupportTicket;
 use App\Models\Notification;
+use App\Models\SupportTicket;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 

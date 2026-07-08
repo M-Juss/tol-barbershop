@@ -16,13 +16,23 @@ class Notification extends Model
         'is_read',
         'read_at',
         'created_by_user_id',
+        'appointment_id',
+        'service_name',
+        'barber_name',
+        'appointment_date',
+        'appointment_time',
+        'price',
     ];
 
-    protected $casts = [
-        'payload' => 'array',
-        'is_read' => 'boolean',
-        'read_at' => 'datetime',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'payload' => 'array',
+            'is_read' => 'boolean',
+            'read_at' => 'datetime',
+            'price' => 'decimal:2',
+        ];
+    }
 
     public function user(): BelongsTo
     {

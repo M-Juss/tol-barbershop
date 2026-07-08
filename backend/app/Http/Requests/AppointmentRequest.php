@@ -96,7 +96,7 @@ class AppointmentRequest extends FormRequest
             ],
 
             'walkin_customer_contact_number' => [
-                'required_if:is_walkin,true',
+                'nullable',
                 'string',
                 'max:11',
                 'regex:/^09\d{9}$/',

@@ -8,6 +8,7 @@ use App\Models\Service;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 
 class DefaultDataSeeder extends Seeder
@@ -120,9 +121,10 @@ class DefaultDataSeeder extends Seeder
 
     private function pickRandom($items)
     {
-        if ($items instanceof \Illuminate\Support\Collection) {
+        if ($items instanceof Collection) {
             return $items->random();
         }
+
         return $items[array_rand($items)];
     }
 
@@ -133,11 +135,12 @@ class DefaultDataSeeder extends Seeder
         $isWalkin = $status === 'completed' && random_int(1, 100) <= 15;
 
         $customer = $this->pickRandom($entities['customers']);
+        $barber = $this->pickRandom($entities['barbers']);
 
         $data = [
             'user_id' => $isWalkin ? null : $customer->id,
             'service_id' => $service->id,
-            'barber_user_id' => $this->pickRandom($entities['barbers'])->id,
+            'barber_user_id' => $barber->id,
             'appointment_date' => $date->toDateString(),
             'appointment_time' => $time,
             'duration_minutes' => $service->duration,
@@ -147,6 +150,9 @@ class DefaultDataSeeder extends Seeder
             'walkin_customer_name' => $isWalkin ? $customer->fullname : null,
             'walkin_customer_contact_number' => $isWalkin ? $customer->contact_number : null,
             'notes' => $isWalkin ? 'Walk-in customer' : null,
+            'customer_name_snapshot' => $customer->fullname,
+            'service_name_snapshot' => $service->name,
+            'barber_name_snapshot' => $barber->fullname,
         ];
 
         if ($status === 'completed') {
@@ -179,7 +185,9 @@ class DefaultDataSeeder extends Seeder
 
     private function seedFeedback(Appointment $appointment, Carbon $date, int $rating): void
     {
-        if (! $appointment->user_id) return;
+        if (! $appointment->user_id) {
+            return;
+        }
 
         $comments = $this->feedbackComments[$rating];
         $feedbackDate = $date->copy()->addHours(random_int(2, 72));
@@ -191,12 +199,14 @@ class DefaultDataSeeder extends Seeder
             'comment' => $this->pickRandom($comments),
             'created_at' => $feedbackDate,
             'updated_at' => $feedbackDate,
+            'customer_name_snapshot' => User::find($appointment->user_id)?->fullname,
         ]);
     }
 
     private function weightedRating(): int
     {
         $rand = random_int(1, 100);
+
         return match (true) {
             $rand <= 2 => 3,
             $rand <= 18 => 4,
@@ -242,7 +252,9 @@ class DefaultDataSeeder extends Seeder
                 $generated = 0;
                 for ($day = 1; $day <= $lastDay; $day++) {
                     $date = Carbon::create($year, $month, $day);
-                    if ($date->isSunday()) continue;
+                    if ($date->isSunday()) {
+                        continue;
+                    }
 
                     $dayFactor = $this->dayWeights[$date->dayOfWeek] ?? 0.8;
 
@@ -279,7 +291,7 @@ class DefaultDataSeeder extends Seeder
         $pendingDates = [];
         $checkDate = $now->copy()->addDay();
         while (count($pendingDates) < 5) {
-            if (!$checkDate->isSunday()) {
+            if (! $checkDate->isSunday()) {
                 $pendingDates[] = $checkDate->copy();
             }
             $checkDate->addDay();
@@ -292,7 +304,7 @@ class DefaultDataSeeder extends Seeder
         $approvedDates = [];
         $checkDate = $now->copy()->addDay();
         while (count($approvedDates) < 7) {
-            if (!$checkDate->isSunday()) {
+            if (! $checkDate->isSunday()) {
                 $approvedDates[] = $checkDate->copy();
             }
             $checkDate->addDay();
@@ -305,7 +317,7 @@ class DefaultDataSeeder extends Seeder
         $pastDueDates = [];
         $checkDate = $now->copy()->subDays(30);
         while (count($pastDueDates) < 3) {
-            if (!$checkDate->isSunday()) {
+            if (! $checkDate->isSunday()) {
                 $pastDueDates[] = $checkDate->copy();
             }
             $checkDate->addDay();

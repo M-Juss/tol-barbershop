@@ -25,7 +25,7 @@ export function StatCard({
     <div
       className={`bg-white rounded-xl ${
         isSm ? "p-2.5 sm:p-3" : isMd ? "p-3" : "p-3 sm:p-5"
-      } flex items-center justify-between shadow-sm border border-gray-100 ${className}`}
+      } flex items-center justify-between gap-2 sm:gap-3 shadow-sm border border-gray-100 ${className}`}
     >
       <div className="min-w-0">
         <p className={`text-gray-500 mb-0.5 ${

@@ -11,10 +11,20 @@ export interface NotificationItem {
     | "closed_date"
     | "new_pending_appointment"
     | "reschedule_suggestion"
+    | "new_support_ticket"
+    | "ticket_cancelled"
+    | "ticket_promoted"
+    | "ticket_resolved"
     | string;
   title: string;
   message: string;
   payload?: Record<string, unknown> | null;
+  appointment_id: number | null;
+  service_name: string | null;
+  barber_name: string | null;
+  appointment_date: string | null;
+  appointment_time: string | null;
+  price: number | null;
   is_read: boolean;
   read_at: string | null;
   created_at: string;

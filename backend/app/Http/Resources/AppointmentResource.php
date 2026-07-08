@@ -17,7 +17,8 @@ class AppointmentResource extends JsonResource
 
             'customer' => [
                 'id' => $this->is_walkin ? null : $this->user?->id,
-                'fullname' => $this->customer_name
+                'fullname' => $this->customer_name_snapshot
+                    ?? $this->customer_name
                     ?? ($this->is_walkin
                         ? ($this->walkin_customer_name ?? $this->user?->fullname)
                         : $this->user?->fullname),
@@ -29,14 +30,14 @@ class AppointmentResource extends JsonResource
 
             'barber' => [
                 'id' => $this->barber?->id,
-                'fullname' => $this->barber?->fullname,
+                'fullname' => $this->barber_name_snapshot ?? $this->barber?->fullname,
                 'email' => $this->barber?->email,
                 'contact_number' => $this->barber?->contact_number,
             ],
 
             'service' => [
                 'id' => $this->service?->id,
-                'name' => $this->service?->name,
+                'name' => $this->service_name_snapshot ?? $this->service?->name,
             ],
 
             'feedback' => $this->whenLoaded('feedback', fn () => [
@@ -55,6 +56,9 @@ class AppointmentResource extends JsonResource
             'is_walkin' => (bool) $this->is_walkin,
             'batch_id' => $this->batch_id,
             'customer_name' => $this->customer_name,
+            'customer_name_snapshot' => $this->customer_name_snapshot,
+            'service_name_snapshot' => $this->service_name_snapshot,
+            'barber_name_snapshot' => $this->barber_name_snapshot,
 
             'notes' => $this->notes,
             'cancellation_reason' => $this->cancellation_reason,

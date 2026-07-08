@@ -21,7 +21,7 @@ const navSections = [
   {
     label: "Operations",
     items: [
-      { key: "appointment", href: "/admin/appointment", icon: Calendar, label: "Appointment" },
+      { key: "appointment", href: "/admin/appointment", icon: Calendar, label: "Appointments" },
       { key: "walkin", href: "/admin/walkin", icon: UserPlus, label: "Walkin" },
       { key: "history", href: "/admin/history", icon: History, label: "History" },
     ],

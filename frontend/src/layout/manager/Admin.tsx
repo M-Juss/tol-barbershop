@@ -630,29 +630,56 @@ export function Admin() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Module Permissions
               </label>
-              <div className="space-y-2">
-                {modules.map((mod) => (
-                  <div
-                    key={mod.id}
-                    onClick={() => toggleModule(mod.id)}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
-                  >
-                    <div
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                        selectedModuleIds.includes(mod.id)
-                          ? "bg-red-500 border-red-500"
-                          : "border-gray-300"
-                      }`}
-                    >
-                      {selectedModuleIds.includes(mod.id) && (
-                        <Check className="w-3.5 h-3.5 text-white" />
-                      )}
-                    </div>
-                    <span className="text-sm font-medium text-gray-900">
-                      {mod.name}
-                    </span>
-                  </div>
-                ))}
+              <div className="space-y-4">
+                {(() => {
+                  const categories = [
+                    { label: "Overview", keys: ["dashboard"] },
+                    { label: "Operations", keys: ["appointment", "walkin", "history"] },
+                    { label: "Analytics", keys: ["reports", "feedback"] },
+                    { label: "Relations", keys: ["crm", "customer-service"] },
+                    { label: "Administration", keys: ["management"] },
+                  ];
+                  const moduleByKey = Object.fromEntries(
+                    modules.map((m) => [m.key, m]),
+                  );
+                  return categories.map((cat) => {
+                    const catModules = cat.keys
+                      .map((k) => moduleByKey[k])
+                      .filter(Boolean);
+                    if (catModules.length === 0) return null;
+                    return (
+                      <div key={cat.label}>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
+                          {cat.label}
+                        </p>
+                        <div className="space-y-1 pl-2">
+                          {catModules.map((mod) => (
+                            <div
+                              key={mod.id}
+                              onClick={() => toggleModule(mod.id)}
+                              className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
+                            >
+                              <div
+                                className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                  selectedModuleIds.includes(mod.id)
+                                    ? "bg-red-500 border-red-500"
+                                    : "border-gray-300"
+                                }`}
+                              >
+                                {selectedModuleIds.includes(mod.id) && (
+                                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                                )}
+                              </div>
+                              <span className="text-sm font-medium text-gray-900">
+                                {mod.name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
           </div>

@@ -42,6 +42,7 @@ class AppointmentFeedbackController extends Controller
                 'comment' => is_string($comment) && trim($comment) !== ''
                     ? trim($comment)
                     : null,
+                'customer_name_snapshot' => $authUser->fullname,
             ],
         );
 
@@ -65,6 +66,7 @@ class AppointmentFeedbackController extends Controller
             }
             $feedback->update(['is_featured' => false]);
             $feedback->load(['user', 'appointment.service', 'appointment.barber']);
+
             return $this->success('Feedback removed from featured.', new AppointmentFeedbackResource($feedback));
         }
 

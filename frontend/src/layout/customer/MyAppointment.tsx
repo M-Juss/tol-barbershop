@@ -246,7 +246,7 @@ export function MyAppointment() {
                     ₱{row.price.toFixed(2)}
                   </span>
                   {row.cancellation_reason ? (
-                    <span className="text-xs text-red-500 truncate max-w-[150px]" title={row.cancellation_reason}>
+                    <span className="text-xs text-gray-500 truncate max-w-[150px]" title={row.cancellation_reason}>
                       {row.cancellation_reason}
                     </span>
                   ) : null}
@@ -296,7 +296,7 @@ export function MyAppointment() {
                       <div className="relative inline-block">
                         <AppointmentStatusBadge status={row.status} />
                         {row.cancellation_reason ? (
-                          <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-max max-w-64 -translate-x-1/2 rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs text-red-600 shadow-md group-hover:block">
+                          <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-max max-w-64 -translate-x-1/2 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-600 shadow-md group-hover:block">
                             Reason: {row.cancellation_reason}
                           </div>
                         ) : null}

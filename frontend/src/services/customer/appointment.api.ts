@@ -56,6 +56,9 @@ export interface Appointment {
   is_walkin: boolean;
   batch_id: string | null;
   customer_name: string | null;
+  customer_name_snapshot: string | null;
+  service_name_snapshot: string | null;
+  barber_name_snapshot: string | null;
   notes: string | null;
   cancellation_reason: string | null;
   approved_at: string | null;
@@ -173,6 +176,16 @@ export const createBatchAppointment = async (
     },
   );
 
+  return response.data;
+};
+
+export const getUnavailableSlots = async (
+  barberId: number,
+  date: string,
+): Promise<string[]> => {
+  const response = await authFetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/appointments/available-slots?barber_id=${barberId}&date=${date}`,
+  );
   return response.data;
 };
 

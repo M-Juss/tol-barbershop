@@ -12,12 +12,13 @@ class ModuleSeeder extends Seeder
         $modules = [
             ['key' => 'dashboard', 'name' => 'Dashboard'],
             ['key' => 'management', 'name' => 'Management'],
-            ['key' => 'appointment', 'name' => 'Appointment'],
+            ['key' => 'appointment', 'name' => 'Appointments'],
             ['key' => 'walkin', 'name' => 'Walk-in'],
             ['key' => 'history', 'name' => 'History'],
             ['key' => 'reports', 'name' => 'Reports'],
             ['key' => 'feedback', 'name' => 'Feedback'],
             ['key' => 'crm', 'name' => 'Customers'],
+            ['key' => 'customer-service', 'name' => 'Customer Service'],
         ];
 
         foreach ($modules as $module) {

@@ -20,6 +20,8 @@ class SupportTicket extends Model
         'queued_at',
         'claimed_at',
         'resolved_at',
+        'customer_name_snapshot',
+        'assigned_staff_name_snapshot',
     ];
 
     protected $casts = [

@@ -29,7 +29,7 @@ const navSections = [
   {
     label: "Operations",
     items: [
-      { key: "appointment", href: "/manager/appointment", icon: BriefcaseBusiness, label: "Appointment" },
+      { key: "appointment", href: "/manager/appointment", icon: BriefcaseBusiness, label: "Appointments" },
       { key: "walkin", href: "/manager/walkin", icon: UserPlus, label: "Walkin" },
       { key: "history", href: "/manager/history", icon: History, label: "History" },
     ],

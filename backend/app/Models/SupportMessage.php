@@ -11,6 +11,7 @@ class SupportMessage extends Model
         'support_ticket_id',
         'sender_id',
         'message',
+        'sender_name_snapshot',
     ];
 
     public function ticket(): BelongsTo

@@ -11,6 +11,7 @@ export interface SupportMessage {
   id: number;
   support_ticket_id: number;
   sender_id: number;
+  sender_name_snapshot: string | null;
   message: string;
   created_at: string;
   updated_at: string;
@@ -32,7 +33,9 @@ export interface SupportTicketAssignedTo {
 export interface SupportTicket {
   id: number;
   customer_id: number;
+  customer_name_snapshot: string | null;
   assigned_to_id: number | null;
+  assigned_staff_name_snapshot: string | null;
   status: "waiting" | "active" | "resolved" | "cancelled";
   category: string | null;
   subject: string | null;

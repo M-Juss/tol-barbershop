@@ -5,6 +5,7 @@ import { MessageCircle, Clock, CheckCircle, XCircle, ChevronDown, ChevronRight }
 import { getMyTickets, type SupportTicket } from "@/services/customer/support.api";
 import { SupportChatBubble } from "@/components/common/SupportChatBubble";
 import { cn } from "@/lib/utils";
+import { formatTicketId } from "@/lib/booking";
 
 const statusIcons = {
   waiting: Clock,
@@ -107,10 +108,25 @@ export function SupportHistory() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">
                       {ticket.subject || "No subject"}
+                      <span className="ml-2 inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-mono font-medium text-gray-500">
+                        {formatTicketId(ticket.id)}
+                      </span>
                     </p>
                     <p className="text-xs text-gray-400">
                       {formatDate(ticket.created_at)}
                     </p>
+                    {ticket.status === "cancelled" && (
+                      <>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Cancelled: {formatDate(ticket.updated_at)}{ticket.assigned_to ? ` by ${ticket.assigned_to.fullname}` : " by you"}
+                        </p>
+                        {ticket.cancel_reason && (
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Reason: {ticket.cancel_reason}
+                          </p>
+                        )}
+                      </>
+                    )}
                   </div>
 
                   <span
@@ -134,14 +150,13 @@ export function SupportHistory() {
 
                 {expandedId === ticket.id && (
                   <div className="border-t border-gray-100 px-4 py-3 space-y-3 max-h-[400px] overflow-y-auto">
-                    {ticket.resolved_at && (
+                    {ticket.status === "resolved" && ticket.resolved_at && (
                       <p className="text-xs text-gray-400">
                         Resolved on {formatDate(ticket.resolved_at)}
-                        {ticket.assigned_to && (
-                          <> by {ticket.assigned_to.fullname}</>
-                        )}
+                        {ticket.assigned_to && <> by {ticket.assigned_to.fullname}</>}
                       </p>
                     )}
+
                     {ticket.messages_asc?.map((msg) => (
                       <SupportChatBubble
                         key={msg.id}

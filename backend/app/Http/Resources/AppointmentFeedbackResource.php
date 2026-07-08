@@ -10,7 +10,7 @@ class AppointmentFeedbackResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $customerName = $this->user?->fullname ?? 'Customer';
+        $customerName = $this->customer_name_snapshot ?? $this->user?->fullname ?? 'Customer';
         $barberName = $this->appointment?->barber?->fullname;
 
         return [

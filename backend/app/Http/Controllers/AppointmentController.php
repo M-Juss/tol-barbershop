@@ -86,6 +86,11 @@ class AppointmentController extends Controller
             ]);
 
             $appointment->load(['barber', 'service']);
+            $appointment->update([
+                'customer_name_snapshot' => $appointment->walkin_customer_name,
+                'service_name_snapshot' => $appointment->service?->name,
+                'barber_name_snapshot' => $appointment->barber?->fullname,
+            ]);
             EntityChange::dispatch('appointments');
 
             return new AppointmentResource($appointment);
@@ -127,6 +132,14 @@ class AppointmentController extends Controller
             'service',
         ]);
 
+        $appointment->update([
+            'customer_name_snapshot' => $appointment->is_walkin
+                ? $appointment->walkin_customer_name
+                : $appointment->user?->fullname,
+            'service_name_snapshot' => $appointment->service?->name,
+            'barber_name_snapshot' => $appointment->barber?->fullname,
+        ]);
+
         if ($appointment->status === 'pending' && ! $canManage) {
             $adminUsers = User::whereIn('role', ['admin', 'manager'])->get();
 
@@ -140,6 +153,12 @@ class AppointmentController extends Controller
                         $appointment->user?->fullname ?? 'A customer',
                         $appointment->service?->name ?? 'barbershop service'
                     ),
+                    'appointment_id' => $appointment->id,
+                    'service_name' => $appointment->service?->name,
+                    'barber_name' => $appointment->barber?->fullname,
+                    'appointment_date' => $appointment->appointment_date,
+                    'appointment_time' => $appointment->appointment_time,
+                    'price' => $appointment->price,
                     'payload' => [
                         'appointment_id' => $appointment->id,
                         'customer_name' => $appointment->user?->fullname,
@@ -200,7 +219,7 @@ class AppointmentController extends Controller
         $slots = $validated['appointments'];
         $barberUserId = (int) $validated['barber_user_id'];
         $appointmentDate = $validated['appointment_date'];
-        $batchId = 'BATCH-' . now()->timestamp . '-' . ($authUser->id ?? 'guest');
+        $batchId = 'BATCH-'.now()->timestamp.'-'.($authUser->id ?? 'guest');
 
         $services = Service::whereIn('id', collect($slots)->pluck('service_id'))->get()->keyBy('id');
 
@@ -266,7 +285,7 @@ class AppointmentController extends Controller
 
         if ($authUser->role === 'customer') {
             $appointmentNames = collect($createdAppointments)->map(function ($appt) {
-                return ($appt->customer_name ?? $appt->user?->fullname) . ' — ' . ($appt->service?->name ?? 'Service');
+                return ($appt->customer_name ?? $appt->user?->fullname).' — '.($appt->service?->name ?? 'Service');
             })->implode(', ');
 
             $adminUsers = User::whereIn('role', ['admin', 'manager'])->get();
@@ -413,7 +432,15 @@ class AppointmentController extends Controller
             }
         }
 
-        $appointment->update($validated);
+        $appointment->loadMissing(['user', 'barber', 'service']);
+
+        $appointment->update(array_merge($validated, [
+            'customer_name_snapshot' => $appointment->is_walkin
+                ? ($appointment->walkin_customer_name ?? $validated['walkin_customer_name'] ?? null)
+                : $appointment->user?->fullname,
+            'service_name_snapshot' => $service->name,
+            'barber_name_snapshot' => $appointment->barber?->fullname,
+        ]));
 
         $detailsChanged = $isRescheduling;
 
@@ -436,6 +463,8 @@ class AppointmentController extends Controller
                             $appointment->service?->name ?? 'barbershop service',
                             $appointment->id
                         ),
+                        'appointment_id' => $appointment->id,
+                        'service_name' => $appointment->service?->name,
                         'payload' => [
                             'appointment_id' => $appointment->id,
                             'status' => $nextStatus,
@@ -453,6 +482,12 @@ class AppointmentController extends Controller
                         'Your booking is now %s.',
                         str_replace('_', ' ', $nextStatus)
                     ),
+                    'appointment_id' => $appointment->id,
+                    'service_name' => $appointment->service?->name,
+                    'barber_name' => $appointment->barber?->fullname,
+                    'appointment_date' => $appointment->appointment_date,
+                    'appointment_time' => $appointment->appointment_time,
+                    'price' => $appointment->price,
                     'payload' => [
                         'appointment_id' => $appointment->id,
                         'status' => $nextStatus,
@@ -502,6 +537,12 @@ class AppointmentController extends Controller
                     Carbon::parse($appointment->appointment_time)->format('g:i A'),
                     $appointment->barber?->fullname ?? 'the barber'
                 ),
+                'appointment_id' => $appointment->id,
+                'service_name' => $appointment->service?->name,
+                'barber_name' => $appointment->barber?->fullname,
+                'appointment_date' => $appointment->appointment_date,
+                'appointment_time' => $appointment->appointment_time,
+                'price' => $appointment->price,
                 'payload' => [
                     'appointment_id' => $appointment->id,
                     'service_name' => $appointment->service?->name,
@@ -689,6 +730,25 @@ class AppointmentController extends Controller
         }
 
         return response()->json($slots);
+    }
+
+    public function availableSlots(Request $request)
+    {
+        $validated = $request->validate([
+            'barber_id' => ['required', 'integer', 'exists:users,id'],
+            'date' => ['required', 'date_format:Y-m-d'],
+        ]);
+
+        $times = Appointment::where('barber_user_id', $validated['barber_id'])
+            ->where('appointment_date', $validated['date'])
+            ->whereIn('status', ['pending', 'approved'])
+            ->pluck('appointment_time')
+            ->map(fn ($time) => substr((string) $time, 0, 5))
+            ->values();
+
+        return response()->json([
+            'data' => $times,
+        ]);
     }
 
     public function exportSummary()

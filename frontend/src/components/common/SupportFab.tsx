@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatTicketId } from "@/lib/booking";
 import {
   getMyTickets,
   createTicket,
@@ -326,7 +327,7 @@ export function SupportFab() {
                     value={concernCategory}
                     onValueChange={setConcernCategory}
                   >
-                    <SelectTrigger className="border-gray-200 bg-gray-50 text-sm">
+                    <SelectTrigger className="w-full border-gray-200 bg-gray-50 text-sm">
                       <SelectValue placeholder="Select concern type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -363,7 +364,7 @@ export function SupportFab() {
                       In Queue
                     </h3>
                     <p className="text-sm text-gray-500 mt-1">
-                      Your ticket is in the queue.
+                      Your ticket {formatTicketId(ticket.id)} is in the queue.
                     </p>
                     <p className="text-sm text-gray-400 mt-1">
                       A representative will be with you shortly. You cannot send
@@ -470,10 +471,17 @@ export function SupportFab() {
                           <p className="text-xs text-gray-400">
                             {formatDate(t.created_at)}
                           </p>
-                          {t.status === "cancelled" && t.cancel_reason && (
-                            <p className="text-xs text-red-400 mt-1">
-                              Reason: {t.cancel_reason}
-                            </p>
+                          {t.status === "cancelled" && (
+                            <>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {t.assigned_to ? `by ${t.assigned_to.fullname}` : "by you"}
+                              </p>
+                              {t.cancel_reason && (
+                                <p className="text-xs text-gray-500">
+                                  Reason: {t.cancel_reason}
+                                </p>
+                              )}
+                            </>
                           )}
                         </div>
 
