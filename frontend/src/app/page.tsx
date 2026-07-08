@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
+  getFeaturedFeedback,
   getLandingFeedback,
   getLandingServices,
   type LandingFeedback,
@@ -103,6 +104,16 @@ export default function Home() {
   useEffect(() => {
     const fetchFeedback = async () => {
       try {
+        const data = await getFeaturedFeedback();
+        if (data.length > 0) {
+          setTestimonials(data);
+          return;
+        }
+      } catch {
+        // ignore, fall through to fallback
+      }
+
+      try {
         const data = await getLandingFeedback();
         setTestimonials(data);
       } catch (error) {
@@ -121,14 +132,22 @@ export default function Home() {
   };
 
   const safeCurrentIndex =
-    testimonials.length > 0 ? Math.min(currentIndex, testimonials.length - 1) : 0;
+    testimonials.length > 0
+      ? Math.min(currentIndex, testimonials.length - 1)
+      : 0;
   const currentTestimonial = testimonials[safeCurrentIndex] ?? null;
 
   return (
     <div className="w-full">
-      <header className="fixed z-10 w-full top-0 flex items-center text-sm justify-between px-4 sm:px-6 py-3 bg-accent/70 backdrop-blur">
+      <header className="fixed z-10 w-full top-0 flex items-center text-sm justify-between px-6 sm:px-6 py-3 bg-accent/70 backdrop-blur">
         <div className="flex space-x-2 items-center">
-          <Image src="/Tol-Logo-White-Bg.png" alt="Logo" height={40} width={40} className="rounded-lg" />
+          <Image
+            src="/Tol-Logo-White-Bg.png"
+            alt="Logo"
+            height={40}
+            width={40}
+            className="rounded-lg"
+          />
           <h1 className="font-bold text-primary-foreground text-md">
             Tol Barbershop
           </h1>
@@ -149,7 +168,7 @@ export default function Home() {
 
         <Link
           href="/login"
-          className="hidden md:inline-block bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md"
+          className="hidden md:inline-block bg-primary hover:bg-primary/90 text-white py-2 px-6 rounded-md"
         >
           Login
         </Link>
@@ -216,36 +235,39 @@ export default function Home() {
           id="home"
           className="relative min-h-screen w-full overflow-hidden"
         >
-              <Image
-                src="/Tol-Hero-Image.png"
-                alt="Barber shop"
-                fill
-                sizes="100vw"
-                className="absolute inset-0 w-full h-full object-cover"
-                priority
-              />
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-center px-4 sm:px-6">
-                <div>
-                  <h1 className="text-5xl sm:text-6xl lg:text-6xl font-extrabold text-white mb-1 sm:mb-2 leading-tight">
-                    WHERE STYLE
-                  </h1>
-                  <h1 className="text-5xl sm:text-6xl lg:text-6xl font-extrabold text-accent mb-2 sm:mb-2 leading-tight">
-                    MEETS PRECISION
-                  </h1>
-                <p className="text-white/80 mb-4 text-base sm:text-lg lg:text-lg">
-                    Where classic meets modern style
-                  </p>
-                  <Link
-                    href="/login"
-                    className="bg-accent/80 text-accent-foreground md:px-6 md:text-sm md:py-2 px-7 py-3 rounded-xl inline-block text-base sm:text-lg font-semibold"
-                  >
-                    Book Appointment
-                  </Link>
-                </div>
-              </div>
+          <Image
+            src="/Tol-Hero-Image.png"
+            alt="Barber shop"
+            fill
+            sizes="100vw"
+            className="absolute inset-0 w-full h-full object-cover"
+            priority
+          />
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-center px-6 sm:px-6">
+            <div>
+              <h1 className="text-5xl sm:text-6xl lg:text-6xl font-extrabold text-white mb-1 sm:mb-2 leading-tight">
+                WHERE STYLE
+              </h1>
+              <h1 className="text-5xl sm:text-6xl lg:text-6xl font-extrabold text-accent mb-2 sm:mb-2 leading-tight">
+                MEETS PRECISION
+              </h1>
+              <p className="text-white/80 mb-4 text-base sm:text-lg lg:text-lg">
+                Where classic meets modern style
+              </p>
+              <Link
+                href="/login"
+                className="bg-accent/80 text-accent-foreground md:px-6 md:text-sm md:py-2 px-7 py-3 rounded-xl inline-block text-base sm:text-lg font-semibold"
+              >
+                Book Appointment
+              </Link>
+            </div>
+          </div>
         </section>
 
-        <section id="services" className="py-16 sm:py-24 px-4 sm:px-8 lg:px-20 xl:px-32 bg-primary flex flex-col items-center">
+        <section
+          id="services"
+          className="py-16 sm:py-24 px-6 sm:px-8 lg:px-20 xl:px-32 bg-primary flex flex-col items-center"
+        >
           <div className="flex items-center gap-4 ">
             <div className="h-1 w-20 bg-accent rounded-sm"></div>
             <p className="text-accent">
@@ -273,7 +295,7 @@ export default function Home() {
                       {service.price ? `P${service.price}` : "N/A"}
                     </p>
                   </div>
-                  <p className="text-neutral-landing text-md mb-2">
+                  <p className="text-gray-400 text-md mb-2">
                     {service.description || "No description available."}
                   </p>
                   <p className="text-gray-400 text-sm">
@@ -296,7 +318,7 @@ export default function Home() {
 
         <section
           id="about"
-          className="px-4 sm:px-8 lg:px-20 xl:px-44 py-16 sm:py-20 bg-primary/95 grid lg:grid-cols-2 grid-cols-1 gap-8 lg:gap-12 w-full text-white"
+          className="px-6 sm:px-8 lg:px-20 xl:px-44 py-16 sm:py-20 bg-primary/95 grid lg:grid-cols-2 grid-cols-1 gap-8 lg:gap-12 w-full text-white"
         >
           <div className="my-auto">
             <Image
@@ -315,17 +337,17 @@ export default function Home() {
               Crafting Confidence Through Classic Grooming
             </p>
 
-            <p className="text-neutral-landing">
-              Since 2009, Tol Barbershop has been the cornestone of gentleman&apos;s
-              grooming in the city. Our master barbers combine time-honord
-              techniques with contemporary styles to deliver an unparalleled
-              experience.
+            <p className="text-gray-400">
+              Since 2009, Tol Barbershop has been the cornestone of
+              gentleman&apos;s grooming in the city. Our master barbers combine
+              time-honord techniques with contemporary styles to deliver an
+              unparalleled experience.
             </p>
 
-            <p className="text-neutral-landing">
-              We believe every man deserves to look and feel his best. That&apos;s
-              why we use only premium products and tools, ensuring each cut isa
-              masterpiece and every shave is an indulgece.
+            <p className="text-gray-400">
+              We believe every man deserves to look and feel his best.
+              That&apos;s why we use only premium products and tools, ensuring
+              each cut isa masterpiece and every shave is an indulgece.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-7">
@@ -344,12 +366,12 @@ export default function Home() {
 
         <section
           id="gallery"
-          className="px-4 sm:px-8 lg:px-20 xl:px-44 py-16 sm:py-20 flex flex-col items-center text-white bg-primary"
+          className="px-6 sm:px-8 lg:px-20 xl:px-44 py-16 sm:py-20 flex flex-col items-center text-white bg-primary"
         >
           <p className="mb-2 text-3xl sm:text-4xl lg:text-5xl font-semibold text-center">
             Our Gallery
           </p>
-          <p className="mb-8 text-neutral-landing text-center">
+          <p className="mb-8 text-gray-400 text-center">
             A glimpse into our world of classic grooming and modern
           </p>
 
@@ -393,13 +415,14 @@ export default function Home() {
 
         <section
           id="testimonial"
-          className="px-4 sm:px-8 lg:px-20 xl:px-44 py-16 sm:py-20 flex flex-col items-center bg-primary/95 text-center text-white"
+          className="px-6 sm:px-8 lg:px-20 xl:px-44 py-16 sm:py-20 flex flex-col items-center bg-primary/95 text-center text-white"
         >
           <p className="md:text-5xl sm:text-4xl text-3xl font-semibold mb-4 ">
             What Our Customer Say
           </p>
-          <p className="text-sm text-neutral-landing mb-8">
-            Don&apos;t just take our word for it - hear from our satisfied clients
+          <p className="text-sm text-gray-400 mb-8">
+            Don&apos;t just take our word for it - hear from our satisfied
+            clients
           </p>
 
           <div className="px-5 sm:px-8 lg:px-12 py-8 sm:py-12 border border-white/12 relative flex flex-col items-center rounded-xl hover:scale-105 transition duration-300">
@@ -429,8 +452,9 @@ export default function Home() {
                   </p>
                   <div className="text-left">
                     <p>{currentTestimonial.customer_name}</p>
-                    <p className="text-xs text-neutral-landing">
-                      {currentTestimonial.service_name ?? "Tol Barbershop Customer"}
+                    <p className="text-xs text-gray-400">
+                      {currentTestimonial.service_name ??
+                        "Tol Barbershop Customer"}
                     </p>
                   </div>
                 </div>
@@ -442,7 +466,9 @@ export default function Home() {
                         key={item.id}
                         onClick={() => goToSlide(index)}
                         className={`w-3 h-3 transition-all duration-300 rounded-full ${
-                          safeCurrentIndex === index ? "w-10 bg-accent " : "bg-white"
+                          safeCurrentIndex === index
+                            ? "w-10 bg-accent "
+                            : "bg-white"
                         }`}
                         aria-label={`Show feedback ${index + 1}`}
                       ></button>
@@ -451,10 +477,32 @@ export default function Home() {
                 ) : null}
               </>
             ) : (
-              <div className="py-8 text-neutral-landing">
+              <div className="py-8 text-gray-400">
                 Customer feedback will appear here after completed bookings.
               </div>
             )}
+          </div>
+        </section>
+
+        <section className="px-6 sm:px-8 lg:px-20 xl:px-44 py-16 sm:py-20 flex flex-col items-center bg-primary">
+          <p className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-center text-white mb-4">
+            Come and Visit Us
+          </p>
+          
+          <p className="text-sm text-gray-400 mb-8 text-center">
+            Drop by for a haircut or just to say hello. We&apos;d love to
+            welcome you!
+          </p>
+
+          <div className="w-full rounded-xl overflow-hidden shadow-lg">
+            <iframe
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3864.537221528138!2d120.8606439750669!3d14.396166386066287!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33962da0b18f65cf%3A0xc3b88fcbdf399c9!2sTol%20Barbershop!5e0!3m2!1sen!2sph!4v1783435390818!5m2!1sen!2sph"
+              className="w-full h-72 sm:h-96"
+              style={{ border: 0 }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
           </div>
         </section>
       </main>
@@ -463,11 +511,17 @@ export default function Home() {
         id="contact"
         className="flex flex-col border-y border-white/10 bg-primary text-white "
       >
-        <div className="grid md:grid-cols-3 grid-cols-1 px-4 sm:px-8 lg:px-10 xl:px-32 py-12 gap-8 sm:gap-12">
+        <div className="grid md:grid-cols-3 grid-cols-1 px-6 sm:px-8 lg:px-10 xl:px-32 py-12 gap-8 sm:gap-12">
           {/*Column 1*/}
           <div className="flex flex-col">
             <div className="flex items-center gap-3 mb-5 ">
-              <Image src="/Tol-Logo-White-Bg.png" alt="Logo" height={50} width={50} className="rounded-lg" />
+              <Image
+                src="/Tol-Logo-White-Bg.png"
+                alt="Logo"
+                height={50}
+                width={50}
+                className="rounded-lg"
+              />
               <p className="text-xl">Tol Barbershop</p>
             </div>
             <p className="text-sm">
@@ -499,23 +553,21 @@ export default function Home() {
 
           {/*Column 3*/}
           <div className="flex flex-col">
+            <p className="text-xl mb-5">Opening Hours</p>
 
-              <p className="text-xl mb-5">Opening Hours</p>
-  
-
-            <div className="flex border-b border-white/10 pb-4 justify-between items-center">
+            <div className="flex  pb-4 justify-between items-center">
               <p className="text-sm">Monday - Saturday </p>
               <p className="text-sm">9:00 AM - 7:00 PM</p>
             </div>
 
-            <div className="flex border-b border-white/10 pb-4 justify-between items-center">
+            <div className="flex border-t border-white/10 pb-4 justify-between items-center">
               <p className="text-sm pt-4">Sunday</p>
               <p className="text-sm pt-4">Closed</p>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 px-4 sm:px-8 py-4 border-t border-white/10 text-center">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 px-6 sm:px-8 py-4 border-t border-white/10 bg-black/10 text-center">
           <p className="text-sm text-neutral">
             &copy; 2024 Tol Barbershop. All rights reserved.
           </p>
@@ -529,6 +581,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-     </div>
+    </div>
   );
 }

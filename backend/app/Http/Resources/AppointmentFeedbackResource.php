@@ -27,6 +27,7 @@ class AppointmentFeedbackResource extends JsonResource
                 ->implode(''),
             'barber_name' => $barberName,
             'service_name' => $this->appointment?->service?->name,
+            'is_featured' => $this->is_featured,
             'submitted_at' => $this->created_at,
         ];
     }

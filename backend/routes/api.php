@@ -34,6 +34,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->middleware('throttle:30,1');
     Route::get('/public-services', [ServiceController::class, 'publicIndex'])->middleware('throttle:300,1');
     Route::get('/public-feedback', [AppointmentFeedbackController::class, 'publicIndex'])->middleware('throttle:300,1');
+    Route::get('/featured-feedback', [AppointmentFeedbackController::class, 'featuredIndex'])->middleware('throttle:300,1');
     Route::get('/public-booking-settings', [SettingsController::class, 'publicBookingSettings'])->middleware('throttle:300,1');
 
     Route::get('/events/stream', [SSEController::class, 'stream'])->middleware('throttle:10,1');
@@ -64,6 +65,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/analytics/peak-hours', [AnalyticsController::class, 'peakHours'])->middleware('throttle:300,1');
             Route::get('/analytics/day-of-week', [AnalyticsController::class, 'dayOfWeek'])->middleware('throttle:300,1');
             Route::get('/feedback', [AppointmentFeedbackController::class, 'index'])->middleware('throttle:300,1');
+            Route::put('/feedback/{id}/toggle-feature', [AppointmentFeedbackController::class, 'toggleFeature'])->middleware('throttle:60,1');
             Route::get('/customers', [CustomerController::class, 'index'])->middleware('throttle:300,1');
             Route::get('/customers/{id}', [CustomerController::class, 'show'])->middleware('throttle:300,1');
         });
@@ -83,7 +85,6 @@ Route::prefix('v1')->group(function () {
         Route::get('/modules', [ModuleController::class, 'index'])->middleware(['role:manager', 'throttle:300,1']);
 
         Route::prefix('support')->group(function () {
-            // Shared routes (accessible by all roles — controllers handle internal auth)
             Route::middleware('role:customer,admin,manager')->group(function () {
                 Route::get('/tickets/{id}', [SupportTicketController::class, 'show'])->middleware('throttle:300,1');
                 Route::get('/tickets/{id}/messages', [SupportTicketController::class, 'getMessages'])->middleware('throttle:60,1');

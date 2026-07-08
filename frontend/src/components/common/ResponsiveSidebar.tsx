@@ -171,29 +171,31 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
               <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
                 {section.label}
               </p>
-              {section.items.map((item) => (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  onClick={handleNavClick}
-                  className={`
-                    w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors
-                    ${
-                      pathname === item.href
-                        ? "bg-slate-800 text-white"
-                        : "text-gray-300 hover:bg-slate-800 hover:text-white"
-                    }
-                  `}
-                >
-                  <item.icon className="w-5 h-5 shrink-0" />
-                  <span className="flex-1">{item.label}</span>
-                  {item.badgeCount && item.badgeCount > 0 ? (
-                    <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                      {item.badgeCount > 99 ? "99+" : item.badgeCount}
-                    </span>
-                  ) : null}
-                </Link>
-              ))}
+              <div className="flex flex-col gap-1">
+                {section.items.map((item) => (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    onClick={handleNavClick}
+                    className={`
+                      w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors
+                      ${
+                        pathname === item.href
+                          ? "bg-slate-800 text-white"
+                          : "text-gray-300 hover:bg-slate-800 hover:text-white"
+                      }
+                    `}
+                  >
+                    <item.icon className="w-5 h-5 shrink-0" />
+                    <span className="flex-1">{item.label}</span>
+                    {item.badgeCount && item.badgeCount > 0 ? (
+                      <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                        {item.badgeCount > 99 ? "99+" : item.badgeCount}
+                      </span>
+                    ) : null}
+                  </Link>
+                ))}
+              </div>
             </div>
           ))}
         </nav>

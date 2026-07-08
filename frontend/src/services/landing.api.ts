@@ -71,3 +71,30 @@ export const getLandingFeedback = async (): Promise<LandingFeedback[]> => {
   const result = await response.json();
   return result.data?.feedback ?? result.feedback ?? [];
 };
+
+export const getFeaturedFeedback = async (): Promise<LandingFeedback[]> => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  if (!apiUrl) {
+    throw new Error("NEXT_PUBLIC_API_URL is not configured");
+  }
+
+  const response = await fetch(`${apiUrl}/featured-feedback`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData.message || `Failed to fetch featured feedback: ${response.status}`,
+    );
+  }
+
+  const result = await response.json();
+  return result.data?.feedback ?? result.feedback ?? [];
+};

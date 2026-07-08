@@ -14,10 +14,12 @@ class AppointmentFeedback extends Model
         'user_id',
         'rating',
         'comment',
+        'is_featured',
     ];
 
     protected $casts = [
         'rating' => 'integer',
+        'is_featured' => 'boolean',
     ];
 
     public function appointment(): BelongsTo

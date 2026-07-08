@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   getFeedbackList,
+  toggleFeature,
   type FeedbackItem,
   type FeedbackMeta,
 } from "@/services/manager/feedback.api";
@@ -38,7 +39,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Star, MessageSquareText, Search, Calendar, Clock } from "lucide-react";
+import { Star, MessageSquareText, Calendar, Clock } from "lucide-react";
+import { toast } from "sonner";
 
 function formatDate(date: string): string {
   return new Date(date).toLocaleDateString("en-US", {
@@ -82,37 +84,62 @@ export function FeedbackList() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [ratingFilter, setRatingFilter] = useState("all");
+  const [featuredFilter, setFeaturedFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
+  const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     setPage(1);
-  }, [search, ratingFilter]);
+  }, [search, ratingFilter, featuredFilter]);
+
+  const fetchFeedback = async () => {
+    setLoading(true);
+    try {
+      const data = await getFeedbackList({
+        search: search.trim() || undefined,
+        rating: ratingFilter !== "all" ? ratingFilter : undefined,
+        featured: featuredFilter !== "all" ? featuredFilter : undefined,
+        page,
+        per_page: 10,
+        sort: "created_at",
+        dir: "desc",
+      });
+      setFeedback(data.feedback);
+      setMeta(data.meta);
+    } catch (error) {
+      console.error("Failed to load feedback:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchFeedback = async () => {
-      setLoading(true);
-      try {
-        const data = await getFeedbackList({
-          search: search.trim() || undefined,
-          rating: ratingFilter !== "all" ? ratingFilter : undefined,
-          page,
-          per_page: 10,
-          sort: "created_at",
-          dir: "desc",
-        });
-        setFeedback(data.feedback);
-        setMeta(data.meta);
-      } catch (error) {
-        console.error("Failed to load feedback:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     const debounce = setTimeout(fetchFeedback, search ? 300 : 0);
     return () => clearTimeout(debounce);
-  }, [search, ratingFilter, page]);
+  }, [search, ratingFilter, featuredFilter, page]);
+
+  const handleToggleFeature = async (id: number) => {
+    setTogglingIds((prev) => new Set(prev).add(id));
+    try {
+      const updated = await toggleFeature(id);
+      setFeedback((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, is_featured: updated.is_featured } : item)),
+      );
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "message" in err
+          ? (err as { message: string }).message
+          : "Failed to update featured status";
+      toast.error(msg);
+    } finally {
+      setTogglingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
 
   return (
     <div className="w-full h-full bg-slate-100 p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
@@ -127,20 +154,17 @@ export function FeedbackList() {
 
       <SectionCard title="Filters" className="mb-4 p-4">
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative w-full sm:w-3/4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by customer, service, or comment"
-              className="pl-9"
-            />
-          </div>
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by customer, service, or comment"
+            className="w-full sm:flex-1"
+          />
           <Select
             value={ratingFilter}
             onValueChange={(value) => setRatingFilter(value)}
           >
-            <SelectTrigger className="w-full sm:w-1/4 border-gray-300">
+            <SelectTrigger className="w-full sm:w-[140px] border-gray-300">
               <SelectValue placeholder="All Ratings" />
             </SelectTrigger>
             <SelectContent>
@@ -150,6 +174,19 @@ export function FeedbackList() {
               <SelectItem value="3">3 Stars</SelectItem>
               <SelectItem value="2">2 Stars</SelectItem>
               <SelectItem value="1">1 Star</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={featuredFilter}
+            onValueChange={(value) => setFeaturedFilter(value)}
+          >
+            <SelectTrigger className="w-full sm:w-[160px] border-gray-300">
+              <SelectValue placeholder="All Items" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Items</SelectItem>
+              <SelectItem value="featured">Featured</SelectItem>
+              <SelectItem value="not_featured">Not Featured</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -170,11 +207,13 @@ export function FeedbackList() {
             feedback.map((item) => (
               <div
                 key={item.id}
-                onClick={() => setSelectedFeedback(item)}
-                className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-2 cursor-pointer active:bg-gray-50 transition"
+                className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-2"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div
+                    className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer active:bg-gray-50 transition"
+                    onClick={() => setSelectedFeedback(item)}
+                  >
                     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-semibold text-blue-700">
                       {item.customer_initials}
                     </div>
@@ -182,19 +221,39 @@ export function FeedbackList() {
                       {item.customer_name}
                     </span>
                   </div>
-                  <StarRating rating={item.rating} />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleFeature(item.id);
+                    }}
+                    disabled={togglingIds.has(item.id)}
+                    className="p-1 shrink-0"
+                    title={item.is_featured ? "Unfeature" : "Feature on landing page"}
+                  >
+                    {item.is_featured ? (
+                      <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                    ) : (
+                      <Star className="h-5 w-5 text-gray-300 hover:text-yellow-400 transition-colors" />
+                    )}
+                  </button>
                 </div>
-                <p className="text-xs text-gray-500">{item.service_name}</p>
-                {item.comment ? (
-                  <p className="text-sm text-gray-700 italic truncate">
-                    &ldquo;{item.comment}&rdquo;
+                <div
+                  className="cursor-pointer active:bg-gray-50 transition"
+                  onClick={() => setSelectedFeedback(item)}
+                >
+                  <p className="text-xs text-gray-500">{item.service_name}</p>
+                  <StarRating rating={item.rating} />
+                  {item.comment ? (
+                    <p className="text-sm text-gray-700 italic truncate">
+                      &ldquo;{item.comment}&rdquo;
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">No comment</p>
+                  )}
+                  <p className="text-xs text-gray-400">
+                    {formatDateTime(item.submitted_at)}
                   </p>
-                ) : (
-                  <p className="text-sm text-gray-400 italic">No comment</p>
-                )}
-                <p className="text-xs text-gray-400">
-                  {formatDateTime(item.submitted_at)}
-                </p>
+                </div>
               </div>
             ))
           )}
@@ -205,6 +264,7 @@ export function FeedbackList() {
           <Table>
             <TableHeader className="bg-gray-50">
               <TableRow>
+                <TableHead className="w-10"></TableHead>
                 <TableHead>Customer</TableHead>
                 <TableHead>Service</TableHead>
                 <TableHead>Rating</TableHead>
@@ -215,13 +275,13 @@ export function FeedbackList() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell className="text-gray-500" colSpan={5}>
+                  <TableCell className="text-gray-500" colSpan={6}>
                     Loading feedback...
                   </TableCell>
                 </TableRow>
               ) : feedback.length === 0 ? (
                 <TableRow>
-                  <TableCell className="text-gray-500" colSpan={5}>
+                  <TableCell className="text-gray-500" colSpan={6}>
                     No feedback found.
                   </TableCell>
                 </TableRow>
@@ -229,10 +289,22 @@ export function FeedbackList() {
                 feedback.map((item) => (
                   <TableRow
                     key={item.id}
-                    onClick={() => setSelectedFeedback(item)}
                     className="cursor-pointer"
                   >
-                    <TableCell>
+                    <TableCell onClick={() => handleToggleFeature(item.id)}>
+                      <button
+                        disabled={togglingIds.has(item.id)}
+                        className="p-1"
+                        title={item.is_featured ? "Unfeature" : "Feature on landing page"}
+                      >
+                        {item.is_featured ? (
+                          <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                        ) : (
+                          <Star className="h-5 w-5 text-gray-300 hover:text-yellow-400 transition-colors" />
+                        )}
+                      </button>
+                    </TableCell>
+                    <TableCell onClick={() => setSelectedFeedback(item)}>
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-semibold text-blue-700">
                           {item.customer_initials}
@@ -242,13 +314,13 @@ export function FeedbackList() {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-gray-600">
+                    <TableCell className="text-gray-600" onClick={() => setSelectedFeedback(item)}>
                       {item.service_name}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={() => setSelectedFeedback(item)}>
                       <StarRating rating={item.rating} />
                     </TableCell>
-                    <TableCell className="max-w-xs text-gray-600">
+                    <TableCell className="max-w-xs text-gray-600" onClick={() => setSelectedFeedback(item)}>
                       {item.comment ? (
                         <div className="flex items-start gap-1.5">
                           <MessageSquareText className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
@@ -262,7 +334,7 @@ export function FeedbackList() {
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className="text-gray-500 text-sm whitespace-nowrap">
+                    <TableCell className="text-gray-500 text-sm whitespace-nowrap" onClick={() => setSelectedFeedback(item)}>
                       {formatDateTime(item.submitted_at)}
                     </TableCell>
                   </TableRow>
@@ -331,14 +403,9 @@ export function FeedbackList() {
                 />
               </PaginationItem>
             </PaginationContent>
-            <div className="my-10 bg-red-600" />
           </Pagination>
-          
         ) : null}
-
-        
       </div>
-      
 
       <Dialog
         open={!!selectedFeedback}
@@ -405,7 +472,6 @@ export function FeedbackList() {
           )}
         </DialogContent>
       </Dialog>
-      
     </div>
   );
 }

@@ -10,6 +10,7 @@ export interface FeedbackItem {
   service_name: string;
   submitted_at: string;
   barber_name: string | null;
+  is_featured: boolean;
 }
 
 export interface FeedbackMeta {
@@ -27,6 +28,7 @@ export interface FeedbackResponse {
 export interface FeedbackFilters {
   search?: string;
   rating?: string;
+  featured?: string;
   sort?: string;
   dir?: string;
   page?: number;
@@ -39,6 +41,7 @@ export const getFeedbackList = async (filters: FeedbackFilters = {}): Promise<Fe
   const params = new URLSearchParams();
   if (filters.search) params.set("search", filters.search);
   if (filters.rating) params.set("rating", filters.rating);
+  if (filters.featured) params.set("featured", filters.featured);
   if (filters.sort) params.set("sort", filters.sort);
   if (filters.dir) params.set("dir", filters.dir);
   if (filters.page) params.set("page", String(filters.page));
@@ -47,4 +50,11 @@ export const getFeedbackList = async (filters: FeedbackFilters = {}): Promise<Fe
   const qs = params.toString();
   const response = await authFetch(`${API}/feedback${qs ? `?${qs}` : ""}`);
   return response.data as FeedbackResponse;
+};
+
+export const toggleFeature = async (id: number): Promise<FeedbackItem> => {
+  const response = await authFetch(`${API}/feedback/${id}/toggle-feature`, {
+    method: "PUT",
+  });
+  return response.data as FeedbackItem;
 };

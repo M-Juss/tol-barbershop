@@ -54,6 +54,33 @@ class AppointmentFeedbackController extends Controller
         );
     }
 
+    public function toggleFeature(Request $request, $id)
+    {
+        $feedback = AppointmentFeedback::findOrFail($id);
+
+        if ($feedback->is_featured) {
+            $featuredCount = AppointmentFeedback::where('is_featured', true)->count();
+            if ($featuredCount <= 1) {
+                return $this->error('At least 1 feedback must remain featured.', [], 422);
+            }
+            $feedback->update(['is_featured' => false]);
+            $feedback->load(['user', 'appointment.service', 'appointment.barber']);
+            return $this->success('Feedback removed from featured.', new AppointmentFeedbackResource($feedback));
+        }
+
+        $featuredCount = AppointmentFeedback::where('is_featured', true)->count();
+
+        if ($featuredCount >= 5) {
+            return $this->error('Maximum of 5 featured feedback reached. Unfeature another item first.', [], 422);
+        }
+
+        $feedback->update(['is_featured' => true]);
+
+        $feedback->load(['user', 'appointment.service', 'appointment.barber']);
+
+        return $this->success('Feedback featured successfully.', new AppointmentFeedbackResource($feedback));
+    }
+
     public function publicIndex(Request $request)
     {
         $feedback = AppointmentFeedback::with(['user:id,fullname', 'appointment.service:id,name', 'appointment.barber:id,fullname'])
@@ -65,6 +92,19 @@ class AppointmentFeedbackController extends Controller
             ->get();
 
         return $this->success('Feedback retrieved successfully.', [
+            'feedback' => AppointmentFeedbackResource::collection($feedback),
+        ]);
+    }
+
+    public function featuredIndex(Request $request)
+    {
+        $feedback = AppointmentFeedback::with(['user:id,fullname', 'appointment.service:id,name', 'appointment.barber:id,fullname'])
+            ->where('is_featured', true)
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        return $this->success('Featured feedback retrieved successfully.', [
             'feedback' => AppointmentFeedbackResource::collection($feedback),
         ]);
     }
@@ -93,6 +133,7 @@ class AppointmentFeedbackController extends Controller
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
+            'featured' => ['nullable', 'string', 'in:all,featured,not_featured'],
         ]);
 
         $query = AppointmentFeedback::with(['user:id,fullname', 'appointment.service:id,name', 'appointment.barber:id,fullname']);
@@ -109,6 +150,14 @@ class AppointmentFeedbackController extends Controller
 
         if (! empty($validated['rating'])) {
             $query->where('rating', $validated['rating']);
+        }
+
+        if (! empty($validated['featured'])) {
+            if ($validated['featured'] === 'featured') {
+                $query->where('is_featured', true);
+            } elseif ($validated['featured'] === 'not_featured') {
+                $query->where('is_featured', false);
+            }
         }
 
         $sortField = $request->input('sort', 'created_at');
