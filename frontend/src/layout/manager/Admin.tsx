@@ -136,7 +136,7 @@ export function Admin() {
     setEditingAdmin(null);
   };
 
-  const handleAdminSubmit = async (data: AdminSchemaFormValues & { image?: File }) => {
+  const handleAdminSubmit = async (data: AdminSchemaFormValues) => {
     try {
       if (editingAdmin) {
         await updateAdmin(editingAdmin.id, data);
@@ -551,7 +551,6 @@ export function Admin() {
                 fullname: editingAdmin.fullname,
                 email: editingAdmin.email,
                 contact_number: editingAdmin.contact_number,
-                image: editingAdmin.image,
                 is_active: isActiveValue(editingAdmin.is_active),
                 role_id: editingAdmin.role_id ?? undefined,
               }

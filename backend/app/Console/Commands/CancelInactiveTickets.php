@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Notification;
 use App\Models\SupportTicket;
+use App\Support\DisplayId;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -22,6 +23,8 @@ class CancelInactiveTickets extends Command
             ->get();
 
         foreach ($tickets as $ticket) {
+            $ticketId = DisplayId::ticket($ticket->id);
+
             $ticket->update([
                 'status' => 'cancelled',
                 'subject' => 'Auto-cancelled due to inactivity',
@@ -32,9 +35,10 @@ class CancelInactiveTickets extends Command
                 'user_id' => $ticket->customer_id,
                 'type' => 'ticket_cancelled',
                 'title' => 'Ticket Cancelled',
-                'message' => 'Your support ticket was cancelled due to inactivity for 5 minutes. Please create a new ticket if you still need assistance.',
+                'message' => "Your support ticket {$ticketId} was cancelled due to inactivity for 5 minutes. Please create a new ticket if you still need assistance.",
                 'payload' => [
                     'ticket_id' => $ticket->id,
+                    'ticket_display_id' => $ticketId,
                 ],
             ]);
 
@@ -43,9 +47,10 @@ class CancelInactiveTickets extends Command
                     'user_id' => $ticket->assigned_to_id,
                     'type' => 'ticket_cancelled',
                     'title' => 'Ticket Cancelled',
-                    'message' => 'A support ticket was auto-cancelled due to inactivity.',
+                    'message' => "Support ticket {$ticketId} was auto-cancelled due to inactivity.",
                     'payload' => [
                         'ticket_id' => $ticket->id,
+                        'ticket_display_id' => $ticketId,
                     ],
                 ]);
             }

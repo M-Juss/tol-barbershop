@@ -32,6 +32,7 @@ import {
 } from "@/services/customer/support.api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { cn } from "@/lib/utils";
 
 type FabState = "idle" | "submitting" | "waiting" | "active" | "resolved";
@@ -71,6 +72,7 @@ function formatDate(dateString: string): string {
 
 export function SupportFab() {
   const { user } = useAuth();
+  const isPageVisible = usePageVisibility();
   const [ticket, setTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [fabState, setFabState] = useState<FabState>("idle");
@@ -121,12 +123,12 @@ export function SupportFab() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !isPageVisible) return;
     fetchTicketState();
 
-    const interval = setInterval(fetchTicketState, 5000);
+    const interval = setInterval(fetchTicketState, 10000);
     return () => clearInterval(interval);
-  }, [user, fetchTicketState]);
+  }, [user, fetchTicketState, isPageVisible]);
 
   const fetchMessages = useCallback(async () => {
     if (!ticket || ticket.status !== "active") return;
@@ -138,17 +140,26 @@ export function SupportFab() {
   }, [ticket]);
 
   useEffect(() => {
-    if (ticket?.status === "active") {
+    const shouldPollMessages =
+      ticket?.status === "active" &&
+      isSheetOpen &&
+      sheetTab === "ticketing" &&
+      isPageVisible;
+
+    if (shouldPollMessages) {
       fetchMessages();
-      pollRef.current = setInterval(fetchMessages, 3000);
+      pollRef.current = setInterval(fetchMessages, 5000);
       return () => {
         if (pollRef.current) clearInterval(pollRef.current);
       };
-    } else {
-      if (pollRef.current) clearInterval(pollRef.current);
+    }
+
+    if (pollRef.current) clearInterval(pollRef.current);
+
+    if (ticket?.status !== "active") {
       setMessages([]);
     }
-  }, [ticket?.status, ticket?.id, fetchMessages]);
+  }, [fetchMessages, isPageVisible, isSheetOpen, sheetTab, ticket?.status]);
 
   const fetchHistoryTickets = useCallback(async () => {
     try {

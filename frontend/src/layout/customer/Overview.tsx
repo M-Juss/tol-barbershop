@@ -25,6 +25,7 @@ import {
   type PendingFeedbackItem,
 } from "@/services/customer/feedback.api";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -68,6 +69,7 @@ function formatTime(time24: string): string {
 export function Overview() {
   const router = useRouter();
   const { user: authUser } = useAuth();
+  const isPageVisible = usePageVisibility();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -160,9 +162,12 @@ export function Overview() {
   }, [authUser?.id]);
 
   useEffect(() => {
-    const interval = setInterval(refreshAppointments, 30000);
+    if (!isPageVisible) return;
+
+    refreshAppointments();
+    const interval = setInterval(refreshAppointments, 60000);
     return () => clearInterval(interval);
-  }, [refreshAppointments]);
+  }, [isPageVisible, refreshAppointments]);
 
   useRealtimeEvent('appointments', refreshAppointments);
 

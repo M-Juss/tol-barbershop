@@ -33,10 +33,6 @@ export function RegisterForm() {
   });
 
   const onSubmit = async (data: RegisterSchemaFormValues) => {
-    console.log("Register form submitted");
-    console.log("Rate limit status:", rateLimit);
-
-    
     try {
       const sanitizedData = {
         ...data,
@@ -45,9 +41,7 @@ export function RegisterForm() {
         contact_number: normalizePhone(data.contact_number),
       };
 
-      console.log("Sending registration data:", sanitizedData);
       const response = await registerCustomerRequest(sanitizedData);
-      console.log("Registration response:", response);
 
       if (response.success == true) {
         toast.success("Registered successfully");

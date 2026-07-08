@@ -18,7 +18,6 @@ use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\SSEController;
 use App\Http\Controllers\SupportTicketController;
 use App\Http\Controllers\WalkinController;
 use Illuminate\Support\Facades\Route;
@@ -37,8 +36,6 @@ Route::prefix('v1')->group(function () {
     Route::get('/public-feedback', [AppointmentFeedbackController::class, 'publicIndex'])->middleware('throttle:300,1');
     Route::get('/featured-feedback', [AppointmentFeedbackController::class, 'featuredIndex'])->middleware('throttle:300,1');
     Route::get('/public-booking-settings', [SettingsController::class, 'publicBookingSettings'])->middleware('throttle:300,1');
-
-    Route::get('/events/stream', [SSEController::class, 'stream'])->middleware('throttle:10,1');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [LogoutController::class, 'logout'])->middleware('throttle:30,1');

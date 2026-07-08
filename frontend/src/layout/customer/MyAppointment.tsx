@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatBookingId } from "@/lib/booking";
+import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { cn } from "@/lib/utils";
 import { Star, User as UserIcon } from "lucide-react";
 import {
@@ -88,6 +89,7 @@ function formatTime(time24: string): string {
 
 export function MyAppointment() {
   const { user: authUser } = useAuth();
+  const isPageVisible = usePageVisibility();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -141,10 +143,12 @@ export function MyAppointment() {
   }, [authUser?.id]);
 
   useEffect(() => {
+    if (!isPageVisible) return;
+
     fetchAppointments();
-    const interval = setInterval(fetchAppointments, 30000);
+    const interval = setInterval(fetchAppointments, 60000);
     return () => clearInterval(interval);
-  }, [fetchAppointments]);
+  }, [fetchAppointments, isPageVisible]);
 
   useRealtimeEvent('appointments', fetchAppointments);
 

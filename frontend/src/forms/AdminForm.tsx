@@ -1,5 +1,4 @@
 "use client";
-import Image from "next/image";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/SelectWithLabel";
 import { SubmitErrorHandler, useForm, useWatch, type Resolver } from "react-hook-form";
@@ -9,8 +8,7 @@ import {
   adminUpdateSchema,
   AdminSchemaFormValues,
 } from "@/validations/staff.validation";
-import { useEffect, useState } from "react";
-import { User } from "lucide-react";
+import { useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -33,13 +31,12 @@ import {
   normalizeEmail,
   normalizePhone,
 } from "@/lib/sanitizer";
-import { getImageUrl } from "@/lib/image";
 import type { Role } from "@/services/manager/role.api";
 
 type AdminFormProps = {
   open: boolean;
   onClose: () => void;
-  onSubmit?: (data: AdminSchemaFormValues & { image?: File }) => void;
+  onSubmit?: (data: AdminSchemaFormValues) => void;
   initialData?: AdminSchemaFormValues;
   title?: string;
   roles?: Role[];
@@ -75,7 +72,6 @@ export function AdminForm({
       fullname: "",
       email: "",
       contact_number: "",
-      image: "",
       password: "",
       confirm_password: "",
       is_active: true,
@@ -83,26 +79,15 @@ export function AdminForm({
     },
   });
 
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
   const isActive = useWatch({ control, name: "is_active" });
   const roleId = useWatch({ control, name: "role_id" });
 
   useEffect(() => {
-    const newImagePreview = typeof initialData?.image === "string"
-      ? getImageUrl(initialData.image)
-      : "";
-    queueMicrotask(() => {
-      setImagePreview(newImagePreview);
-      setImageFile(null);
-    });
-
     if (initialData) {
       reset({
         fullname: initialData.fullname ?? "",
         email: initialData.email ?? "",
         contact_number: String(initialData.contact_number ?? ""),
-        image: initialData.image ?? "",
         password: "",
         confirm_password: "",
         is_active: Boolean(initialData.is_active),
@@ -113,7 +98,6 @@ export function AdminForm({
         fullname: "",
         email: "",
         contact_number: "",
-        image: "",
         password: "",
         confirm_password: "",
         is_active: true,
@@ -122,35 +106,6 @@ export function AdminForm({
     }
   }, [initialData, open, reset]);
 
-  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif"];
-  const MAX_IMAGE_SIZE = 3 * 1024 * 1024;
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      toast.error("Only JPG, PNG, and HEIC images are allowed");
-      e.target.value = "";
-      return;
-    }
-
-    if (file.size > MAX_IMAGE_SIZE) {
-      toast.error("Image must be less than 3MB");
-      e.target.value = "";
-      return;
-    }
-
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string;
-      setImagePreview(result);
-      setValue("image", result);
-    };
-    reader.readAsDataURL(file);
-  };
-
   const onFormSubmit = async (data: AdminSchemaFormValues) => {
     const sanitized = {
       ...data,
@@ -158,11 +113,7 @@ export function AdminForm({
       email: normalizeEmail(data.email),
       contact_number: normalizePhone(data.contact_number),
     };
-    const submitData: AdminSchemaFormValues & { image?: File } = {
-      ...sanitized,
-      image: imageFile || undefined,
-    };
-    await onSubmit?.(submitData);
+    await onSubmit?.(sanitized);
   };
 
   const onFormInvalid: SubmitErrorHandler<AdminSchemaFormValues> = () => {
@@ -185,40 +136,6 @@ export function AdminForm({
           onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
           className="space-y-4"
         >
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-200 border-2 border-gray-300">
-              {imagePreview ? (
-                <Image
-                  src={imagePreview}
-                  alt="Profile preview"
-                  fill
-                  sizes="96px"
-                  className="object-cover"
-                  unoptimized
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <User className="w-12 h-12 text-gray-400" />
-                </div>
-              )}
-            </div>
-            <div>
-              <input
-                type="file"
-                accept=".jpg,.jpeg,.png,.heic,.heif"
-                onChange={handleImageChange}
-                className="hidden"
-                id="image"
-              />
-              <label
-                htmlFor="image"
-                className="cursor-pointer inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 transition-colors text-gray-700 font-medium rounded-lg px-4 py-2 text-sm"
-              >
-                Select Image
-              </label>
-            </div>
-          </div>
-
           <div className="relative ">
             <InputWithLabel
               id="fullname"

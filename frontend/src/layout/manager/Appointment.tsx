@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRealtimeEvent } from "@/contexts/RealtimeContext";
 import {
   CalendarDays,
@@ -35,6 +35,7 @@ import { updateAppointmentSchema } from "@/validations/appointment.validation";
 import { CancellationForm } from "@/forms/CancellationForm";
 import { RescheduleForm, type RescheduleSubmitData } from "@/forms/RescheduleForm";
 import { type CancellationReasonSchemaFormValues } from "@/validations/appointment.validation";
+import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { toast } from "sonner";
 import {
   Pagination,
@@ -359,6 +360,7 @@ function toDateBarberGroups(appointments: Appointment[]): DateBarberGroup[] {
 }
 
 export function Appointment() {
+  const isPageVisible = usePageVisibility();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingIds, setUpdatingIds] = useState<number[]>([]);
@@ -381,7 +383,7 @@ export function Appointment() {
   const [batchRejectTarget, setBatchRejectTarget] = useState<Appointment[] | null>(null);
   const [batchRejectReason, setBatchRejectReason] = useState("");
 
-  const loadAppointments = async () => {
+  const loadAppointments = useCallback(async () => {
     try {
       const data = await getAppointments();
       setAppointments(data);
@@ -390,16 +392,15 @@ export function Appointment() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    if (!isPageVisible) return;
+
     loadAppointments();
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(loadAppointments, 30000);
+    const interval = setInterval(loadAppointments, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isPageVisible, loadAppointments]);
 
   useRealtimeEvent('appointments', loadAppointments);
 

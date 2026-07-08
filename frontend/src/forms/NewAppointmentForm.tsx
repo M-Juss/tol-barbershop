@@ -96,8 +96,8 @@ export function NewAppointmentForm() {
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
 
   const rateLimit = useRateLimit({
-    maxAttempts: 10,
-    cooldownMinutes: 5,
+    maxAttempts: 15,
+    cooldownMinutes: 3,
     storageKey: "appointment_booking_rate_limit",
   });
 

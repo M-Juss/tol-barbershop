@@ -69,6 +69,49 @@ function formatAppointmentTime(value: string): string {
   });
 }
 
+function getPayloadNumber(
+  payload: Record<string, unknown> | null | undefined,
+  key: string,
+): number | null {
+  const value = payload?.[key];
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function getTicketId(item: NotificationItem): number | null {
+  return getPayloadNumber(item.payload, "ticket_id");
+}
+
+function getAppointmentId(item: NotificationItem): number | null {
+  return item.appointment_id ?? getPayloadNumber(item.payload, "appointment_id");
+}
+
+function getDisplayMessage(item: NotificationItem): string {
+  const appointmentId = getAppointmentId(item);
+  const ticketId = getTicketId(item);
+  let message = item.message;
+
+  if (appointmentId) {
+    message = message.replaceAll(`#${appointmentId}`, formatBookingId(appointmentId));
+  }
+
+  if (!ticketId) return message;
+
+  const displayTicketId = formatTicketId(ticketId);
+  if (!displayTicketId || message.includes(displayTicketId)) return message;
+
+  return message
+    .replace("Your support ticket has", `Your support ticket ${displayTicketId} has`)
+    .replace("Your support ticket was", `Your support ticket ${displayTicketId} was`)
+    .replace("Your ticket has", `Your ticket ${displayTicketId} has`)
+    .replace("A support ticket was", `Support ticket ${displayTicketId} was`)
+    .replace("has submitted a support request.", `has submitted support ticket ${displayTicketId}.`);
+}
+
 export function Notification() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [page, setPage] = useState(1);
@@ -199,6 +242,7 @@ export function Notification() {
           <div className="space-y-3 p-3">
             {notifications.map((item) => {
               const isUnread = !item.is_read;
+              const ticketId = getTicketId(item);
 
               return (
                 <div
@@ -218,7 +262,7 @@ export function Notification() {
                         <p className={cn("text-sm font-semibold", isUnread ? "text-gray-900" : "text-gray-700")}>
                           {item.title}
                         </p>
-                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">{item.message}</p>
+                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">{getDisplayMessage(item)}</p>
                         <div className="mt-2 flex items-center gap-1.5 flex-wrap">
                           {item.appointment_id && (
                             <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-mono font-medium text-blue-700 ring-1 ring-inset ring-blue-200">
@@ -229,9 +273,9 @@ export function Notification() {
                             item.type === "ticket_cancelled" ||
                             item.type === "ticket_promoted" ||
                             item.type === "ticket_resolved") &&
-                            (item.payload as { ticket_id?: number })?.ticket_id && (
+                            ticketId && (
                               <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-mono font-medium text-purple-700 ring-1 ring-inset ring-purple-200">
-                                {formatTicketId((item.payload as { ticket_id: number }).ticket_id)}
+                                {formatTicketId(ticketId)}
                               </span>
                             )}
                         </div>
@@ -364,7 +408,7 @@ export function Notification() {
 
                   <div className="rounded-lg bg-gray-50 p-3">
                     <p className="text-xs text-gray-400 mb-0.5">Message</p>
-                    <p className="text-sm text-gray-700">{selectedNotification.message}</p>
+                    <p className="text-sm text-gray-700">{getDisplayMessage(selectedNotification)}</p>
                   </div>
                 </>
               ) : (
@@ -375,7 +419,7 @@ export function Notification() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Message</p>
-                    <p className="text-sm text-gray-700">{selectedNotification.message}</p>
+                    <p className="text-sm text-gray-700">{getDisplayMessage(selectedNotification)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Received</p>

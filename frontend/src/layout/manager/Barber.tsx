@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import Image from "next/image";
 import { useState, useEffect } from "react";
 import {
   Plus,
@@ -19,7 +18,6 @@ import {
   deleteBarber,
   type Barber,
 } from "@/services/manager/barber.api";
-import { getImageUrl } from "@/lib/image";
 import {
   Dialog,
   DialogContent,
@@ -80,9 +78,7 @@ export function Barber() {
     setEditingBarber(null);
   };
 
-  const handleSubmit = async (
-    data: BarberSchemaFormValues & { image?: File },
-  ) => {
+  const handleSubmit = async (data: BarberSchemaFormValues) => {
     try {
       if (editingBarber) {
         await updateBarber(editingBarber.id, data);
@@ -153,25 +149,8 @@ export function Barber() {
                 </span>
               </div>
 
-              <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden mb-3 sm:mb-4 bg-gray-200 shrink-0">
-                {barber.image ? (
-                  <Image
-                    src={getImageUrl(barber.image)}
-                    alt={barber.fullname}
-                    fill
-                    sizes="96px"
-                    className="object-cover"
-                    unoptimized
-                    onError={(e) => {
-                      e.currentTarget.src = "";
-                      e.currentTarget.style.backgroundColor = "#f3f4f6";
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <User className="w-10 h-10 text-gray-400" />
-                  </div>
-                )}
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full mb-3 sm:mb-4 bg-blue-50 border border-blue-100 shrink-0 flex items-center justify-center">
+                <User className="w-10 h-10 text-blue-400" />
               </div>
 
               <p className="font-bold text-gray-900 text-base sm:text-lg mb-3 text-center">
@@ -219,7 +198,6 @@ export function Barber() {
                 fullname: editingBarber.fullname,
                 email: editingBarber.email,
                 contact_number: editingBarber.contact_number,
-                image: editingBarber.image,
                 is_active: isActiveValue(editingBarber.is_active),
               }
             : undefined

@@ -110,7 +110,7 @@ export function useRateLimit(options: RateLimitOptions = {}) {
       }
     }
 
-    if (attempts >= maxAttempts) {
+    if (attempts > maxAttempts) {
       const cooldownEnd = Date.now() + cooldownMinutes * 60 * 1000;
       const cooldownData = {
         attempts,

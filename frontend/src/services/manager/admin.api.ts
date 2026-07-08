@@ -24,7 +24,6 @@ export interface CreateAdminData {
   contact_number: string;
   password?: string;
   confirm_password?: string;
-  image?: File;
   is_active?: boolean;
   role_id?: number | null;
 }
@@ -49,10 +48,6 @@ export const createAdmin = async (data: CreateAdminData): Promise<void> => {
   if (data.role_id != null) {
     formData.append("role_id", String(data.role_id));
   }
-  if (data.image) {
-    formData.append("image", data.image);
-  }
-
   await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/admin`, {
     method: "POST",
     body: formData,
@@ -76,9 +71,6 @@ export const updateAdmin = async (
   formData.append("is_active", data.is_active ? "1" : "0");
   if (data.role_id != null) {
     formData.append("role_id", String(data.role_id));
-  }
-  if (data.image) {
-    formData.append("image", data.image);
   }
   formData.append("_method", "PUT");
 

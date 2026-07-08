@@ -1,11 +1,6 @@
 import { z } from "zod";
 
 const activeFlagSchema = z.boolean();
-const imageSchema = z.custom<string | File | undefined>((value) => {
-  if (value === undefined || typeof value === "string") return true;
-  if (typeof File === "undefined") return false;
-  return value instanceof File;
-}).optional();
 
 const adminBaseSchema = z.object({
   fullname: z
@@ -19,7 +14,6 @@ const adminBaseSchema = z.object({
     .min(1, "Contact number is required")
     .regex(/^09\d{9}$/, "Contact number must be a valid PH mobile number (09XXXXXXXXX)")
     .max(11, "Contact number must not exceed 11 digits"),
-  image: imageSchema,
   is_active: activeFlagSchema.optional(),
   role_id: z.number().nullable().optional(),
 });
@@ -111,7 +105,6 @@ export const barberSchema = z.object({
     .min(1, "Contact number is required")
     .regex(/^09\d{9}$/, "Contact number must be a valid PH mobile number (09XXXXXXXXX)")
     .max(11, "Contact number must not exceed 11 digits"),
-  image: imageSchema,
   is_active: activeFlagSchema.optional(),
 });
 

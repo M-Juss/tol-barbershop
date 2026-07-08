@@ -7,6 +7,7 @@ use App\Models\SupportMessage;
 use App\Models\SupportTicket;
 use App\Models\User;
 use App\Services\PushNotificationService;
+use App\Support\DisplayId;
 use App\Support\EntityChange;
 use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
@@ -120,6 +121,7 @@ class SupportTicketController extends Controller
         }
 
         $adminUsers = User::whereIn('role', ['admin', 'manager'])->get();
+        $ticketId = DisplayId::ticket($ticket->id);
 
         foreach ($adminUsers as $admin) {
             Notification::create([
@@ -127,11 +129,13 @@ class SupportTicketController extends Controller
                 'type' => 'new_support_ticket',
                 'title' => 'New Support Ticket',
                 'message' => sprintf(
-                    '%s has submitted a support request.',
-                    $user->fullname
+                    '%s has submitted support ticket %s.',
+                    $user->fullname,
+                    $ticketId
                 ),
                 'payload' => [
                     'ticket_id' => $ticket->id,
+                    'ticket_display_id' => $ticketId,
                     'customer_name' => $user->fullname,
                 ],
                 'created_by_user_id' => $user->id,
@@ -145,8 +149,9 @@ class SupportTicketController extends Controller
                 $pushService->send($admin, [
                     'title' => 'New Support Ticket',
                     'body' => sprintf(
-                        '%s has submitted a support request.',
-                        $user->fullname
+                        '%s has submitted support ticket %s.',
+                        $user->fullname,
+                        $ticketId
                     ),
                     'icon' => '/Tol-Logo-White-Bg.png',
                     'badge' => '/Tol-Logo-White-Bg.png',
@@ -177,6 +182,7 @@ class SupportTicketController extends Controller
         $user = $request->user();
 
         $ticket = SupportTicket::findOrFail($id);
+        $ticketId = DisplayId::ticket($ticket->id);
 
         if ($user->role === 'customer') {
             if ((int) $ticket->customer_id !== (int) $user->id) {
@@ -211,9 +217,10 @@ class SupportTicketController extends Controller
                 'user_id' => $ticket->customer_id,
                 'type' => 'ticket_cancelled',
                 'title' => 'Ticket Cancelled',
-                'message' => 'Your support ticket has been cancelled by a staff member.',
+                'message' => "Your support ticket {$ticketId} has been cancelled by a staff member.",
                 'payload' => [
                     'ticket_id' => $ticket->id,
+                    'ticket_display_id' => $ticketId,
                     'cancel_reason' => $validated['cancel_reason'],
                 ],
                 'created_by_user_id' => $user->id,
@@ -260,13 +267,13 @@ class SupportTicketController extends Controller
             'claimed_at' => Carbon::now(),
         ]);
 
-        $tkNumber = (($ticket->id * 54321 + 98765) % 90000) + 10000;
+        $ticketId = DisplayId::ticket($ticket->id);
 
         SupportMessage::create([
             'support_ticket_id' => $ticket->id,
             'sender_id' => $user->id,
             'sender_name_snapshot' => $user->fullname,
-            'message' => "Ticket TK-{$tkNumber} has been accepted. A representative is now here to assist you.",
+            'message' => "Ticket {$ticketId} has been accepted. A representative is now here to assist you.",
         ]);
 
         $ticket->update(['last_message_at' => Carbon::now()]);
@@ -275,9 +282,10 @@ class SupportTicketController extends Controller
             'user_id' => $ticket->customer_id,
             'type' => 'ticket_promoted',
             'title' => 'Your Turn!',
-            'message' => 'Your ticket has been accepted. A representative has joined the conversation.',
+            'message' => "Your ticket {$ticketId} has been accepted. A representative has joined the conversation.",
             'payload' => [
                 'ticket_id' => $ticket->id,
+                'ticket_display_id' => $ticketId,
             ],
             'created_by_user_id' => $user->id,
         ]);
@@ -286,7 +294,7 @@ class SupportTicketController extends Controller
             $pushService = new PushNotificationService;
             $pushService->send($ticket->customer, [
                 'title' => 'Your Turn!',
-                'body' => 'Your ticket has been accepted. A representative has joined the conversation.',
+                'body' => "Your ticket {$ticketId} has been accepted. A representative has joined the conversation.",
                 'icon' => '/Tol-Logo-White-Bg.png',
                 'badge' => '/Tol-Logo-White-Bg.png',
                 'data' => [
@@ -318,6 +326,7 @@ class SupportTicketController extends Controller
         }
 
         $ticket = SupportTicket::with('customer')->findOrFail($id);
+        $ticketId = DisplayId::ticket($ticket->id);
 
         if ((int) $ticket->assigned_to_id !== (int) $user->id) {
             return $this->error('This ticket is not assigned to you.', [], 403);
@@ -341,9 +350,10 @@ class SupportTicketController extends Controller
             'user_id' => $ticket->customer_id,
             'type' => 'ticket_resolved',
             'title' => 'Ticket Resolved',
-            'message' => 'Your support ticket has been resolved.',
+            'message' => "Your support ticket {$ticketId} has been resolved.",
             'payload' => [
                 'ticket_id' => $ticket->id,
+                'ticket_display_id' => $ticketId,
             ],
             'created_by_user_id' => $user->id,
         ]);
@@ -352,7 +362,7 @@ class SupportTicketController extends Controller
             $pushService = new PushNotificationService;
             $pushService->send($ticket->customer, [
                 'title' => 'Ticket Resolved',
-                'body' => 'Your support ticket has been resolved.',
+                'body' => "Your support ticket {$ticketId} has been resolved.",
                 'icon' => '/Tol-Logo-White-Bg.png',
                 'badge' => '/Tol-Logo-White-Bg.png',
                 'data' => [

@@ -6,6 +6,7 @@ import { Calendar, LayoutDashboard, History, UserPlus, MessageSquareText, Settin
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { toast } from "sonner";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
+import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPendingAppointmentCount } from "@/services/manager/admin.api";
 import { getWaitingCount } from "@/services/manager/support.api";
@@ -53,6 +54,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   useRoleRoutePersistence("/admin");
+  const isPageVisible = usePageVisibility();
   const { user } = useAuth();
   const [pendingCount, setPendingCount] = useState(0);
   const [waitingCount, setWaitingCount] = useState(0);
@@ -102,6 +104,8 @@ export default function AdminLayout({
   }, []);
 
   useEffect(() => {
+    if (!isPageVisible) return;
+
     queueMicrotask(() => {
       fetchPendingCount();
       fetchWaitingCount();
@@ -109,14 +113,14 @@ export default function AdminLayout({
     const interval = setInterval(() => {
       fetchPendingCount();
       fetchWaitingCount();
-    }, 30000);
+    }, 60000);
     const onAppointmentsUpdated = () => fetchPendingCount();
     window.addEventListener("appointments:updated", onAppointmentsUpdated);
     return () => {
       clearInterval(interval);
       window.removeEventListener("appointments:updated", onAppointmentsUpdated);
     };
-  }, [fetchPendingCount, fetchWaitingCount]);
+  }, [fetchPendingCount, fetchWaitingCount, isPageVisible]);
 
   useRealtimeEvent('appointments', fetchPendingCount);
 

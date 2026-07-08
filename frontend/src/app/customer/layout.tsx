@@ -5,6 +5,7 @@ import { Bell, Calendar, CalendarPlus, LayoutDashboard, User } from "lucide-reac
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { SupportFab } from "@/components/common/SupportFab";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
+import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { getNotifications } from "@/services/shared/notification.api";
 
 export default function CustomerLayout({
@@ -13,6 +14,7 @@ export default function CustomerLayout({
   children: React.ReactNode;
 }) {
   const [unreadCount, setUnreadCount] = useState(0);
+  const isPageVisible = usePageVisibility();
   useRoleRoutePersistence("/customer");
 
   const loadUnreadCount = useCallback(async () => {
@@ -25,11 +27,13 @@ export default function CustomerLayout({
   }, []);
 
   useEffect(() => {
+    if (!isPageVisible) return;
+
     queueMicrotask(() => {
       loadUnreadCount();
     });
 
-    const timer = setInterval(loadUnreadCount, 30000);
+    const timer = setInterval(loadUnreadCount, 60000);
 
     const handleUnreadUpdate = (event: Event) => {
       const customEvent = event as CustomEvent<{ unreadCount?: number }>;
@@ -45,7 +49,7 @@ export default function CustomerLayout({
       clearInterval(timer);
       window.removeEventListener("notifications:unread-updated", handleUnreadUpdate as EventListener);
     };
-  }, [loadUnreadCount]);
+  }, [isPageVisible, loadUnreadCount]);
 
   useRealtimeEvent('notifications', loadUnreadCount);
 

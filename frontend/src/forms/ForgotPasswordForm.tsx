@@ -16,8 +16,8 @@ import { normalizeEmail } from "@/lib/sanitizer";
 export function ForgotPasswordForm() {
   const router = useRouter();
   const rateLimit = useRateLimit({
-    maxAttempts: 3,
-    cooldownMinutes: 5,
+    maxAttempts: 5,
+    cooldownMinutes: 3,
     storageKey: "forgot_password_rate_limit",
   });
 

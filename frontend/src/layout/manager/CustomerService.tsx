@@ -28,6 +28,7 @@ import { ResolveTicketDialog } from "@/layout/manager/ResolveTicketDialog";
 import { CancelTicketDialog } from "@/layout/manager/CancelTicketDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { cn } from "@/lib/utils";
 import { formatTicketId } from "@/lib/booking";
 import {
@@ -74,6 +75,7 @@ function timeAgo(dateString: string): string {
 
 export function CustomerService() {
   const { user: authUser } = useAuth();
+  const isPageVisible = usePageVisibility();
   const [queue, setQueue] = useState<QueueResponse | null>(null);
   const [myActiveTicket, setMyActiveTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
@@ -108,10 +110,12 @@ export function CustomerService() {
   }, [authUser?.id]);
 
   useEffect(() => {
+    if (!isPageVisible) return;
+
     fetchQueue();
-    const interval = setInterval(fetchQueue, 5000);
+    const interval = setInterval(fetchQueue, 10000);
     return () => clearInterval(interval);
-  }, [fetchQueue]);
+  }, [fetchQueue, isPageVisible]);
 
   useEffect(() => {
     if (myActiveTicket && prevMyActiveTicketRef.current === null) {
@@ -133,17 +137,22 @@ export function CustomerService() {
   }, [myActiveTicket]);
 
   useEffect(() => {
-    if (myActiveTicket) {
+    const shouldPollMessages = myActiveTicket && tabView === "chat" && isPageVisible;
+
+    if (shouldPollMessages) {
       fetchMessages();
-      pollRef.current = setInterval(fetchMessages, 3000);
+      pollRef.current = setInterval(fetchMessages, 5000);
       return () => {
         if (pollRef.current) clearInterval(pollRef.current);
       };
-    } else {
-      if (pollRef.current) clearInterval(pollRef.current);
+    }
+
+    if (pollRef.current) clearInterval(pollRef.current);
+
+    if (!myActiveTicket) {
       setMessages([]);
     }
-  }, [myActiveTicket, fetchMessages]);
+  }, [fetchMessages, isPageVisible, myActiveTicket, tabView]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

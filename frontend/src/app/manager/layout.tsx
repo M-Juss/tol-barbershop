@@ -15,6 +15,7 @@ import {
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { toast } from "sonner";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
+import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { getPendingAppointmentCount } from "@/services/manager/admin.api";
 import { getWaitingCount } from "@/services/manager/support.api";
 
@@ -61,6 +62,7 @@ export default function ManagerLayout({
   children: React.ReactNode;
 }) {
   useRoleRoutePersistence("/manager");
+  const isPageVisible = usePageVisibility();
   const [pendingCount, setPendingCount] = useState(0);
   const [waitingCount, setWaitingCount] = useState(0);
   const prevCountRef = useRef(0);
@@ -109,6 +111,8 @@ export default function ManagerLayout({
   }, []);
 
   useEffect(() => {
+    if (!isPageVisible) return;
+
     queueMicrotask(() => {
       fetchPendingCount();
       fetchWaitingCount();
@@ -116,14 +120,14 @@ export default function ManagerLayout({
     const interval = setInterval(() => {
       fetchPendingCount();
       fetchWaitingCount();
-    }, 30000);
+    }, 60000);
     const onAppointmentsUpdated = () => fetchPendingCount();
     window.addEventListener("appointments:updated", onAppointmentsUpdated);
     return () => {
       clearInterval(interval);
       window.removeEventListener("appointments:updated", onAppointmentsUpdated);
     };
-  }, [fetchPendingCount, fetchWaitingCount]);
+  }, [fetchPendingCount, fetchWaitingCount, isPageVisible]);
 
   useRealtimeEvent('appointments', fetchPendingCount);
 

@@ -15,8 +15,8 @@ import { useRateLimit } from "@/hooks/useRateLimit";
 export function ResetPasswordForm() {
   const router = useRouter();
   const rateLimit = useRateLimit({
-    maxAttempts: 3,
-    cooldownMinutes: 5,
+    maxAttempts: 5,
+    cooldownMinutes: 3,
     storageKey: "reset_password_rate_limit",
   });
 

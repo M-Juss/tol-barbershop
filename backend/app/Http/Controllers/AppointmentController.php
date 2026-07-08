@@ -10,6 +10,7 @@ use App\Models\Notification;
 use App\Models\Service;
 use App\Models\User;
 use App\Services\PushNotificationService;
+use App\Support\DisplayId;
 use App\Support\EntityChange;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -446,6 +447,7 @@ class AppointmentController extends Controller
 
         if ($nextStatus && $nextStatus !== $originalStatus) {
             $appointment->loadMissing(['service:id,name', 'barber:id,fullname']);
+            $bookingId = DisplayId::booking($appointment->id);
 
             if ($nextStatus === 'completed') {
                 $exists = Notification::where('user_id', $appointment->user_id)
@@ -459,14 +461,15 @@ class AppointmentController extends Controller
                         'type' => 'appointment_completed',
                         'title' => 'Booking Complete',
                         'message' => sprintf(
-                            'Your %s booking #%d is now complete.',
+                            'Your %s booking %s is now complete.',
                             $appointment->service?->name ?? 'barbershop service',
-                            $appointment->id
+                            $bookingId
                         ),
                         'appointment_id' => $appointment->id,
                         'service_name' => $appointment->service?->name,
                         'payload' => [
                             'appointment_id' => $appointment->id,
+                            'booking_id' => $bookingId,
                             'status' => $nextStatus,
                             'service_name' => $appointment->service?->name,
                         ],
@@ -507,7 +510,7 @@ class AppointmentController extends Controller
                     ? 'Booking Complete'
                     : 'Appointment Status Updated';
                 $pushBody = $nextStatus === 'completed'
-                    ? sprintf('Your %s booking #%d is now complete.', $appointment->service?->name ?? 'barbershop service', $appointment->id)
+                    ? sprintf('Your %s booking %s is now complete.', $appointment->service?->name ?? 'barbershop service', $bookingId)
                     : sprintf('Your booking is now %s.', str_replace('_', ' ', $nextStatus));
 
                 $pushService->send($appointment->user, [
