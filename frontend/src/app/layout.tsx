@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Toaster } from "@/components/ui/sonner"
+import { Toaster } from "@/components/ui/sonner";
 import { Poppins } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RealtimeProvider } from "@/contexts/RealtimeContext";
@@ -23,16 +23,16 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Tol Barbershop",
+  title: "TOL Barbershop",
   description: "Premium barbershop experience",
   manifest: "/manifest.json",
   icons: {
     icon: "/Tol-Logo-White-Bg.png",
     apple: "/Tol-Logo-White-Bg.png",
-},
+  },
   appleWebApp: {
     capable: true,
-    title: "Tol Barbershop",
+    title: "TOL Barbershop",
     statusBarStyle: "default",
   },
 };

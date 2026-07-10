@@ -1,6 +1,6 @@
 "use client";
 import { cn } from "@/lib/utils";
-import { Mail, MapPin, Phone, Scissors, Star, Menu, X } from "lucide-react";
+import { Mail, MapPin, Scissors, Star, Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -16,18 +16,12 @@ import { RedirectIfAuthenticated } from "@/components/common/RedirectIfAuthentic
 const navLinks = [
   { name: "Home", href: "#home" },
   { name: "Services", href: "#services" },
-  { name: "About", href: "#about" },
+  // { name: "About", href: "#about" },
   { name: "Gallery", href: "#gallery" },
   { name: "Testimonials", href: "#testimonial" },
   { name: "Contact", href: "#contact" },
 ];
 
-const cardAbout = [
-  { h1: "15+", p: "Years of Experience" },
-  { h1: "5K+", p: "Happy Customer" },
-  { h1: "5", p: "Expert Barbers" },
-  { h1: "100%", p: "Satisfaction" },
-];
 
 const galleryCards = [
   {
@@ -119,8 +113,7 @@ function HomeContent() {
           setTestimonials(data);
           return;
         }
-      } catch {
-      }
+      } catch {}
 
       try {
         const data = await getLandingFeedback();
@@ -153,12 +146,12 @@ function HomeContent() {
           <Image
             src="/Tol-Logo-White-Bg.png"
             alt="Logo"
-            height={40}
-            width={40}
+            height={35}
+            width={35}
             className="rounded-lg"
           />
           <h1 className="font-bold text-primary-foreground text-md">
-            Tol Barbershop
+            TOL Barbershop
           </h1>
         </div>
 
@@ -245,7 +238,7 @@ function HomeContent() {
           className="relative min-h-screen w-full overflow-hidden"
         >
           <Image
-            src="/Tol-Hero-Image.png"
+            src="/TOL-Hero-Image.png"
             alt="Barber shop"
             fill
             sizes="100vw"
@@ -284,7 +277,7 @@ function HomeContent() {
             </p>
             <div className="h-1 w-20 bg-accent rounded-sm"></div>
           </div>
-          <h1 className="text-primary-foreground text-3xl sm:text-4xl lg:text-5xl font-semibold mb-4 ">
+          <h1 className="text-primary-foreground text-3xl sm:text-4xl lg:text-5xl font-semibold mb-2 ">
             Our Services
           </h1>
           <h3 className="text-gray-400 mb-12">
@@ -322,54 +315,6 @@ function HomeContent() {
               className="object-cover w-full h-full rounded-md hover:scale-105 transition duration-300"
               sizes="(max-width: 768px) 100vw, 50vw"
             />
-          </div>
-        </section>
-
-        <section
-          id="about"
-          className="px-6 sm:px-8 lg:px-20 xl:px-44 py-16 sm:py-20 bg-primary/95 grid lg:grid-cols-2 grid-cols-1 gap-8 lg:gap-12 w-full text-white"
-        >
-          <div className="my-auto">
-            <Image
-              src="/AboutImage.jpg"
-              alt="About Image"
-              width={500}
-              height={600}
-              className="object-cover h-full rounded-xl hover:scale-105 transition duration-300"
-            />
-          </div>
-
-          <div className="flex flex-col space-y-6">
-            <p className="text-accent">ABOUT US</p>
-
-            <p className="text-3xl sm:text-4xl font-semibold">
-              Crafting Confidence Through Classic Grooming
-            </p>
-
-            <p className="text-gray-400">
-              Since 2009, Tol Barbershop has been the cornestone of
-              gentleman&apos;s grooming in the city. Our master barbers combine
-              time-honord techniques with contemporary styles to deliver an
-              unparalleled experience.
-            </p>
-
-            <p className="text-gray-400">
-              We believe every man deserves to look and feel his best.
-              That&apos;s why we use only premium products and tools, ensuring
-              each cut isa masterpiece and every shave is an indulgece.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-7">
-              {cardAbout.map((about, index) => (
-                <div
-                  key={index}
-                  className="flex flex-col border border-white/10 p-6 space-y-2 rounded-md hover:scale-105 transition duration-300"
-                >
-                  <p className="text-accent text-2xl">{about.h1}</p>
-                  <p className="text-xs">{about.p}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 
@@ -427,7 +372,7 @@ function HomeContent() {
           id="testimonial"
           className="px-6 sm:px-8 lg:px-20 xl:px-44 py-16 sm:py-20 flex flex-col items-center bg-primary/95 text-center text-white"
         >
-          <p className="md:text-5xl sm:text-4xl text-3xl font-semibold mb-4 ">
+          <p className="md:text-5xl sm:text-4xl text-3xl font-semibold mb-2 ">
             What Our Customer Say
           </p>
           <p className="text-sm text-gray-400 mb-8">
@@ -465,7 +410,7 @@ function HomeContent() {
                     <p>{currentTestimonial.customer_name}</p>
                     <p className="text-xs text-gray-400">
                       {currentTestimonial.service_name ??
-                        "Tol Barbershop Customer"}
+                        "TOL Barbershop Customer"}
                     </p>
                   </div>
                 </div>
@@ -497,10 +442,10 @@ function HomeContent() {
         </section>
 
         <section className="px-6 sm:px-8 lg:px-20 xl:px-44 py-16 sm:py-20 flex flex-col items-center bg-primary">
-          <p className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-center text-white mb-4">
+          <p className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-center text-white mb-2">
             Come and Visit Us
           </p>
-          
+
           <p className="text-sm text-gray-400 mb-8 text-center">
             Drop by for a haircut or just to say hello. We&apos;d love to
             welcome you!
@@ -529,40 +474,87 @@ function HomeContent() {
               <Image
                 src="/Tol-Logo-White-Bg.png"
                 alt="Logo"
-                height={50}
-                width={50}
+                height={35}
+                width={35}
                 className="rounded-lg"
               />
-              <p className="text-xl">Tol Barbershop</p>
+              <p className="text-xl font-semibold ">TOL Barbershop</p>
             </div>
             <p className="text-sm">
               Where traditional barbering meets modern style. Experience the
               finest in gentleman&apos;s grooming since 2009.
             </p>
+            <div className="mt-5 flex items-center gap-3">
+              <a
+                href="https://www.facebook.com/profile.php?id=61550652631553"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="TOL Barbershop on Facebook"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white hover:border-accent hover:text-accent transition-colors"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="h-5 w-5"
+                  aria-hidden="true"
+                >
+                  <path d="M22 12.06C22 6.48 17.52 2 11.94 2S2 6.48 2 12.06c0 5.02 3.66 9.19 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.23.2 2.23.2v2.46h-1.25c-1.24 0-1.62.77-1.62 1.56v1.89h2.76l-.44 2.91h-2.32V22C18.34 21.25 22 17.08 22 12.06Z" />
+                </svg>
+              </a>
+              <a
+                href="https://www.instagram.com/tolbarbershop/?hl=en"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="TOL Barbershop on Instagram"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white hover:border-accent hover:text-accent transition-colors"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-5 w-5"
+                  aria-hidden="true"
+                >
+                  <rect width="18" height="18" x="3" y="3" rx="5" />
+                  <circle cx="12" cy="12" r="4" />
+                  <circle
+                    cx="17.5"
+                    cy="6.5"
+                    r="1"
+                    fill="currentColor"
+                    stroke="none"
+                  />
+                </svg>
+              </a>
+            </div>
           </div>
 
           <div className="flex flex-col space-y-5 ">
-            <p className="text-xl mb-5">Contact Us</p>
-            <div className="flex items-center space-x-3">
-              <MapPin />
-              <p className="text-sm">
-                123 Main Street, Downtown New York, NY 10001
-              </p>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <Phone />
-              <p className="text-sm">(555) 123-4567</p>
-            </div>
-
+            <p className="text-xl font-semibold mb-5">Contact Us</p>
             <div className="flex items-center space-x-3">
               <Mail />
-              <p className="text-sm">info@tolbarbershop.com</p>
+              <a
+                href="mailto:tolbarbershop23@gmail.com"
+                className="text-sm hover:text-accent transition-colors"
+              >
+                tolbarbershop23@gmail.com
+              </a>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <MapPin size={50} />
+              <p className="text-sm">
+                2nd floor, Osrem Building, Gen Trias Drive, Tejero, Gen Trias
+                City, Cavite (in front of Petron crossing)
+              </p>
             </div>
           </div>
 
           <div className="flex flex-col">
-            <p className="text-xl mb-5">Opening Hours</p>
+            <p className="text-xl font-semibold mb-5">Opening Hours</p>
 
             <div className="flex  pb-4 justify-between items-center">
               <p className="text-sm">Monday - Saturday </p>
@@ -578,7 +570,7 @@ function HomeContent() {
 
         <div className="flex flex-col sm:flex-row justify-between items-center gap-3 px-6 sm:px-8 py-4 border-t border-white/10 bg-black/10 text-center">
           <p className="text-sm text-neutral">
-            &copy; 2024 Tol Barbershop. All rights reserved.
+            &copy; 2024 TOL Barbershop. All rights reserved.
           </p>
           <div className="flex justify-center items-center space-x-3 sm:text-sm  text-xs">
             <a href="#" className=" text-neutral">

@@ -30,7 +30,7 @@ type NavSection = {
 
 type ResponsiveSidebarProps = {
   sections: NavSection[];
-}
+};
 
 export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
   const pathname = usePathname();
@@ -91,7 +91,11 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
     };
   }, [isOpen, isMobile]);
 
-  const totalBadgeCount = sections.reduce((sum, section) => sum + section.items.reduce((s, item) => s + (item.badgeCount ?? 0), 0), 0);
+  const totalBadgeCount = sections.reduce(
+    (sum, section) =>
+      sum + section.items.reduce((s, item) => s + (item.badgeCount ?? 0), 0),
+    0,
+  );
 
   const handleNavClick = () => {
     if (isMobile) {
@@ -142,9 +146,15 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
       >
         <div className="flex items-center justify-between p-4 border-b border-slate-600">
           <div className="flex space-x-2 items-center">
-            <Image src="/Tol-Logo-White-Bg.png" alt="Logo" height={40} width={40} className="rounded-lg" />
+            <Image
+              src="/Tol-Logo-White-Bg.png"
+              alt="Logo"
+              height={40}
+              width={40}
+              className="rounded-lg"
+            />
             <h1 className="font-bold text-primary-foreground text-xl">
-              Tol Barbershop
+              TOL Barbershop
             </h1>
           </div>
           <button

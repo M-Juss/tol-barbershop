@@ -14,7 +14,7 @@ self.addEventListener("push", (event) => {
     data = {};
   }
 
-  const title = data.title || "Tol Barbershop";
+  const title = data.title || "TOL Barbershop";
   const options = {
     body: data.body || "",
     icon: data.icon || "/Tol-Logo-White-Bg.png",

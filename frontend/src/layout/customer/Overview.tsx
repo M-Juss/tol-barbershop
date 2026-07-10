@@ -116,7 +116,13 @@ export function Overview() {
     } finally {
       setSubmittingFeedback(false);
     }
-  }, [currentFeedback, currentFeedbackIndex, pendingFeedbackList.length, feedbackRating, feedbackComment]);
+  }, [
+    currentFeedback,
+    currentFeedbackIndex,
+    pendingFeedbackList.length,
+    feedbackRating,
+    feedbackComment,
+  ]);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -169,7 +175,7 @@ export function Overview() {
     return () => clearInterval(interval);
   }, [isPageVisible, refreshAppointments]);
 
-  useRealtimeEvent('appointments', refreshAppointments);
+  useRealtimeEvent("appointments", refreshAppointments);
 
   useEffect(() => {
     if (!authUser) return;
@@ -191,17 +197,23 @@ export function Overview() {
   }, [authUser]);
 
   const completedCount = useMemo(
-    () => appointments.filter((appointment) => appointment.status === "completed").length,
+    () =>
+      appointments.filter((appointment) => appointment.status === "completed")
+        .length,
     [appointments],
   );
 
   const approvedCount = useMemo(
-    () => appointments.filter((appointment) => appointment.status === "approved").length,
+    () =>
+      appointments.filter((appointment) => appointment.status === "approved")
+        .length,
     [appointments],
   );
 
   const pendingCount = useMemo(
-    () => appointments.filter((appointment) => appointment.status === "pending").length,
+    () =>
+      appointments.filter((appointment) => appointment.status === "pending")
+        .length,
     [appointments],
   );
 
@@ -209,7 +221,10 @@ export function Overview() {
     () =>
       appointments
         .filter((appointment) => appointment.status === "completed")
-        .reduce((sum, appointment) => sum + (Number(appointment.price) || 0), 0),
+        .reduce(
+          (sum, appointment) => sum + (Number(appointment.price) || 0),
+          0,
+        ),
     [appointments],
   );
 
@@ -232,7 +247,9 @@ export function Overview() {
   return (
     <div className="w-full h-full bg-slate-100 p-4 sm:p-6 pb-24 font-sans">
       <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Overview</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+          Overview
+        </h1>
         <p className="text-gray-500 mt-1">
           Welcome back! Here&apos;s your appointment summary.
         </p>
@@ -270,7 +287,9 @@ export function Overview() {
       </div>
 
       <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 mb-4">
-        <h2 className="text-base font-bold text-gray-900">Upcoming Appointments</h2>
+        <h2 className="text-base font-bold text-gray-900">
+          Upcoming Appointments
+        </h2>
         <p className="text-gray-500 text-sm mb-4">Your approved appointments</p>
 
         {loading ? (
@@ -315,7 +334,9 @@ export function Overview() {
             </div>
             <div>
               <p className="text-white font-bold text-sm">New Appointment</p>
-              <p className="text-red-100 text-xs mt-0.5">Book your next visit</p>
+              <p className="text-red-100 text-xs mt-0.5">
+                Book your next visit
+              </p>
             </div>
           </button>
 
@@ -329,25 +350,30 @@ export function Overview() {
             </div>
             <div>
               <p className="text-white font-bold text-sm">Profile Settings</p>
-              <p className="text-slate-400 text-xs mt-0.5">Update your information</p>
+              <p className="text-slate-400 text-xs mt-0.5">
+                Update your information
+              </p>
             </div>
           </button>
         </div>
       </div>
 
-      <Dialog
-        open={pendingFeedbackList.length > 0}
-        onOpenChange={() => {}}
-      >
-        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-3xl p-6 sm:max-w-[560px] sm:p-8" showCloseButton={false}>
+      <Dialog open={pendingFeedbackList.length > 0} onOpenChange={() => {}}>
+        <DialogContent
+          className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-3xl p-6 sm:max-w-[560px] sm:p-8"
+          showCloseButton={false}
+        >
           <DialogHeader className="items-center gap-4 text-center">
             <DialogTitle className="text-3xl font-bold text-primary sm:text-4xl">
-              Rate your Tol Barbershop booking
+              Rate your TOL Barbershop booking
             </DialogTitle>
             <DialogDescription className="max-w-md text-base leading-7 text-gray-600">
               Your {currentFeedback?.service_name ?? "barbershop service"} with{" "}
-              <span className="font-semibold text-gray-900">{currentFeedback?.barber_name ?? "your barber"}</span>{" "}
-              is completed. Please rate your satisfaction and leave feedback below.
+              <span className="font-semibold text-gray-900">
+                {currentFeedback?.barber_name ?? "your barber"}
+              </span>{" "}
+              is completed. Please rate your satisfaction and leave feedback
+              below.
             </DialogDescription>
           </DialogHeader>
 
@@ -361,7 +387,12 @@ export function Overview() {
                 aria-label={`Rate ${rating} star${rating === 1 ? "" : "s"}`}
               >
                 <Star
-                  className={cn("size-9 sm:size-11", rating <= feedbackRating ? "fill-accent text-accent" : "fill-white text-gray-300")}
+                  className={cn(
+                    "size-9 sm:size-11",
+                    rating <= feedbackRating
+                      ? "fill-accent text-accent"
+                      : "fill-white text-gray-300",
+                  )}
                   strokeWidth={1.8}
                 />
               </button>
