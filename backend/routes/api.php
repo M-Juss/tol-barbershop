@@ -61,8 +61,6 @@ Route::prefix('v1')->group(function () {
             Route::get('/appointments/overview/monthly-revenue', [AppointmentController::class, 'monthlyRevenue'])->middleware('throttle:300,1');
             Route::get('/appointments/overview/service-stats', [AppointmentController::class, 'serviceStats'])->middleware('throttle:300,1');
             Route::get('/appointments/overview/time-slots', [AppointmentController::class, 'timeSlots'])->middleware('throttle:300,1');
-            Route::get('/appointments/overview/export-summary', [AppointmentController::class, 'exportSummary'])->middleware('throttle:60,1');
-
             Route::get('/analytics/kpi', [AnalyticsController::class, 'kpi'])->middleware('throttle:300,1');
             Route::get('/analytics/revenue', [AnalyticsController::class, 'revenue'])->middleware('throttle:300,1');
             Route::get('/analytics/appointments', [AnalyticsController::class, 'appointments'])->middleware('throttle:300,1');

@@ -39,36 +39,6 @@ export interface TimeSlot {
   status: "available" | "booked";
 }
 
-export interface ExportStats {
-  completed_appointments: number;
-  pending_appointments: number;
-  cancelled_appointments: number;
-  no_show_appointments: number;
-  walkin_appointments: number;
-  total_customers: number;
-  total_revenue: number;
-}
-
-export interface ExportSummaryResponse {
-  stats: ExportStats;
-  daily_revenue: DailyRevenue[];
-  service_stats: ServiceStats[];
-  appointments: {
-    id: number;
-    customer_name: string | null;
-    customer_email: string | null;
-    barber_name: string | null;
-    service_name: string | null;
-    appointment_date: string | null;
-    appointment_time: string | null;
-    status: string;
-    price: number;
-    is_walkin: boolean;
-    notes: string | null;
-    created_at: string | null;
-  }[];
-}
-
 export const getOverviewStats = async (): Promise<OverviewStats> => {
   return authFetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments/overview/stats`);
 };
@@ -95,10 +65,3 @@ export const getTimeSlotsForDate = async (
     `${process.env.NEXT_PUBLIC_API_URL}/appointments/overview/time-slots?date=${encodedDate}`,
   );
 };
-
-export const getOverviewExportSummary =
-  async (): Promise<ExportSummaryResponse> => {
-    return authFetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/appointments/overview/export-summary`,
-    );
-  };

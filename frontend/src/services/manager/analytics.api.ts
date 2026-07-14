@@ -8,6 +8,10 @@ export interface AnalyticsKPI {
   completion_rate: number;
   walkin_count: number;
   cancelled_count: number;
+  date_range: {
+    from: string;
+    to: string;
+  };
 }
 
 export interface TimeSeriesPoint {

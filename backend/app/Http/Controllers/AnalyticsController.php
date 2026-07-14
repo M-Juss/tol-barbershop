@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AnalyticsPeriodRequest;
 use App\Models\Appointment;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AnalyticsController extends Controller
@@ -13,7 +13,7 @@ class AnalyticsController extends Controller
     {
         $today = Carbon::today();
 
-        return match ($period) {
+        $range = match ($period) {
             'daily' => [
                 'from' => $today->copy()->subDays(6)->toDateString(),
                 'to' => $today->toDateString(),
@@ -35,52 +35,63 @@ class AnalyticsController extends Controller
                 'to' => $today->toDateString(),
             ],
         };
+
+        $range['end_exclusive'] = Carbon::parse($range['to'])->addDay()->toDateString();
+
+        return $range;
     }
 
-    private function getDateFormat(string $period): string
+    private function getGroupLabel(Carbon $date, string $period): string
     {
         return match ($period) {
-            'daily' => '%Y-%m-%d',
-            'weekly' => '%Y-%u',
-            'monthly' => '%Y-%m',
-            'yearly' => '%Y',
-            default => '%Y-%m',
+            'daily' => $date->format('Y-m-d'),
+            'weekly' => $date->format('o-W'),
+            'monthly' => $date->format('Y-m'),
+            'yearly' => $date->format('Y'),
+            default => $date->format('Y-m'),
         };
     }
 
-    public function kpi(Request $request)
+    public function kpi(AnalyticsPeriodRequest $request)
     {
-        $period = $request->input('period', 'monthly');
+        $period = $request->period();
         $range = $this->getDateRange($period);
 
         $completed = Appointment::where('status', 'completed')
-            ->whereBetween('appointment_date', [$range['from'], $range['to']])
+            ->where('appointment_date', '>=', $range['from'])
+            ->where('appointment_date', '<', $range['end_exclusive'])
             ->count();
 
         $totalRevenue = (float) Appointment::where('status', 'completed')
-            ->whereBetween('appointment_date', [$range['from'], $range['to']])
+            ->where('appointment_date', '>=', $range['from'])
+            ->where('appointment_date', '<', $range['end_exclusive'])
             ->sum('price');
 
         $cancelled = Appointment::where('status', 'cancelled')
-            ->whereBetween('appointment_date', [$range['from'], $range['to']])
+            ->where('appointment_date', '>=', $range['from'])
+            ->where('appointment_date', '<', $range['end_exclusive'])
             ->count();
 
         $noShow = Appointment::where('status', 'no_show')
-            ->whereBetween('appointment_date', [$range['from'], $range['to']])
+            ->where('appointment_date', '>=', $range['from'])
+            ->where('appointment_date', '<', $range['end_exclusive'])
             ->count();
 
         $walkin = Appointment::where('is_walkin', true)
             ->whereIn('status', ['completed', 'approved', 'cancelled', 'no_show'])
-            ->whereBetween('appointment_date', [$range['from'], $range['to']])
+            ->where('appointment_date', '>=', $range['from'])
+            ->where('appointment_date', '<', $range['end_exclusive'])
             ->count();
 
-        $totalCustomers = Appointment::whereBetween('appointment_date', [$range['from'], $range['to']])
+        $totalCustomers = Appointment::where('appointment_date', '>=', $range['from'])
+            ->where('appointment_date', '<', $range['end_exclusive'])
             ->distinct('user_id')
             ->count('user_id');
 
         $avgRating = DB::table('appointment_feedback')
             ->join('appointments', 'appointments.id', '=', 'appointment_feedback.appointment_id')
-            ->whereBetween('appointments.appointment_date', [$range['from'], $range['to']])
+            ->where('appointments.appointment_date', '>=', $range['from'])
+            ->where('appointments.appointment_date', '<', $range['end_exclusive'])
             ->avg('appointment_feedback.rating');
 
         $completionRate = ($completed + $cancelled + $noShow) > 0
@@ -95,65 +106,64 @@ class AnalyticsController extends Controller
             'completion_rate' => $completionRate,
             'walkin_count' => $walkin,
             'cancelled_count' => $cancelled,
+            'date_range' => [
+                'from' => $range['from'],
+                'to' => $range['to'],
+            ],
         ]);
     }
 
-    public function revenue(Request $request)
+    public function revenue(AnalyticsPeriodRequest $request)
     {
-        $period = $request->input('period', 'monthly');
+        $period = $request->period();
         $range = $this->getDateRange($period);
-        $dateFormat = $this->getDateFormat($period);
 
-        $rows = Appointment::select([
-            DB::raw("DATE_FORMAT(appointment_date, '{$dateFormat}') as label"),
-            DB::raw('SUM(price) as value'),
-        ])
+        $rows = Appointment::select(['appointment_date', 'price'])
             ->where('status', 'completed')
-            ->whereBetween('appointment_date', [$range['from'], $range['to']])
-            ->groupBy('label')
-            ->orderBy('label')
+            ->where('appointment_date', '>=', $range['from'])
+            ->where('appointment_date', '<', $range['end_exclusive'])
             ->get()
-            ->map(fn ($row) => [
-                'label' => $row->label,
-                'value' => (float) $row->value,
-            ]);
+            ->groupBy(fn ($appointment) => $this->getGroupLabel($appointment->appointment_date, $period))
+            ->map(fn ($appointments, $label) => [
+                'label' => (string) $label,
+                'value' => (float) $appointments->sum('price'),
+            ])
+            ->sortBy('label')
+            ->values();
 
         return response()->json($rows);
     }
 
-    public function appointments(Request $request)
+    public function appointments(AnalyticsPeriodRequest $request)
     {
-        $period = $request->input('period', 'monthly');
+        $period = $request->period();
         $range = $this->getDateRange($period);
-        $dateFormat = $this->getDateFormat($period);
 
-        $rows = Appointment::select([
-            DB::raw("DATE_FORMAT(appointment_date, '{$dateFormat}') as label"),
-            DB::raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed"),
-            DB::raw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled"),
-            DB::raw("SUM(CASE WHEN status = 'no_show' THEN 1 ELSE 0 END) as no_show"),
-        ])
-            ->whereBetween('appointment_date', [$range['from'], $range['to']])
-            ->groupBy('label')
-            ->orderBy('label')
+        $rows = Appointment::select(['appointment_date', 'status'])
+            ->where('appointment_date', '>=', $range['from'])
+            ->where('appointment_date', '<', $range['end_exclusive'])
             ->get()
-            ->map(fn ($row) => [
-                'label' => $row->label,
-                'completed' => (int) $row->completed,
-                'cancelled' => (int) $row->cancelled,
-                'no_show' => (int) $row->no_show,
-            ]);
+            ->groupBy(fn ($appointment) => $this->getGroupLabel($appointment->appointment_date, $period))
+            ->map(fn ($appointments, $label) => [
+                'label' => (string) $label,
+                'completed' => $appointments->where('status', 'completed')->count(),
+                'cancelled' => $appointments->where('status', 'cancelled')->count(),
+                'no_show' => $appointments->where('status', 'no_show')->count(),
+            ])
+            ->sortBy('label')
+            ->values();
 
         return response()->json($rows);
     }
 
-    public function services(Request $request)
+    public function services(AnalyticsPeriodRequest $request)
     {
-        $range = $this->getDateRange($request->input('period', 'monthly'));
+        $range = $this->getDateRange($request->period());
 
         $rows = Appointment::with('service:id,name')
             ->where('status', 'completed')
-            ->whereBetween('appointment_date', [$range['from'], $range['to']])
+            ->where('appointment_date', '>=', $range['from'])
+            ->where('appointment_date', '<', $range['end_exclusive'])
             ->get()
             ->groupBy(fn ($appt) => $appt->service?->name ?? 'Unknown')
             ->map(fn ($appts, $name) => [
@@ -166,13 +176,14 @@ class AnalyticsController extends Controller
         return response()->json($rows);
     }
 
-    public function barbers(Request $request)
+    public function barbers(AnalyticsPeriodRequest $request)
     {
-        $range = $this->getDateRange($request->input('period', 'monthly'));
+        $range = $this->getDateRange($request->period());
 
         $rows = Appointment::with('barber:id,fullname')
             ->whereIn('status', ['completed', 'cancelled', 'no_show'])
-            ->whereBetween('appointment_date', [$range['from'], $range['to']])
+            ->where('appointment_date', '>=', $range['from'])
+            ->where('appointment_date', '<', $range['end_exclusive'])
             ->get()
             ->groupBy(fn ($appt) => $appt->barber?->fullname ?? 'Unknown')
             ->map(function ($appts, $name) {
@@ -190,14 +201,15 @@ class AnalyticsController extends Controller
         return response()->json($rows);
     }
 
-    public function ratings(Request $request)
+    public function ratings(AnalyticsPeriodRequest $request)
     {
-        $range = $this->getDateRange($request->input('period', 'monthly'));
+        $range = $this->getDateRange($request->period());
 
         $rows = DB::table('appointment_feedback')
             ->select('rating', DB::raw('COUNT(*) as count'))
-            ->whereDate('created_at', '>=', $range['from'])
-            ->whereDate('created_at', '<=', $range['to'])
+            ->join('appointments', 'appointments.id', '=', 'appointment_feedback.appointment_id')
+            ->where('appointments.appointment_date', '>=', $range['from'])
+            ->where('appointments.appointment_date', '<', $range['end_exclusive'])
             ->groupBy('rating')
             ->orderBy('rating')
             ->get()
@@ -214,57 +226,52 @@ class AnalyticsController extends Controller
         return response()->json($result);
     }
 
-    public function peakHours(Request $request)
+    public function peakHours(AnalyticsPeriodRequest $request)
     {
-        $range = $this->getDateRange($request->input('period', 'monthly'));
+        $range = $this->getDateRange($request->period());
 
-        $rows = Appointment::select([
-            DB::raw("DATE_FORMAT(appointment_time, '%H:00') as hour"),
-            DB::raw('COUNT(*) as count'),
-        ])
+        $rows = Appointment::select(['appointment_time'])
             ->whereIn('status', ['completed', 'approved'])
-            ->whereBetween('appointment_date', [$range['from'], $range['to']])
-            ->whereTime('appointment_time', '>=', '09:00:00')
-            ->whereTime('appointment_time', '<=', '19:00:00')
-            ->groupBy('hour')
-            ->orderBy('hour')
+            ->where('appointment_date', '>=', $range['from'])
+            ->where('appointment_date', '<', $range['end_exclusive'])
             ->get()
-            ->map(fn ($row) => [
-                'hour' => $row->hour,
-                'count' => (int) $row->count,
-            ]);
+            ->groupBy(fn ($appointment) => sprintf('%02d:00', (int) substr($appointment->appointment_time, 0, 2)))
+            ->filter(function ($appointments, $hour) {
+                $hourValue = (int) substr($hour, 0, 2);
+
+                return $hourValue >= 9 && $hourValue <= 19;
+            })
+            ->map(fn ($appointments, $hour) => [
+                'hour' => $hour,
+                'count' => $appointments->count(),
+            ])
+            ->sortBy('hour')
+            ->values();
 
         return response()->json($rows);
     }
 
-    public function dayOfWeek(Request $request)
+    public function dayOfWeek(AnalyticsPeriodRequest $request)
     {
-        $range = $this->getDateRange($request->input('period', 'monthly'));
+        $range = $this->getDateRange($request->period());
 
         $dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        $rows = Appointment::select([
-            DB::raw('DAYOFWEEK(appointment_date) - 1 as day_index'),
-            DB::raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed"),
-            DB::raw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled"),
-            DB::raw("SUM(CASE WHEN status = 'no_show' THEN 1 ELSE 0 END) as no_show"),
-            DB::raw('COUNT(*) as total'),
-        ])
-            ->whereBetween('appointment_date', [$range['from'], $range['to']])
-            ->groupBy('day_index')
-            ->orderBy('day_index')
+        $rows = Appointment::select(['appointment_date', 'status'])
+            ->where('appointment_date', '>=', $range['from'])
+            ->where('appointment_date', '<', $range['end_exclusive'])
             ->get()
-            ->keyBy('day_index');
+            ->groupBy(fn ($appointment) => $appointment->appointment_date->dayOfWeekIso - 1);
 
         $result = [];
         for ($i = 0; $i < 7; $i++) {
-            $dayData = $rows->get($i);
+            $dayData = $rows->get($i, collect());
             $result[] = [
                 'day' => $dayNames[$i],
                 'day_index' => $i,
-                'completed' => (int) ($dayData->completed ?? 0),
-                'cancelled' => (int) ($dayData->cancelled ?? 0),
-                'no_show' => (int) ($dayData->no_show ?? 0),
-                'total' => (int) ($dayData->total ?? 0),
+                'completed' => $dayData->where('status', 'completed')->count(),
+                'cancelled' => $dayData->where('status', 'cancelled')->count(),
+                'no_show' => $dayData->where('status', 'no_show')->count(),
+                'total' => $dayData->count(),
             ];
         }
 

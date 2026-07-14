@@ -22,7 +22,6 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
 import {
   PhilippinePeso,
   CheckCircle2,
@@ -51,14 +50,14 @@ import {
   type PeakHourStat,
   type DayOfWeekStat,
 } from "@/services/manager/analytics.api";
-import { getOverviewExportSummary } from "@/services/manager/overview.api";
+import { downloadAnalyticsReportPdf } from "@/lib/reportPdf";
 import { cn } from "@/lib/utils";
 
 const periods: { key: Period; label: string }[] = [
-  { key: "daily", label: "Daily" },
-  { key: "weekly", label: "Weekly" },
-  { key: "monthly", label: "Monthly" },
-  { key: "yearly", label: "Yearly" },
+  { key: "daily", label: "7 Days" },
+  { key: "weekly", label: "12 Weeks" },
+  { key: "monthly", label: "12 Months" },
+  { key: "yearly", label: "5 Years" },
 ];
 
 const CHART_COLORS = [
@@ -90,6 +89,7 @@ function formatLabel(label: string, period: Period): string {
 
 export function ReportsAnalytics() {
   const [period, setPeriod] = useState<Period>("monthly");
+  const [loadedPeriod, setLoadedPeriod] = useState<Period | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
@@ -107,6 +107,7 @@ export function ReportsAnalytics() {
   const fetchData = useCallback(async (p: Period) => {
     const id = ++fetchId.current;
     setLoading(true);
+    setLoadedPeriod(null);
     try {
       const [
         kpiResult,
@@ -136,6 +137,7 @@ export function ReportsAnalytics() {
       setRatingData(ratingResult);
       setPeakHourData(peakHourResult);
       setDayOfWeekData(dayOfWeekResult);
+      setLoadedPeriod(p);
     } catch (error) {
       if (id !== fetchId.current) return;
       console.error("Failed to load analytics data:", error);
@@ -151,26 +153,28 @@ export function ReportsAnalytics() {
   }, [period, fetchData]);
 
   const handleExport = async () => {
+    if (!kpi || loading || loadedPeriod !== period) {
+      toast.error("Wait for the selected report to finish loading");
+      return;
+    }
+
     try {
       setExporting(true);
-      const summary = await getOverviewExportSummary();
-      const workbook = XLSX.utils.book_new();
-      const summarySheet = XLSX.utils.json_to_sheet([summary.stats]);
-      const revenueSheet = XLSX.utils.json_to_sheet(summary.daily_revenue);
-      const serviceSheet = XLSX.utils.json_to_sheet(summary.service_stats);
-      const appointmentsSheet = XLSX.utils.json_to_sheet(summary.appointments);
-      XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
-      XLSX.utils.book_append_sheet(workbook, revenueSheet, "Daily Revenue");
-      XLSX.utils.book_append_sheet(workbook, serviceSheet, "Service Stats");
-      XLSX.utils.book_append_sheet(workbook, appointmentsSheet, "Appointments");
-      XLSX.writeFile(
-        workbook,
-        `tol-summary-${period}-${new Date().toISOString().slice(0, 10)}.xlsx`,
-      );
-      toast.success("Exported successfully");
+      await downloadAnalyticsReportPdf({
+        period,
+        kpi,
+        revenueData,
+        appointmentData,
+        serviceData,
+        barberData,
+        ratingData,
+        peakHourData,
+        dayOfWeekData,
+      });
+      toast.success("PDF exported successfully");
     } catch (error) {
       console.error("Export failed:", error);
-      toast.error("Failed to export");
+      toast.error("Failed to export PDF");
     } finally {
       setExporting(false);
     }
@@ -245,13 +249,13 @@ export function ReportsAnalytics() {
             Business performance overview across different time periods
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="flex rounded-lg border border-gray-200 bg-white p-0.5">
+        <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center sm:shrink-0">
+          <div className="grid w-full grid-cols-4 rounded-lg border border-gray-200 bg-white p-0.5 sm:flex sm:w-auto">
             {periods.map((p) => (
               <button
                 key={p.key}
                 onClick={() => setPeriod(p.key)}
-                className={cn("px-3 py-1.5 text-sm font-medium rounded-md transition", period === p.key ? "bg-blue-600 text-white shadow-sm" : "text-gray-600 hover:text-gray-900")}
+                className={cn("rounded-md px-1.5 py-1.5 text-xs font-medium transition sm:px-3 sm:text-sm", period === p.key ? "bg-blue-600 text-white shadow-sm" : "text-gray-600 hover:text-gray-900")}
               >
                 {p.label}
               </button>
@@ -259,11 +263,11 @@ export function ReportsAnalytics() {
           </div>
           <Button
             onClick={handleExport}
-            disabled={exporting}
-            className="shrink-0"
+            disabled={exporting || loading || loadedPeriod !== period}
+            className="w-full shrink-0 sm:w-auto"
           >
             <Download className="h-4 w-4 mr-2" />
-            {exporting ? "Exporting..." : "Export"}
+            {exporting ? "Generating PDF..." : "Export PDF"}
           </Button>
         </div>
       </div>
