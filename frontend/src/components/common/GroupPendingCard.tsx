@@ -1,5 +1,7 @@
-import { User, Users, Mail, Phone } from "lucide-react";
+import { ChevronRight, Mail, Phone, Scissors, User, Users } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+
 import type { Appointment } from "@/services/customer/appointment.api";
 
 function formatShortDate(date: string): string {
@@ -12,9 +14,10 @@ function formatShortDate(date: string): string {
 
 function formatTime(time24: string): string {
   const [hours, minutes] = time24.split(":").map(Number);
-  const d = new Date();
-  d.setHours(hours, minutes, 0, 0);
-  return d.toLocaleTimeString("en-US", {
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+
+  return date.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
@@ -23,6 +26,7 @@ function formatTime(time24: string): string {
 
 type GroupPendingCardProps = {
   appointments: Appointment[];
+  onViewDetails: (appts: Appointment[]) => void;
   onApproveAll: (appts: Appointment[]) => void;
   onRejectAll: (appts: Appointment[]) => void;
   disabled?: boolean;
@@ -30,6 +34,7 @@ type GroupPendingCardProps = {
 
 export function GroupPendingCard({
   appointments,
+  onViewDetails,
   onApproveAll,
   onRejectAll,
   disabled = false,
@@ -40,95 +45,91 @@ export function GroupPendingCard({
     0,
   );
 
-  const slots = appointments
-    .map((a) => ({
-      id: a.id,
-      name: a.customer_name ?? a.customer.fullname ?? "Unknown",
-      service: a.service.name ?? "Unknown",
-      time: formatTime(a.appointment_time),
-      price: Number(a.price),
-    }))
-    .sort((a, b) => a.time.localeCompare(b.time));
+  const sortedAppointments = [...appointments].sort((a, b) =>
+    a.appointment_time.localeCompare(b.appointment_time),
+  );
+  const bookingContact =
+    sortedAppointments.find((appointment) => !appointment.customer_name) ?? first;
 
   return (
     <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
-      <div className="flex items-center gap-1.5 mb-3">
-        <Users className="w-4 h-4 text-amber-600" />
-        <span className="font-semibold text-gray-900 text-sm">
-          Group Booking ({appointments.length})
-        </span>
-        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 ml-auto">
-          {formatShortDate(first.appointment_date)}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-1.5 mb-0.5">
-        <User className="w-3.5 h-3.5 text-gray-400" />
-        <span className="font-semibold text-gray-900 text-sm">
-          {first.customer.fullname}
-        </span>
-      </div>
-      <div className="flex items-center gap-1.5 mb-0.5">
-        <Mail className="w-3.5 h-3.5 text-gray-400" />
-        <span className="text-xs text-gray-500">{first.customer.email}</span>
-      </div>
-      <div className="flex items-center gap-1.5 mb-3">
-        <Phone className="w-3.5 h-3.5 text-gray-400" />
-        <span className="text-xs text-gray-500">
-          {first.customer.contact_number}
-        </span>
-      </div>
-
-      <div className="border-t border-yellow-200 mb-3" />
-
-      <p className="text-xs text-gray-600 mb-2">
-        <span className="font-medium text-gray-800">Barber:</span>{" "}
-        {first.barber.fullname}
-      </p>
-
-      <div className="space-y-1 mb-3">
-        <div className="grid grid-cols-[1fr_1.5fr_1fr_auto] gap-2 text-xs font-medium text-gray-500 px-2">
-          <span>Person</span>
-          <span>Service</span>
-          <span>Time</span>
-          <span>Price</span>
+      <button
+        type="button"
+        onClick={() => onViewDetails(appointments)}
+        className="group w-full rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+        aria-label={`Review group booking with ${appointments.length} appointments`}
+      >
+        <div className="mb-3 flex items-center gap-1.5">
+          <Users className="w-4 h-4 text-amber-600" />
+          <span className="font-semibold text-gray-900 text-sm">
+            Group Booking ({appointments.length})
+          </span>
+          <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+            {formatShortDate(first.appointment_date)}
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-amber-600 transition-transform group-hover:translate-x-0.5" />
         </div>
-        {slots.map((slot, i) => (
-          <div
-            key={slot.id}
-            className="grid grid-cols-[1fr_1.5fr_1fr_auto] gap-2 text-xs text-gray-700 bg-white/60 rounded-lg px-2 py-1.5"
-          >
-            <span className="font-medium truncate">{i + 1}. {slot.name}</span>
-            <span className="truncate">{slot.service}</span>
-            <span>{slot.time}</span>
-            <span className="font-medium text-right">₱{slot.price.toLocaleString()}</span>
-          </div>
-        ))}
-      </div>
 
-      <div className="border-t border-yellow-200 mb-3" />
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <User className="w-3.5 h-3.5 text-gray-400" />
+          <span className="font-semibold text-gray-900 text-sm">
+            {bookingContact.customer.fullname ?? "Booking contact"}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <Mail className="w-3.5 h-3.5 text-gray-400" />
+          <span className="truncate text-xs text-gray-500">{first.customer.email}</span>
+        </div>
+        <div className="flex items-center gap-1.5 mb-3">
+          <Phone className="w-3.5 h-3.5 text-gray-400" />
+          <span className="text-xs text-gray-500">{first.customer.contact_number}</span>
+        </div>
 
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-semibold text-gray-800">Total</span>
-        <span className="text-sm font-bold text-amber-700">
-          ₱{totalPrice.toLocaleString()}
-        </span>
-      </div>
+        <div className="border-t border-yellow-200 mb-3" />
 
-      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1 text-xs text-gray-600">
+          <p className="flex items-center gap-1.5">
+            <Scissors className="w-3.5 h-3.5 text-gray-400" />
+            <span className="font-medium text-gray-800">Barber:</span>{" "}
+            <span className="truncate">{first.barber.fullname}</span>
+          </p>
+          <p>
+            <span className="font-medium text-gray-800">Appointments:</span>{" "}
+            {appointments.length}
+          </p>
+          <p>
+            <span className="font-medium text-gray-800">Time:</span>{" "}
+            {formatTime(sortedAppointments[0].appointment_time)}
+            {sortedAppointments.length > 1
+              ? ` - ${formatTime(sortedAppointments[sortedAppointments.length - 1].appointment_time)}`
+              : ""}
+          </p>
+          <p>
+            <span className="font-medium text-gray-800">Total:</span>{" "}
+            ₱{totalPrice.toLocaleString()}
+          </p>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between rounded-lg bg-white/60 px-3 py-2 text-xs font-medium text-amber-700 transition-colors group-hover:bg-white">
+          <span>View group details</span>
+          <ChevronRight className="size-3.5" />
+        </div>
+      </button>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
         <Button
           onClick={() => onApproveAll(appointments)}
           disabled={disabled}
           className="bg-green-600 hover:bg-green-700 text-white gap-1.5 text-sm h-9"
         >
-          Approve All
+          {appointments.length > 1 ? "Approve All" : "Approve"}
         </Button>
         <Button
           onClick={() => onRejectAll(appointments)}
           disabled={disabled}
           className="bg-red-500 hover:bg-red-600 text-white gap-1.5 text-sm h-9"
         >
-          Reject All
+          {appointments.length > 1 ? "Reject All" : "Reject"}
         </Button>
       </div>
     </div>

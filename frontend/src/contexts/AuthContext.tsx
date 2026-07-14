@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       clearAuthRoleCookie();
       setUser(null);
-      window.location.href = "/login";
+      window.location.href = "/";
     }
   };
 

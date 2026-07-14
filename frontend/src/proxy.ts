@@ -27,6 +27,7 @@ export function proxy(request: NextRequest) {
   const isPublicAuthPath =
     pathname === "/login" ||
     pathname === "/register" ||
+    pathname === "/verify-email" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password";
 
@@ -60,6 +61,7 @@ export const config = {
     "/",
     "/login",
     "/register",
+    "/verify-email",
     "/forgot-password",
     "/reset-password",
     "/admin/:path*",

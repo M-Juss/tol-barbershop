@@ -4,6 +4,15 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/api(\/v\d+)?\/?$/, "
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["sterile-neatly-earflap.ngrok-free.dev"],
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+        pathname: "/**",
+      },
+    ],
+  },
   async rewrites() {
     return [
       {

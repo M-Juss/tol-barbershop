@@ -124,6 +124,7 @@ export function Historical() {
         row.customer.toLowerCase().includes(keyword) ||
         row.service.toLowerCase().includes(keyword) ||
         row.barber.toLowerCase().includes(keyword) ||
+        formatBookingId(row.id).toLowerCase().includes(keyword) ||
         String(row.id).includes(keyword);
 
       return matchesStatus && matchesSearch;
@@ -155,7 +156,7 @@ export function Historical() {
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by booking ID, customer, service, barber"
+            placeholder="Search by appointment ID, customer, service, barber"
             className="w-full sm:w-3/4"
           />
           <Select
@@ -226,7 +227,7 @@ export function Historical() {
           <Table>
             <TableHeader className="bg-gray-50">
               <TableRow>
-                <TableHead>Booking ID</TableHead>
+                <TableHead>Appointment ID</TableHead>
                 <TableHead>Customer</TableHead>
                 <TableHead>Service</TableHead>
                 <TableHead>Barber</TableHead>

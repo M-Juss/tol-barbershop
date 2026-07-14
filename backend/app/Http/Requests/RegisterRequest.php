@@ -30,7 +30,7 @@ class RegisterRequest extends FormRequest
             'fullname' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z\s]+$/'],
             'contact_number' => ['required', 'string', 'max:11', 'regex:/^09\d{9}$/'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', 'string', 'min:8', 'max:255', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/'],
+            'password' => ['required', 'confirmed', 'string', 'min:6', 'max:255'],
         ];
     }
 
@@ -52,8 +52,7 @@ class RegisterRequest extends FormRequest
             'email.unique' => 'Email has already been taken.',
             'password.required' => 'Password is required.',
             'password.string' => 'Password must be a string.',
-            'password.min' => 'Password must be at least 8 characters long.',
-            'password.regex' => 'Password must contain at least one lowercase, uppercase , number, and  special character.',
+            'password.min' => 'Password must be at least 6 characters long.',
             'password.confirmed' => 'Password confirmation does not match.',
         ];
     }

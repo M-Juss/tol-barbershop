@@ -44,6 +44,23 @@ class Appointment extends Model
         'is_walkin' => 'boolean',
     ];
 
+    public function customerDisplayName(): ?string
+    {
+        if (filled($this->customer_name)) {
+            return $this->customer_name;
+        }
+
+        if (filled($this->customer_name_snapshot)) {
+            return $this->customer_name_snapshot;
+        }
+
+        if ($this->is_walkin && filled($this->walkin_customer_name)) {
+            return $this->walkin_customer_name;
+        }
+
+        return $this->user?->fullname;
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Relationships

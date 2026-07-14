@@ -12,7 +12,7 @@ class DisplayId
 
         $number = (((int) $id * 12345 + 67890) % 90000) + 10000;
 
-        return "BK-{$number}";
+        return "APT-{$number}";
     }
 
     public static function ticket(int|string|null $id): string

@@ -5,13 +5,15 @@ export const registerSchema = z.object({
     .string()
     .trim()
     .nonempty("Fullname is required")
+    .max(255, "Full name must not exceed 255 characters")
     .regex(/^[A-Za-z\s]+$/, "Full name must only contain letters and spaces"),
 
     email: z
     .string()
     .trim()
     .email("Invalid email address")
-    .nonempty("Email is required."),
+    .nonempty("Email is required.")
+    .max(255, "Email must not exceed 255 characters"),
 
     contact_number: z
     .string()
@@ -22,18 +24,14 @@ export const registerSchema = z.object({
 
     password: z
     .string()
-    .trim()
     .nonempty("Password is required.")
-    .min(8, "Password must be at least 8 characters")
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/,
-      "Must have uppercase, lowercase, number & special character"
-    ),
+    .min(6, "Password must be at least 6 characters")
+    .max(255, "Password must not exceed 255 characters"),
 
     password_confirmation: z
     .string()
-    .trim()
     .nonempty("Password Confirmation is required!")
+    .max(255, "Password confirmation must not exceed 255 characters")
 
 }).refine((data) => data.password === data.password_confirmation, {
     path: ["password_confirmation"],
@@ -49,12 +47,13 @@ export const loginSchema = z.object({
     .string()
     .trim()
     .email("Invalid email address")
-    .nonempty("Email is required."),
+    .nonempty("Email is required.")
+    .max(255, "Email must not exceed 255 characters"),
 
     password: z
     .string()
-    .trim()
-    .nonempty("Password is required."),
+    .nonempty("Password is required.")
+    .max(255, "Password must not exceed 255 characters"),
 
 })
 
@@ -65,26 +64,85 @@ export const forgotPasswordSchema = z.object({
     .string()
     .trim()
     .email("Invalid email address")
-    .nonempty("Email is required."),
+    .nonempty("Email is required.")
+    .max(255, "Email must not exceed 255 characters"),
 });
 
 export type ForgotPasswordSchemaFormValues = z.infer<typeof forgotPasswordSchema>;
 
-export const resetPasswordSchema = z
+export const verifyEmailSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email("Invalid email address")
+    .nonempty("Email is required.")
+    .max(255, "Email must not exceed 255 characters"),
+});
+
+export type VerifyEmailSchemaFormValues = z.infer<typeof verifyEmailSchema>;
+
+export const changeRegistrationEmailSchema = z
   .object({
+    current_email: z
+      .string()
+      .trim()
+      .email("Invalid current email address")
+      .max(255, "Email must not exceed 255 characters"),
+    new_email: z
+      .string()
+      .trim()
+      .email("Invalid email address")
+      .max(255, "Email must not exceed 255 characters"),
+    new_email_confirmation: z
+      .string()
+      .trim()
+      .email("Invalid confirmation email address")
+      .max(255, "Email confirmation must not exceed 255 characters"),
     password: z
       .string()
-      .trim()
+      .nonempty("Registration password is required")
+      .max(255, "Password must not exceed 255 characters"),
+  })
+  .refine((data) => data.new_email === data.new_email_confirmation, {
+    path: ["new_email_confirmation"],
+    message: "Email addresses do not match",
+  })
+  .refine(
+    (data) =>
+      data.current_email.toLowerCase() !== data.new_email.toLowerCase(),
+    {
+      path: ["new_email"],
+      message: "New email must be different from the current email",
+    },
+  );
+
+export type ChangeRegistrationEmailSchemaFormValues = z.infer<
+  typeof changeRegistrationEmailSchema
+>;
+
+export const resetPasswordLinkSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email("Invalid email address")
+    .max(255, "Email must not exceed 255 characters"),
+  token: z
+    .string()
+    .min(1, "Reset token is required")
+    .max(255, "Reset token is invalid"),
+});
+
+export const resetPasswordSchema = resetPasswordLinkSchema
+  .extend({
+    password: z
+      .string()
       .nonempty("Password is required.")
-      .min(8, "Password must be at least 8 characters")
-      .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/,
-        "Must have uppercase, lowercase, number & special character",
-      ),
+      .min(6, "Password must be at least 6 characters")
+      .max(255, "Password must not exceed 255 characters"),
     password_confirmation: z
       .string()
-      .trim()
-      .nonempty("Password Confirmation is required!"),
+      .nonempty("Password Confirmation is required!")
+      .max(255, "Password confirmation must not exceed 255 characters"),
   })
   .refine((data) => data.password === data.password_confirmation, {
     path: ["password_confirmation"],

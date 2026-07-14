@@ -96,7 +96,15 @@ function getDisplayMessage(item: NotificationItem): string {
   let message = item.message;
 
   if (appointmentId) {
-    message = message.replaceAll(`#${appointmentId}`, formatBookingId(appointmentId));
+    const displayAppointmentId = formatBookingId(appointmentId);
+    message = message.replaceAll(`#${appointmentId}`, displayAppointmentId);
+
+    if (item.type === "appointment_status" && !message.includes(displayAppointmentId)) {
+      message = message.replace(
+        "Your booking is now",
+        `Your appointment ${displayAppointmentId} is now`,
+      );
+    }
   }
 
   if (!ticketId) return message;
@@ -248,62 +256,64 @@ export function Notification() {
                 <div
                   key={item.id}
                   className={cn(
-                    "rounded-xl border transition-shadow hover:shadow-sm",
+                    "relative overflow-hidden rounded-xl border transition-shadow hover:shadow-sm",
                     isUnread ? "bg-amber-50 border-amber-200" : "bg-white border-gray-200",
                   )}
                 >
-                  <div className="px-4 py-3">
-                    <div className="flex items-stretch justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleNotificationClick(item)}
+                    className="block w-full px-4 pb-10 pt-4 text-left"
+                  >
+                    <p
+                      className={cn(
+                        "pr-28 text-sm font-semibold",
+                        isUnread ? "text-gray-900" : "text-gray-700",
+                      )}
+                    >
+                      {item.title}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-gray-600">
+                      {getDisplayMessage(item)}
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5 pr-36">
+                      {item.appointment_id && (
+                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-mono text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-200">
+                          {formatBookingId(item.appointment_id)}
+                        </span>
+                      )}
+                      {(item.type === "new_support_ticket" ||
+                        item.type === "ticket_cancelled" ||
+                        item.type === "ticket_promoted" ||
+                        item.type === "ticket_resolved") &&
+                        ticketId && (
+                          <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 font-mono text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-200">
+                            {formatTicketId(ticketId)}
+                          </span>
+                        )}
+                    </div>
+                  </button>
+
+                  <div className="absolute right-3 top-3 z-10">
+                    {isUnread ? (
                       <button
                         type="button"
-                        onClick={() => handleNotificationClick(item)}
-                        className="text-left flex-1"
+                        onClick={() => handleMarkAsRead(item.id)}
+                        className="rounded-full border border-amber-300 bg-white px-2.5 py-1 text-xs font-medium text-amber-700 shadow-sm transition-colors hover:bg-amber-100"
                       >
-                        <p className={cn("text-sm font-semibold", isUnread ? "text-gray-900" : "text-gray-700")}>
-                          {item.title}
-                        </p>
-                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">{getDisplayMessage(item)}</p>
-                        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-                          {item.appointment_id && (
-                            <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-mono font-medium text-blue-700 ring-1 ring-inset ring-blue-200">
-                              {formatBookingId(item.appointment_id)}
-                            </span>
-                          )}
-                          {(item.type === "new_support_ticket" ||
-                            item.type === "ticket_cancelled" ||
-                            item.type === "ticket_promoted" ||
-                            item.type === "ticket_resolved") &&
-                            ticketId && (
-                              <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-mono font-medium text-purple-700 ring-1 ring-inset ring-purple-200">
-                                {formatTicketId(ticketId)}
-                              </span>
-                            )}
-                        </div>
+                        Mark as read
                       </button>
-
-                      <div className="flex flex-col items-end justify-between shrink-0">
-                        <div className="flex items-center gap-2">
-                          {isUnread ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleMarkAsRead(item.id)}
-                            >
-                              Mark read
-                            </Button>
-                          ) : (
-                            <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-600">
-                              Read
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-500 flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" /> {formatDateTime(item.created_at)}
-                        </p>
-                      </div>
-                    </div>
+                    ) : (
+                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                        Read
+                      </span>
+                    )}
                   </div>
+
+                  <p className="pointer-events-none absolute bottom-3 right-4 flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-500">
+                    <Clock className="h-3.5 w-3.5" />
+                    {formatDateTime(item.created_at)}
+                  </p>
                 </div>
               );
             })}
@@ -410,6 +420,20 @@ export function Notification() {
                     <p className="text-xs text-gray-400 mb-0.5">Message</p>
                     <p className="text-sm text-gray-700">{getDisplayMessage(selectedNotification)}</p>
                   </div>
+
+                  {selectedNotification.payload.status === "approved" && (
+                    <div className="flex gap-3 rounded-lg border border-blue-100 bg-blue-50 p-3">
+                      <Clock className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                      <div>
+                        <p className="text-sm font-semibold text-blue-900">
+                          Appointment reminder
+                        </p>
+                        <p className="mt-1 text-sm leading-5 text-blue-800">
+                          Please be at the shop by your scheduled appointment time. We recommend arriving about 5 minutes early so you can settle in and we can keep your visit running smoothly.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="space-y-3">

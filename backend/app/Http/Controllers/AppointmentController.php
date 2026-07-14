@@ -275,6 +275,9 @@ class AppointmentController extends Controller
                     'status' => 'pending',
                     'batch_id' => $batchId,
                     'customer_name' => $slot['customer_name'] ?? null,
+                    'customer_name_snapshot' => filled($slot['customer_name'] ?? null)
+                        ? $slot['customer_name']
+                        : $authUser->fullname,
                     'notes' => $validated['notes'] ?? null,
                 ]);
 
@@ -438,7 +441,9 @@ class AppointmentController extends Controller
         $appointment->update(array_merge($validated, [
             'customer_name_snapshot' => $appointment->is_walkin
                 ? ($appointment->walkin_customer_name ?? $validated['walkin_customer_name'] ?? null)
-                : $appointment->user?->fullname,
+                : (filled($appointment->customer_name)
+                    ? $appointment->customer_name
+                    : $appointment->user?->fullname),
             'service_name_snapshot' => $service->name,
             'barber_name_snapshot' => $appointment->barber?->fullname,
         ]));
@@ -482,7 +487,8 @@ class AppointmentController extends Controller
                     'type' => 'appointment_status',
                     'title' => 'Appointment Status Updated',
                     'message' => sprintf(
-                        'Your booking is now %s.',
+                        'Your appointment %s is now %s.',
+                        $bookingId,
                         str_replace('_', ' ', $nextStatus)
                     ),
                     'appointment_id' => $appointment->id,
@@ -511,7 +517,7 @@ class AppointmentController extends Controller
                     : 'Appointment Status Updated';
                 $pushBody = $nextStatus === 'completed'
                     ? sprintf('Your %s booking %s is now complete.', $appointment->service?->name ?? 'barbershop service', $bookingId)
-                    : sprintf('Your booking is now %s.', str_replace('_', ' ', $nextStatus));
+                    : sprintf('Your appointment %s is now %s.', $bookingId, str_replace('_', ' ', $nextStatus));
 
                 $pushService->send($appointment->user, [
                     'title' => $pushTitle,
@@ -708,7 +714,7 @@ class AppointmentController extends Controller
 
             $slotMap[$time12][] = [
                 'id' => $appointment->id,
-                'customer' => $appointment->user?->fullname,
+                'customer' => $appointment->customerDisplayName(),
                 'customer_email' => $appointment->user?->email,
                 'customer_contact' => $appointment->user?->contact_number,
                 'service' => $appointment->service?->name,
@@ -813,9 +819,7 @@ class AppointmentController extends Controller
             ->map(function ($appointment) {
                 return [
                     'id' => $appointment->id,
-                    'customer_name' => $appointment->is_walkin
-                        ? ($appointment->walkin_customer_name ?? $appointment->user?->fullname)
-                        : $appointment->user?->fullname,
+                    'customer_name' => $appointment->customerDisplayName(),
                     'customer_email' => $appointment->is_walkin ? null : $appointment->user?->email,
                     'barber_name' => $appointment->barber?->fullname,
                     'service_name' => $appointment->service?->name,

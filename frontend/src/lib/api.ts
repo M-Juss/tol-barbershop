@@ -2,18 +2,21 @@ export class ApiError extends Error {
   status: number;
   retryAfterSeconds: number | null;
   errors: unknown;
+  code: string | null;
 
   constructor(
     message: string,
     status: number,
     retryAfterSeconds: number | null = null,
     errors: unknown = null,
+    code: string | null = null,
   ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.retryAfterSeconds = retryAfterSeconds;
     this.errors = errors;
+    this.code = code;
   }
 }
 
@@ -52,6 +55,7 @@ async function parseResponse(response: Response) {
       response.status,
       parseRetryAfter(response.headers.get("Retry-After")),
       data.errors ?? null,
+      typeof data.code === "string" ? data.code : null,
     );
   }
 

@@ -8,13 +8,13 @@ import {
 } from "@/validations/auth.validation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SubmitErrorHandler, useForm } from "react-hook-form";
+import { useState } from "react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { useRateLimit } from "@/hooks/useRateLimit";
 import { normalizeEmail } from "@/lib/sanitizer";
 
 export function ForgotPasswordForm() {
-  const router = useRouter();
+  const [requestSent, setRequestSent] = useState(false);
   const rateLimit = useRateLimit({
     maxAttempts: 5,
     cooldownMinutes: 3,
@@ -40,14 +40,27 @@ export function ForgotPasswordForm() {
       };
 
       await forgotPasswordRequest(sanitizedData);
-      toast.success("Password reset link sent");
-      rateLimit.reset();
-
-      router.push("/reset-password");
+      setRequestSent(true);
+      toast.success("Check your inbox for password reset instructions.");
     } catch {
       toast.error("Failed to request password reset");
     }
   };
+
+  if (requestSent) {
+    return (
+      <div
+        className="mb-6 w-full rounded-md border border-accent/30 bg-accent/10 p-4 text-center"
+        role="status"
+      >
+        <p className="font-medium text-primary">Check your inbox</p>
+        <p className="mt-2 text-sm text-gray-600">
+          If an account exists for that email, we sent a password reset link.
+          Check your spam folder if it does not arrive soon.
+        </p>
+      </div>
+    );
+  }
 
   const onFormInvalid: SubmitErrorHandler<
     ForgotPasswordSchemaFormValues
@@ -66,6 +79,7 @@ export function ForgotPasswordForm() {
           type="email"
           label="Email"
           placeholder="Enter your account email"
+          maxLength={255}
           className="h-10 border-gray-300 focus-visible:ring-accent/40"
           {...formRegister("email")}
         />

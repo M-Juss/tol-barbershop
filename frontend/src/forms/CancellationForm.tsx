@@ -106,7 +106,7 @@ export function CancellationForm({
 
         <div className="bg-gray-50 rounded-lg p-4 space-y-3 mb-4">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold text-gray-500">Booking ID:</span>
+            <span className="text-xs font-semibold text-gray-500">Appointment ID:</span>
             <span className="text-xs font-bold text-gray-900">{formatBookingId(appointment.id)}</span>
           </div>
 

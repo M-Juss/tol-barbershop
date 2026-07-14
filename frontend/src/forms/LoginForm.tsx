@@ -1,18 +1,20 @@
 "use client";
 
-import { InputWithLabel } from "@/components/common/InputWithLabel";
-import { SubmitErrorHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { type SubmitErrorHandler, useForm } from "react-hook-form";
+import { toast } from "sonner";
+
+import { InputWithLabel } from "@/components/common/InputWithLabel";
+import { PasswordInputWithLabel } from "@/components/common/PasswordInputWithLabel";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRateLimit } from "@/hooks/useRateLimit";
+import { ApiError } from "@/lib/api";
+import { normalizeEmail } from "@/lib/sanitizer";
 import {
   loginSchema,
-  LoginSchemaFormValues,
+  type LoginSchemaFormValues,
 } from "@/validations/auth.validation";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { getSavedRoleRoute } from "@/hooks/useRoleRoutePersistence";
-import { useRateLimit } from "@/hooks/useRateLimit";
-import { normalizeEmail } from "@/lib/sanitizer";
-import { useAuth } from "@/contexts/AuthContext";
 
 export function LoginForm() {
   const router = useRouter();
@@ -47,22 +49,19 @@ export function LoginForm() {
       if (res?.success) {
         toast.success("Logged in successfully");
         rateLimit.reset();
-
-        const role = res.data.user.role;
-
-        if (role === "customer") {
-          router.push(getSavedRoleRoute("/customer") ?? "/customer");
-        } else if (role === "admin") {
-          router.push(getSavedRoleRoute("/admin") ?? "/admin");
-        } else if (role === "manager") {
-          router.push(getSavedRoleRoute("/manager") ?? "/manager");
-        } else {
-          toast.error("Login failed");
-        }
       } else {
         toast.error("Login failed");
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof ApiError && error.code === "EMAIL_UNVERIFIED") {
+        rateLimit.reset();
+        router.push(
+          `/verify-email?email=${encodeURIComponent(normalizeEmail(data.email))}`,
+        );
+        toast.info("Verify your email before logging in.");
+        return;
+      }
+
       toast.error("Login failed");
     }
   };
@@ -82,6 +81,7 @@ export function LoginForm() {
           type="email"
           label="Email"
           placeholder="Enter your email"
+          maxLength={255}
           className="h-10 border-gray-300 focus-visible:ring-accent/40"
           {...formRegister("email")}
         />
@@ -93,11 +93,12 @@ export function LoginForm() {
       </div>
 
       <div className="relative">
-        <InputWithLabel
+        <PasswordInputWithLabel
           id="password"
-          type="password"
           label="Password"
           placeholder="Enter your password"
+          maxLength={255}
+          autoComplete="current-password"
           className="h-10 border-gray-300 focus-visible:ring-accent/40"
           {...formRegister("password")}
         />

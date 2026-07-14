@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { GroupPendingCard } from "@/components/common/GroupPendingCard";
+import { PendingAppointmentDetailDialog } from "@/components/common/PendingAppointmentDetailDialog";
 import { SectionCard } from "@/components/common/SectionCard";
 import {
   getAppointments,
@@ -382,6 +383,9 @@ export function Appointment() {
   const [batchRejectDialogOpen, setBatchRejectDialogOpen] = useState(false);
   const [batchRejectTarget, setBatchRejectTarget] = useState<Appointment[] | null>(null);
   const [batchRejectReason, setBatchRejectReason] = useState("");
+  const [pendingDetailAppointments, setPendingDetailAppointments] = useState<
+    Appointment[] | null
+  >(null);
 
   const loadAppointments = useCallback(async () => {
     try {
@@ -408,6 +412,7 @@ export function Appointment() {
     () => appointments.filter((a) => a.status === "pending"),
     [appointments],
   );
+  const showPendingRequests = loading || pending.length > 0;
 
   const pendingGroups = useMemo(() => {
     const grouped = new Map<string, Appointment[]>();
@@ -426,19 +431,19 @@ export function Appointment() {
       }
     }
 
-    const groups = Array.from(grouped.values())
-      .filter((g) => g.length > 1)
-      .sort((a, b) => {
-        const aTime = a.reduce(
-          (earliest, s) => (s.appointment_time < earliest ? s.appointment_time : earliest),
-          a[0]?.appointment_time ?? "",
-        );
-        const bTime = b.reduce(
-          (earliest, s) => (s.appointment_time < earliest ? s.appointment_time : earliest),
-          b[0]?.appointment_time ?? "",
-        );
-        return aTime.localeCompare(bTime);
-      });
+    const groups = Array.from(grouped.values()).sort((a, b) => {
+      const aTime = a.reduce(
+        (earliest, s) =>
+          s.appointment_time < earliest ? s.appointment_time : earliest,
+        a[0]?.appointment_time ?? "",
+      );
+      const bTime = b.reduce(
+        (earliest, s) =>
+          s.appointment_time < earliest ? s.appointment_time : earliest,
+        b[0]?.appointment_time ?? "",
+      );
+      return aTime.localeCompare(bTime);
+    });
 
     individuals.sort((a, b) =>
       a.appointment_time.localeCompare(b.appointment_time),
@@ -647,6 +652,34 @@ export function Appointment() {
     setCancellationDialogOpen(true);
   };
 
+  const handlePendingDetailApprove = async () => {
+    const targets = pendingDetailAppointments;
+    if (!targets?.length) return;
+
+    setPendingDetailAppointments(null);
+
+    if (targets[0].batch_id) {
+      await handleBatchApprove(targets);
+      return;
+    }
+
+    await runUpdate(targets[0], "approved");
+  };
+
+  const handlePendingDetailReject = () => {
+    const targets = pendingDetailAppointments;
+    if (!targets?.length) return;
+
+    setPendingDetailAppointments(null);
+
+    if (targets[0].batch_id) {
+      handleBatchRejectClick(targets);
+      return;
+    }
+
+    handleCancelClick(targets[0]);
+  };
+
   const handleCancellationSubmit = async (
     data: CancellationReasonSchemaFormValues,
   ) => {
@@ -729,58 +762,60 @@ export function Appointment() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-4 items-start">
-        <SectionCard
-          title="Pending Requests"
-          description={`${pending.length} pending`}
-          className="lg:order-2"
-        >
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-4 items-start",
+          showPendingRequests && "lg:grid-cols-[1fr_420px]",
+        )}
+      >
+        {showPendingRequests ? (
+          <SectionCard
+            title="Pending Requests"
+            description={`${pending.length} pending`}
+            className="lg:order-2"
+          >
 
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-14 text-gray-400">
-              <p className="text-sm">Loading requests...</p>
-            </div>
-          ) : pending.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-14 text-gray-400">
-              <Check className="w-10 h-10 mb-2 opacity-20" />
-              <p className="text-sm">All requests have been handled.</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {pendingGroups.groups.map((group) => {
-                const batchId = group[0]?.batch_id ?? "";
-                const isUpdating = updatingBatchIds.includes(batchId);
-                return (
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-14 text-gray-400">
+                <p className="text-sm">Loading requests...</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {pendingGroups.groups.map((group) => {
+                  const batchId = group[0]?.batch_id ?? "";
+                  const isUpdating = updatingBatchIds.includes(batchId);
+                  return (
+                    <div
+                      key={batchId}
+                      className={isUpdating ? "opacity-60" : ""}
+                    >
+                      <GroupPendingCard
+                        appointments={group}
+                        onViewDetails={setPendingDetailAppointments}
+                        onApproveAll={handleBatchApprove}
+                        onRejectAll={handleBatchRejectClick}
+                        disabled={isUpdating}
+                      />
+                    </div>
+                  );
+                })}
+                {pendingGroups.individuals.map((req) => (
                   <div
-                    key={batchId}
-                    className={isUpdating ? "opacity-60" : ""}
+                    key={req.id}
+                    className={updatingIds.includes(req.id) ? "opacity-60" : ""}
                   >
-                    <GroupPendingCard
-                      appointments={group}
-                      onApproveAll={handleBatchApprove}
-                      onRejectAll={handleBatchRejectClick}
-                      disabled={isUpdating}
+                    <PendingCard
+                      req={req}
+                      onApprove={(appt) => runUpdate(appt, "approved")}
+                      onCancel={handleCancelClick}
+                      disabled={updatingIds.includes(req.id)}
                     />
                   </div>
-                );
-              })}
-              {pendingGroups.individuals.map((req) => (
-                <div
-                  key={req.id}
-                  className={updatingIds.includes(req.id) ? "opacity-60" : ""}
-                >
-                  <PendingCard
-                    req={req}
-                    onApprove={(appt) => runUpdate(appt, "approved")}
-                    onCancel={handleCancelClick}
-                    disabled={updatingIds.includes(req.id)}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
-        </SectionCard>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+        ) : null}
 
         <div className="flex flex-col gap-4 lg:order-1">
           <SectionCard
@@ -994,6 +1029,25 @@ export function Appointment() {
 
         </div>
       </div>
+
+      <PendingAppointmentDetailDialog
+        appointments={pendingDetailAppointments}
+        open={pendingDetailAppointments !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDetailAppointments(null);
+        }}
+        onApprove={handlePendingDetailApprove}
+        onReject={handlePendingDetailReject}
+        disabled={
+          pendingDetailAppointments?.some(
+            (appointment) =>
+              updatingIds.includes(appointment.id) ||
+              (appointment.batch_id
+                ? updatingBatchIds.includes(appointment.batch_id)
+                : false),
+          ) ?? false
+        }
+      />
 
       <Dialog
         open={confirmActionOpen}

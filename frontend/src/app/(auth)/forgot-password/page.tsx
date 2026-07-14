@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
           Forgot Password
         </h2>
         <p className="text-gray-600 mb-6 text-center">
-          Enter your account email to generate a reset token.
+          Enter your account email and we&apos;ll send a secure reset link.
         </p>
 
         <ForgotPasswordForm />

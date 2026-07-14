@@ -8,7 +8,9 @@ use App\Http\Controllers\BarberController;
 use App\Http\Controllers\ClosedDatesController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\EditUserController;
+use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\GalleryImageController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\LogoutController;
 use App\Http\Controllers\ModuleController;
@@ -30,14 +32,21 @@ Route::prefix('v1')->group(function () {
     })->name('login');
 
     Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:30,1');
-    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetToken'])->middleware('throttle:10,1');
-    Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->middleware('throttle:30,1');
+    Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+        ->middleware('throttle:verification-link')
+        ->name('verification.verify');
+    Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])->middleware('throttle:verification-resend');
+    Route::post('/email/change-registration-email', [EmailVerificationController::class, 'changeRegistrationEmail'])->middleware('throttle:change-registration-email');
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink'])->middleware('throttle:forgot-password');
+    Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->middleware('throttle:reset-password');
+    Route::post('/reset-password/validate-token', [ForgotPasswordController::class, 'validateToken'])->middleware('throttle:validate-reset-token');
     Route::get('/public-services', [ServiceController::class, 'publicIndex'])->middleware('throttle:300,1');
+    Route::get('/public-gallery-images', [GalleryImageController::class, 'publicIndex'])->middleware('throttle:300,1');
     Route::get('/public-feedback', [AppointmentFeedbackController::class, 'publicIndex'])->middleware('throttle:300,1');
     Route::get('/featured-feedback', [AppointmentFeedbackController::class, 'featuredIndex'])->middleware('throttle:300,1');
     Route::get('/public-booking-settings', [SettingsController::class, 'publicBookingSettings'])->middleware('throttle:300,1');
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'customer.verified'])->group(function () {
         Route::post('/logout', [LogoutController::class, 'logout'])->middleware('throttle:30,1');
         Route::get('/user', [EditUserController::class, 'currentUser'])->middleware('throttle:60,1');
         Route::delete('/account', [EditUserController::class, 'destroy'])->middleware('throttle:10,1');
@@ -73,6 +82,11 @@ Route::prefix('v1')->group(function () {
             ->middlewareFor(['index'], ['role:admin,manager,customer', 'throttle:300,1'])
             ->middlewareFor(['show'], ['role:manager', 'throttle:300,1'])
             ->middlewareFor(['store', 'update', 'destroy'], ['role:manager', 'throttle:60,1']);
+        Route::apiResource('/gallery-images', GalleryImageController::class)
+            ->only(['index', 'store', 'update', 'destroy'])
+            ->middleware(['role:admin,manager'])
+            ->middlewareFor(['index'], 'throttle:300,1')
+            ->middlewareFor(['store', 'update', 'destroy'], 'throttle:30,1');
         Route::apiResource('/admin', AdminController::class)
             ->middleware(['role:manager'])
             ->middlewareFor(['index', 'show'], 'throttle:300,1')

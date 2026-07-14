@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'cloudinary' => [
+        'url' => env('CLOUDINARY_URL'),
+        'folder' => env('CLOUDINARY_FOLDER', 'tol-barbershop/landing-gallery'),
+    ],
+
 ];

@@ -18,18 +18,16 @@ const adminBaseSchema = z.object({
   role_id: z.number().nullable().optional(),
 });
 
-const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/;
-
 export const adminCreateSchema = adminBaseSchema
   .extend({
     password: z
       .string()
-      .min(8, "Password must be at least 8 characters")
-      .regex(
-        passwordRegex,
-        "Must have uppercase, lowercase, number & special character",
-      ),
-    confirm_password: z.string().min(1, "Confirm password is required"),
+      .min(6, "Password must be at least 6 characters")
+      .max(255, "Password must not exceed 255 characters"),
+    confirm_password: z
+      .string()
+      .min(1, "Confirm password is required")
+      .max(255, "Password confirmation must not exceed 255 characters"),
   })
   .refine((data) => data.password === data.confirm_password, {
     message: "Passwords do not match",
@@ -38,29 +36,28 @@ export const adminCreateSchema = adminBaseSchema
 
 export const adminUpdateSchema = adminBaseSchema
   .extend({
-    password: z.string().optional().or(z.literal("")),
-    confirm_password: z.string().optional().or(z.literal("")),
+    password: z
+      .string()
+      .max(255, "Password must not exceed 255 characters")
+      .optional()
+      .or(z.literal("")),
+    confirm_password: z
+      .string()
+      .max(255, "Password confirmation must not exceed 255 characters")
+      .optional()
+      .or(z.literal("")),
   })
   .superRefine((data, ctx) => {
     const password = data.password ?? "";
     const confirmPassword = data.confirm_password ?? "";
-    const hasPassword = password.trim().length > 0;
-    const hasConfirm = confirmPassword.trim().length > 0;
+    const hasPassword = password.length > 0;
+    const hasConfirm = confirmPassword.length > 0;
 
-    if (hasPassword && password.length < 8) {
+    if (hasPassword && password.length < 6) {
       ctx.addIssue({
         code: "custom",
         path: ["password"],
-        message: "Password must be at least 8 characters",
-      });
-    }
-
-    if (hasPassword && !passwordRegex.test(password)) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["password"],
-        message:
-          "Must have uppercase, lowercase, number & special character",
+        message: "Password must be at least 6 characters",
       });
     }
 

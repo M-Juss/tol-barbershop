@@ -1,20 +1,37 @@
 "use client";
-import { InputWithLabel } from "@/components/common/InputWithLabel";
-import { SubmitErrorHandler, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  registerSchema,
-  RegisterSchemaFormValues,
-} from "@/validations/auth.validation";
-import { registerCustomerRequest } from "@/services/shared/auth.api";
-import { toast } from "sonner";
+
+import { Circle, CircleCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRateLimit } from "@/hooks/useRateLimit";
 import {
-  sanitizeString,
+  type SubmitErrorHandler,
+  useForm,
+  useWatch,
+} from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+
+import { InputWithLabel } from "@/components/common/InputWithLabel";
+import { PasswordInputWithLabel } from "@/components/common/PasswordInputWithLabel";
+import { useRateLimit } from "@/hooks/useRateLimit";
+import { ApiError } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import {
   normalizeEmail,
   normalizePhone,
+  sanitizeString,
 } from "@/lib/sanitizer";
+import { registerCustomerRequest } from "@/services/shared/auth.api";
+import {
+  registerSchema,
+  type RegisterSchemaFormValues,
+} from "@/validations/auth.validation";
+
+const passwordRequirements = [
+  {
+    label: "At least 6 characters",
+    test: (password: string) => password.length >= 6,
+  },
+];
 
 export function RegisterForm() {
   const router = useRouter();
@@ -27,12 +44,23 @@ export function RegisterForm() {
   const {
     register: formRegister,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<RegisterSchemaFormValues>({
     resolver: zodResolver(registerSchema),
   });
+  const password = useWatch({ control, name: "password", defaultValue: "" });
+  const passwordConfirmation = useWatch({
+    control,
+    name: "password_confirmation",
+    defaultValue: "",
+  });
+  const passwordsMatch =
+    passwordConfirmation.length > 0 && password === passwordConfirmation;
 
   const onSubmit = async (data: RegisterSchemaFormValues) => {
+    if (!rateLimit.attempt()) return;
+
     try {
       const sanitizedData = {
         ...data,
@@ -43,15 +71,41 @@ export function RegisterForm() {
 
       const response = await registerCustomerRequest(sanitizedData);
 
-      if (response.success == true) {
-        toast.success("Registered successfully");
+      if (response.success === true) {
+        toast.success("Account created. Check your inbox to verify your email.");
         rateLimit.reset();
-        router.push("/login");
+        router.push(
+          `/verify-email?email=${encodeURIComponent(sanitizedData.email)}`,
+        );
       } else {
         toast.error("Registration failed");
       }
     } catch (error) {
-      console.error("Registration error:", error);
+      const emailErrors =
+        error instanceof ApiError &&
+        error.errors &&
+        typeof error.errors === "object"
+          ? (error.errors as Record<string, unknown>).email
+          : null;
+      const emailMessages = Array.isArray(emailErrors)
+        ? emailErrors
+        : [emailErrors];
+      const emailExists = emailMessages.some(
+        (message) =>
+          typeof message === "string" &&
+          /already|taken|exists/i.test(message),
+      );
+
+      if (emailExists) {
+        router.push(
+          `/verify-email?email=${encodeURIComponent(normalizeEmail(data.email))}`,
+        );
+        toast.info(
+          "This email is already registered. Resend verification below or log in.",
+        );
+        return;
+      }
+
       toast.error("Registration failed");
     }
   };
@@ -72,6 +126,7 @@ export function RegisterForm() {
           type="text"
           label="Full Name"
           placeholder="Enter your full name"
+          maxLength={255}
           className="h-10 border-gray-300 focus-visible:ring-accent/40"
           {...formRegister("fullname")}
         />
@@ -109,6 +164,7 @@ export function RegisterForm() {
           type="email"
           label="Email"
           placeholder="Enter your email"
+          maxLength={255}
           className="h-10 border-gray-300 focus-visible:ring-accent/40"
           {...formRegister("email")}
         />
@@ -119,36 +175,74 @@ export function RegisterForm() {
         )}
       </div>
 
-      <div className="relative ">
-        <InputWithLabel
+      <div className="space-y-2">
+        <PasswordInputWithLabel
           id="password"
-          type="password"
           label="Password"
           placeholder="Enter your password"
+          maxLength={255}
+          autoComplete="new-password"
           className="h-10 border-gray-300 focus-visible:ring-accent/40"
           {...formRegister("password")}
         />
         {errors.password && (
-          <p className="absolute left-0 top-full  text-red-500 text-xs">
+          <p className="text-xs text-red-500">
             {errors.password.message}
           </p>
         )}
+        <ul className="grid gap-1.5 sm:grid-cols-2" aria-live="polite">
+          {passwordRequirements.map((requirement) => {
+            const isMet = requirement.test(password);
+            const RequirementIcon = isMet ? CircleCheck : Circle;
+
+            return (
+              <li
+                key={requirement.label}
+                className={cn(
+                  "flex items-center gap-1.5 text-xs transition-colors",
+                  isMet ? "font-medium text-green-600" : "text-gray-500",
+                )}
+              >
+                <RequirementIcon
+                  className="size-3.5 shrink-0"
+                  aria-hidden="true"
+                />
+                {requirement.label}
+              </li>
+            );
+          })}
+        </ul>
       </div>
 
-      <div className="relative ">
-        <InputWithLabel
+      <div className="space-y-2">
+        <PasswordInputWithLabel
           id="password_confirmation"
-          type="password"
           label="Confirm Password"
-          placeholder="Enter your password"
+          placeholder="Confirm your password"
+          maxLength={255}
+          autoComplete="new-password"
           className="h-10 border-gray-300 focus-visible:ring-accent/40"
           {...formRegister("password_confirmation")}
         />
         {errors.password_confirmation && (
-          <p className="absolute left-0 top-full  text-red-500 text-xs">
+          <p className="text-xs text-red-500">
             {errors.password_confirmation.message}
           </p>
         )}
+        <p
+          className={cn(
+            "flex items-center gap-1.5 text-xs transition-colors",
+            passwordsMatch ? "font-medium text-green-600" : "text-gray-500",
+          )}
+          aria-live="polite"
+        >
+          {passwordsMatch ? (
+            <CircleCheck className="size-3.5" aria-hidden="true" />
+          ) : (
+            <Circle className="size-3.5" aria-hidden="true" />
+          )}
+          {passwordsMatch ? "Passwords match" : "Passwords must match"}
+        </p>
       </div>
 
       <button

@@ -2,7 +2,20 @@ import Image from "next/image";
 
 import { ResetPasswordForm } from "@/forms/ResetPasswordForm";
 
-export default function ResetPasswordPage() {
+type ResetPasswordPageProps = {
+  searchParams: Promise<{
+    email?: string | string[];
+    token?: string | string[];
+  }>;
+};
+
+export default async function ResetPasswordPage({
+  searchParams,
+}: ResetPasswordPageProps) {
+  const params = await searchParams;
+  const email = typeof params.email === "string" ? params.email : "";
+  const token = typeof params.token === "string" ? params.token : "";
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-primary p-4 pb-8">
       <div className="flex w-full max-w-md flex-col items-center px-6 sm:px-12 py-8 bg-white rounded-lg shadow-md">
@@ -23,7 +36,11 @@ export default function ResetPasswordPage() {
           Enter your new password below.
         </p>
 
-        <ResetPasswordForm />
+        <ResetPasswordForm
+          key={`${email}:${token}`}
+          email={email}
+          token={token}
+        />
         <p>
           Back to{" "}
           <a href="/login" className="text-accent hover:underline">

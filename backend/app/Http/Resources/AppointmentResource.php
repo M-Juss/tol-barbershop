@@ -17,11 +17,7 @@ class AppointmentResource extends JsonResource
 
             'customer' => [
                 'id' => $this->is_walkin ? null : $this->user?->id,
-                'fullname' => $this->customer_name_snapshot
-                    ?? $this->customer_name
-                    ?? ($this->is_walkin
-                        ? ($this->walkin_customer_name ?? $this->user?->fullname)
-                        : $this->user?->fullname),
+                'fullname' => $this->resource->customerDisplayName(),
                 'email' => $this->is_walkin ? null : $this->user?->email,
                 'contact_number' => $this->is_walkin
                     ? ($this->walkin_customer_contact_number ?? $this->user?->contact_number)

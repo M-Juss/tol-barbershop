@@ -36,6 +36,7 @@ class StaffRequest extends FormRequest
     public function rules(): array
     {
         $currentId = $this->route('admin') ?? $this->route('barber') ?? $this->route('id');
+        $isAdminRoute = $this->routeIs('admin.*');
         $isAdminStore = $this->routeIs('admin.store');
         $currentUser = $currentId ? User::find($currentId) : null;
         $emailUnchanged =
@@ -48,9 +49,13 @@ class StaffRequest extends FormRequest
             $emailRules[] = Rule::unique('users', 'email')->ignore($currentId);
         }
 
-        $passwordRules = $isAdminStore
-            ? ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()]
-            : ['nullable', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()];
+        if ($isAdminRoute) {
+            $passwordRules = $isAdminStore
+                ? ['required', 'string', 'confirmed', 'min:6', 'max:255']
+                : ['nullable', 'string', 'confirmed', 'min:6', 'max:255'];
+        } else {
+            $passwordRules = ['nullable', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()];
+        }
 
         return [
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp,heic,heif|max:3072',
@@ -72,7 +77,10 @@ class StaffRequest extends FormRequest
             'contact_number.required' => 'Contact number is required',
             'contact_number.regex' => 'Contact number must be a valid PH mobile number.',
             'password.required' => 'Password is required',
-            'password.regex' => 'Password must contain at least one lowercase, uppercase , number, and  special character.',
+            'password.min' => $this->routeIs('admin.*')
+                ? 'Password must be at least 6 characters long.'
+                : 'Password must be at least 8 characters long.',
+            'password.max' => 'Password must not exceed 255 characters.',
             'is_active.required' => 'Status is required',
         ];
     }

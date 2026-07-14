@@ -35,6 +35,16 @@ class LoginController extends Controller
                 return $this->error('This role does not have application access.', [], 403);
             }
 
+            if ($user->role === 'customer' && ! $user->hasVerifiedEmail()) {
+                $this->forceLogout($request);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please verify your email address before logging in.',
+                    'code' => 'EMAIL_UNVERIFIED',
+                ], 403);
+            }
+
             Auth::guard('web')->login($user);
             $request->session()->regenerate();
 

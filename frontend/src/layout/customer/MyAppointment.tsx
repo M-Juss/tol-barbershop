@@ -162,6 +162,7 @@ export function MyAppointment() {
         !keyword ||
         row.service.toLowerCase().includes(keyword) ||
         row.barber.toLowerCase().includes(keyword) ||
+        formatBookingId(row.id).toLowerCase().includes(keyword) ||
         String(row.id).includes(keyword) ||
         (row.customer_name ?? "").toLowerCase().includes(keyword);
 
@@ -194,7 +195,7 @@ export function MyAppointment() {
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by booking ID, service, barber"
+            placeholder="Search by appointment ID, service, barber"
             className="w-full sm:w-3/4"
           />
           <Select
@@ -264,7 +265,7 @@ export function MyAppointment() {
           <Table>
             <TableHeader className="bg-gray-50">
               <TableRow>
-                <TableHead>Booking ID</TableHead>
+                <TableHead>Appointment ID</TableHead>
                 <TableHead>Service</TableHead>
                 <TableHead>Barber</TableHead>
                 <TableHead>Date</TableHead>
@@ -382,7 +383,7 @@ export function MyAppointment() {
               Appointment Detail
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-500">
-              Booking {formatBookingId(selectedRow?.id ?? 0)}
+              Appointment {formatBookingId(selectedRow?.id ?? 0)}
             </DialogDescription>
           </DialogHeader>
 

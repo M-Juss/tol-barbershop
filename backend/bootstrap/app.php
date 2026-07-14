@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureCustomerEmailIsVerified;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
+            'customer.verified' => EnsureCustomerEmailIsVerified::class,
             'role' => EnsureRole::class,
             'security.headers' => SecurityHeaders::class,
         ]);

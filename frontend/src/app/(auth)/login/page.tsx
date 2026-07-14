@@ -3,7 +3,26 @@ import Image from "next/image";
 import { LoginForm } from "@/forms/LoginForm";
 import { RedirectIfAuthenticated } from "@/components/common/RedirectIfAuthenticated";
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams: Promise<{
+    verified?: string | string[];
+    password_reset?: string | string[];
+  }>;
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+  const verified =
+    params.verified === "1"
+      ? "Your email has been verified. You can now log in."
+      : params.verified === "already"
+        ? "Your email is already verified. You can log in."
+        : null;
+  const statusMessage =
+    params.password_reset === "1"
+      ? "Your password has been reset. You can now log in."
+      : verified;
+
   return (
     <RedirectIfAuthenticated>
       <div className="min-h-screen flex items-center justify-center bg-primary p-4 pb-8">
@@ -25,11 +44,20 @@ export default function LoginPage() {
             Enter your credentials to access your account.
           </p>
 
+          {statusMessage && (
+            <div
+              className="mb-6 w-full rounded-md border border-green-200 bg-green-50 p-4 text-center text-sm font-medium text-green-700"
+              role="status"
+            >
+              {statusMessage}
+            </div>
+          )}
+
           <LoginForm />
           <p>
             Don&apos;t have an account?{" "}
             <a href="/register" className="text-accent hover:underline">
-              Register
+              Create one.
             </a>
           </p>
         </div>
