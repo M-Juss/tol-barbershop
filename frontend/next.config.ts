@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/api(\/v\d+)?\/?$/, "") || "http://localhost:8000";
+const backendUrl =
+  process.env.BACKEND_URL?.replace(/\/$/, "") || "http://localhost:8000";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["sterile-neatly-earflap.ngrok-free.dev"],
@@ -17,11 +18,15 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: `${API_URL}/api/:path*`,
+        destination: `${backendUrl}/api/:path*`,
+      },
+      {
+        source: "/sanctum/:path*",
+        destination: `${backendUrl}/sanctum/:path*`,
       },
       {
         source: "/storage/:path*",
-        destination: `${API_URL}/storage/:path*`,
+        destination: `${backendUrl}/storage/:path*`,
       },
     ];
   },
