@@ -7,6 +7,7 @@ use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -59,13 +60,50 @@ class AppServiceProvider extends ServiceProvider
             return rtrim((string) config('app.frontend_url'), '/').$signedPath;
         });
 
-        ResetPassword::createUrlUsing(function (User $user, string $token): string {
+        $emailViews = [
+            'html' => 'emails.auth-action',
+            'text' => 'emails.auth-action-text',
+        ];
+
+        VerifyEmail::toMailUsing(function (User $user, string $verificationUrl) use ($emailViews): MailMessage {
+            return (new MailMessage)
+                ->subject('Verify your TOL Barbershop email')
+                ->view($emailViews, [
+                    'preheader' => 'One quick step to finish setting up your TOL Barbershop account.',
+                    'heading' => 'Verify Your Email',
+                    'customerName' => trim((string) $user->fullname) ?: 'there',
+                    'intro' => "You're almost there. Verify your email address to finish setting up your TOL Barbershop account.",
+                    'actionText' => 'Verify Email',
+                    'actionUrl' => $verificationUrl,
+                    'expiresIn' => (int) config('auth.verification.expire', 60),
+                    'securityMessage' => "If you didn't create this account, you can safely ignore this email.",
+                ]);
+        });
+
+        $resetPasswordUrl = function (User $user, string $token): string {
             $query = http_build_query([
                 'email' => $user->getEmailForPasswordReset(),
                 'token' => $token,
             ]);
 
             return rtrim((string) config('app.frontend_url'), '/').'/reset-password?'.$query;
+        };
+
+        ResetPassword::createUrlUsing($resetPasswordUrl);
+
+        ResetPassword::toMailUsing(function (User $user, string $token) use ($emailViews, $resetPasswordUrl): MailMessage {
+            return (new MailMessage)
+                ->subject('Reset your TOL Barbershop password')
+                ->view($emailViews, [
+                    'preheader' => 'Use this secure link to reset your TOL Barbershop password.',
+                    'heading' => 'Reset Password',
+                    'customerName' => trim((string) $user->fullname) ?: 'there',
+                    'intro' => 'We received a request to reset your TOL Barbershop password. Use the button below to choose a new one.',
+                    'actionText' => 'Reset Password',
+                    'actionUrl' => $resetPasswordUrl($user, $token),
+                    'expiresIn' => (int) config('auth.passwords.'.config('auth.defaults.passwords').'.expire', 60),
+                    'securityMessage' => "If you didn't request a password reset, you can safely ignore this email.",
+                ]);
         });
     }
 }
