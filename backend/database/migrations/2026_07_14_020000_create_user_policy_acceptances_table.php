@@ -15,7 +15,10 @@ return new class extends Migration
             $table->string('privacy_version');
             $table->timestamp('accepted_at');
 
-            $table->unique(['user_id', 'terms_version', 'privacy_version']);
+            $table->unique(
+                ['user_id', 'terms_version', 'privacy_version'],
+                'user_policy_versions_unique'
+            );
         });
     }
 
