@@ -21,8 +21,8 @@ export interface SupportMessage {
 export interface SupportTicketCustomer {
   id: number;
   fullname: string;
-  email: string;
-  image: string | null;
+  email?: string;
+  image?: string | null;
 }
 
 export interface SupportTicketAssignedTo {
@@ -53,6 +53,8 @@ export interface SupportTicket {
   messages_asc?: SupportMessage[];
 }
 
+export type SupportTicketState = Pick<SupportTicket, "id" | "status">;
+
 export interface CreateTicketData {
   category: string;
   message: string;
@@ -61,6 +63,16 @@ export interface CreateTicketData {
 export const getMyTickets = async (): Promise<SupportTicket[]> => {
   const response = await authFetch(
     `${process.env.NEXT_PUBLIC_API_URL}/support/tickets`,
+  );
+  return response.data;
+};
+
+export const getTicketState = async (
+  signal?: AbortSignal,
+): Promise<SupportTicketState | null> => {
+  const response = await authFetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/support/tickets?view=state`,
+    { signal },
   );
   return response.data;
 };
@@ -108,9 +120,13 @@ export const sendMessage = async (
 
 export const getMessages = async (
   ticketId: number,
+  options: { afterId?: number; signal?: AbortSignal } = {},
 ): Promise<SupportMessage[]> => {
+  const query =
+    options.afterId === undefined ? "" : `?after_id=${options.afterId}`;
   const response = await authFetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/support/tickets/${ticketId}/messages`,
+    `${process.env.NEXT_PUBLIC_API_URL}/support/tickets/${ticketId}/messages${query}`,
+    { signal: options.signal },
   );
   return response.data;
 };

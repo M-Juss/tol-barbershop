@@ -31,7 +31,15 @@ export const registerSchema = z.object({
     password_confirmation: z
     .string()
     .nonempty("Password Confirmation is required!")
-    .max(255, "Password confirmation must not exceed 255 characters")
+    .max(255, "Password confirmation must not exceed 255 characters"),
+
+    terms_accepted: z
+    .boolean()
+    .refine((accepted) => accepted, "You must accept the Terms of Use"),
+
+    privacy_acknowledged: z
+    .boolean()
+    .refine((acknowledged) => acknowledged, "You must acknowledge the Privacy Policy"),
 
 }).refine((data) => data.password === data.password_confirmation, {
     path: ["password_confirmation"],

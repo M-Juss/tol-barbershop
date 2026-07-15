@@ -1,123 +1,107 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import {
-  subscribePush,
-  unsubscribeAllPush,
+  disableBrowserPush,
+  enableBrowserPush,
+  getBrowserPushSubscription,
+  isIOSWithoutInstalledApp,
+  isPushSupported,
+  syncBrowserPush,
 } from "@/services/shared/push.api";
 
-function isIOSNoPWA(): boolean {
-  if (typeof window === "undefined") return false;
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  if (!isIOS) return false;
-  return !(window.navigator as Navigator & { standalone?: boolean }).standalone;
-}
+export type PushNotificationStatus =
+  | "loading"
+  | "disabled"
+  | "enabled"
+  | "blocked"
+  | "unsupported"
+  | "ios-install-required"
+  | "error";
 
-export function usePushNotifications(enabled: boolean) {
-  const subscribed = useRef(false);
+export function usePushNotifications() {
+  const [status, setStatus] = useState<PushNotificationStatus>("loading");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    if (!enabled) {
-      if (subscribed.current) {
-        unsubscribeAllPush().catch(() => {});
-        subscribed.current = false;
-      }
-      return;
-    }
-
-    if (typeof window === "undefined") return;
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-    if (Notification.permission === "denied") return;
-    if (subscribed.current) return;
-
-    if (isIOSNoPWA()) return;
-
     let cancelled = false;
 
-    const run = async () => {
+    const loadStatus = async () => {
+      if (!isPushSupported()) {
+        setStatus("unsupported");
+        return;
+      }
+
+      if (isIOSWithoutInstalledApp()) {
+        setStatus("ios-install-required");
+        return;
+      }
+
+      if (Notification.permission === "denied") {
+        setStatus("blocked");
+        return;
+      }
+
       try {
-        const registration = await navigator.serviceWorker
-          .register("/sw.js")
-          .catch(() => null);
-        if (cancelled || !registration) return;
-
-        const reg = await Promise.race([
-          navigator.serviceWorker.ready,
-          new Promise<null>((r) => setTimeout(r, 3000)),
-        ]);
-        if (cancelled || !reg) return;
-
-        if (Notification.permission === "default") {
-          Notification.requestPermission().then((permission) => {
-            if (cancelled || permission !== "granted") return;
-            finish(reg as ServiceWorkerRegistration);
-          });
+        const subscription = await getBrowserPushSubscription();
+        if (subscription) {
+          if (!cancelled) setStatus("enabled");
+          syncBrowserPush().catch(() => {});
           return;
         }
 
-        finish(reg as ServiceWorkerRegistration);
-      } catch {
-        /* swallow */
-      }
-    };
-
-    const finish = async (reg: ServiceWorkerRegistration) => {
-      try {
-        const existing = await reg.pushManager.getSubscription();
-        if (existing) {
-          const p256dh = arrayBufferToBase64(existing.getKey("p256dh"));
-          const auth = arrayBufferToBase64(existing.getKey("auth"));
-          await subscribePush({
-            endpoint: existing.endpoint,
-            keys: { p256dh, auth },
-          });
-          subscribed.current = true;
+        if (Notification.permission === "granted") {
+          const restored = await enableBrowserPush();
+          if (!cancelled) setStatus(restored ? "enabled" : "error");
           return;
         }
 
-        const vapidKey =
-          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
-        if (!vapidKey) return;
-
-        const subscription = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidKey) as unknown as PushSubscriptionOptionsInit["applicationServerKey"],
-        });
-
-        const p256dh = arrayBufferToBase64(subscription.getKey("p256dh"));
-        const auth = arrayBufferToBase64(subscription.getKey("auth"));
-
-        await subscribePush({
-          endpoint: subscription.endpoint,
-          keys: { p256dh, auth },
-        });
-        subscribed.current = true;
+        if (!cancelled) setStatus("disabled");
       } catch {
-        /* silent */
+        if (!cancelled) setStatus("error");
       }
     };
 
-    run();
+    loadStatus();
 
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
-}
+  }, []);
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
-  return Uint8Array.from(rawData.split("").map((char) => char.charCodeAt(0)));
-}
+  const enable = async () => {
+    setIsUpdating(true);
+    try {
+      const enabled = await enableBrowserPush();
+      setStatus(
+        enabled
+          ? "enabled"
+          : Notification.permission === "denied"
+            ? "blocked"
+            : "disabled",
+      );
+      return enabled;
+    } catch {
+      setStatus("error");
+      return false;
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
-function arrayBufferToBase64(buffer: ArrayBuffer | null): string {
-  if (!buffer) return "";
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
+  const disable = async () => {
+    setIsUpdating(true);
+    try {
+      await disableBrowserPush();
+      setStatus("disabled");
+      return true;
+    } catch {
+      setStatus("error");
+      return false;
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return { status, isUpdating, enable, disable };
 }

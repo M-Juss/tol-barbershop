@@ -27,6 +27,7 @@ import {
 import { GroupPendingCard } from "@/components/common/GroupPendingCard";
 import { PendingAppointmentDetailDialog } from "@/components/common/PendingAppointmentDetailDialog";
 import { SectionCard } from "@/components/common/SectionCard";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   getAppointments,
   updateAppointment,
@@ -36,7 +37,6 @@ import { updateAppointmentSchema } from "@/validations/appointment.validation";
 import { CancellationForm } from "@/forms/CancellationForm";
 import { RescheduleForm, type RescheduleSubmitData } from "@/forms/RescheduleForm";
 import { type CancellationReasonSchemaFormValues } from "@/validations/appointment.validation";
-import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { toast } from "sonner";
 import {
   Pagination,
@@ -361,9 +361,10 @@ function toDateBarberGroups(appointments: Appointment[]): DateBarberGroup[] {
 }
 
 export function Appointment() {
-  const isPageVisible = usePageVisibility();
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const appointmentLoading = loading && (isAuthLoading || authUser !== null);
   const [updatingIds, setUpdatingIds] = useState<number[]>([]);
   const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] =
@@ -387,32 +388,26 @@ export function Appointment() {
     Appointment[] | null
   >(null);
 
-  const loadAppointments = useCallback(async () => {
+  const loadAppointments = useCallback(async (signal?: AbortSignal) => {
     try {
-      const data = await getAppointments();
+      const data = await getAppointments(signal);
       setAppointments(data);
     } catch (error) {
-      console.error("Failed to load appointments:", error);
+      if (!(error instanceof DOMException && error.name === "AbortError")) {
+        console.error("Failed to load appointments:", error);
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    if (!isPageVisible) return;
-
-    loadAppointments();
-    const interval = setInterval(loadAppointments, 60000);
-    return () => clearInterval(interval);
-  }, [isPageVisible, loadAppointments]);
-
-  useRealtimeEvent('appointments', loadAppointments);
+  useRealtimeEvent("appointments", loadAppointments);
 
   const pending = useMemo(
     () => appointments.filter((a) => a.status === "pending"),
     [appointments],
   );
-  const showPendingRequests = loading || pending.length > 0;
+  const showPendingRequests = appointmentLoading || pending.length > 0;
 
   const pendingGroups = useMemo(() => {
     const grouped = new Map<string, Appointment[]>();
@@ -775,7 +770,7 @@ export function Appointment() {
             className="lg:order-2"
           >
 
-            {loading ? (
+            {appointmentLoading ? (
               <div className="flex flex-col items-center justify-center py-14 text-gray-400">
                 <p className="text-sm">Loading requests...</p>
               </div>
@@ -823,7 +818,7 @@ export function Appointment() {
             description="Scheduled appointments grouped by date"
           >
 
-            {loading ? (
+            {appointmentLoading ? (
               <div className="flex flex-col items-center justify-center py-14 text-gray-400">
                 <p className="text-sm">Loading appointments...</p>
               </div>

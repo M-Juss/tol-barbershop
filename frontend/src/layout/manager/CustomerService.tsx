@@ -30,9 +30,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { cn } from "@/lib/utils";
+import { startPolling } from "@/lib/polling";
 import { formatTicketId } from "@/lib/booking";
+import { mergeSupportMessages, mergeSupportTickets } from "@/lib/support";
 import {
-  getQueue,
+  getLiveQueue,
+  getQueueHistory,
   acceptTicket,
   sendMessageAsStaff,
   getTicketMessages,
@@ -73,6 +76,16 @@ function timeAgo(dateString: string): string {
   return formatDateShort(dateString);
 }
 
+function isTerminalTicketCurrent(
+  terminalTicket: SupportTicket,
+  liveTicket: SupportTicket,
+): boolean {
+  return (
+    new Date(terminalTicket.updated_at).getTime() >=
+    new Date(liveTicket.updated_at).getTime()
+  );
+}
+
 export function CustomerService() {
   const { user: authUser } = useAuth();
   const isPageVisible = usePageVisibility();
@@ -90,19 +103,84 @@ export function CustomerService() {
   const [historyDetailLoading, setHistoryDetailLoading] = useState(false);
   const [tabView, setTabView] = useState<TabView>("queue");
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const prevMyActiveTicketRef = useRef<number | null>(null);
+  const messageTicketIdRef = useRef<number | null>(null);
+  const lastMessageIdRef = useRef(0);
+  const historyControllerRef = useRef<AbortController | null>(null);
+  const queueMutationVersionRef = useRef(0);
+  const queueMutationPendingRef = useRef(false);
+  const queueRef = useRef<QueueResponse | null>(null);
+  const liveTicketIdsRef = useRef(new Set<number>());
+  const tabViewRef = useRef<TabView>("queue");
+  const refreshHistoryRef = useRef<(() => void) | null>(null);
+  const historyCheckedAtRef = useRef<string | null>(null);
+  const historyRequestVersionRef = useRef(0);
 
-  const fetchQueue = useCallback(async () => {
+  const fetchQueue = useCallback(async (
+    signal?: AbortSignal,
+    allowDuringMutation = false,
+  ) => {
+    if (queueMutationPendingRef.current && !allowDuringMutation) return;
+    const mutationVersion = queueMutationVersionRef.current;
+
     try {
-      const data = await getQueue();
-      setQueue(data);
+      const data = await getLiveQueue(signal);
+      if (
+        (queueMutationPendingRef.current && !allowDuringMutation) ||
+        mutationVersion !== queueMutationVersionRef.current
+      ) {
+        return;
+      }
 
-      const myTicket = data.active.find(
+      const currentQueue = queueRef.current;
+      const terminalTickets = new Map(
+        [
+          ...(currentQueue?.resolved ?? []),
+          ...(currentQueue?.cancelled ?? []),
+        ].map((ticket) => [ticket.id, ticket]),
+      );
+      const waiting = data.waiting.filter((ticket) => {
+        const terminalTicket = terminalTickets.get(ticket.id);
+        return !terminalTicket || !isTerminalTicketCurrent(terminalTicket, ticket);
+      });
+      const active = data.active.filter((ticket) => {
+        const terminalTicket = terminalTickets.get(ticket.id);
+        return !terminalTicket || !isTerminalTicketCurrent(terminalTicket, ticket);
+      });
+      const liveTickets = new Map(
+        [...waiting, ...active].map((ticket) => [ticket.id, ticket]),
+      );
+      const resolved = (currentQueue?.resolved ?? []).filter((ticket) => {
+        const liveTicket = liveTickets.get(ticket.id);
+        return !liveTicket || isTerminalTicketCurrent(ticket, liveTicket);
+      });
+      const cancelled = (currentQueue?.cancelled ?? []).filter((ticket) => {
+        const liveTicket = liveTickets.get(ticket.id);
+        return !liveTicket || isTerminalTicketCurrent(ticket, liveTicket);
+      });
+      const nextQueue = { waiting, active, resolved, cancelled };
+      queueRef.current = nextQueue;
+      setQueue(nextQueue);
+
+      const nextLiveTicketIds = new Set(liveTickets.keys());
+      const removedLiveTicket = Array.from(liveTicketIdsRef.current).some(
+        (ticketId) => !nextLiveTicketIds.has(ticketId),
+      );
+      liveTicketIdsRef.current = nextLiveTicketIds;
+
+      if (removedLiveTicket && tabViewRef.current === "history") {
+        refreshHistoryRef.current?.();
+      }
+
+      const myTicket = active.find(
         (t) => t.assigned_to_id === authUser?.id,
       );
-      setMyActiveTicket(myTicket || null);
+      setMyActiveTicket((current) => {
+        if (!myTicket) return null;
+        return current?.id === myTicket.id ? current : myTicket;
+      });
     } catch {
     } finally {
       setLoading(false);
@@ -112,47 +190,65 @@ export function CustomerService() {
   useEffect(() => {
     if (!isPageVisible) return;
 
-    fetchQueue();
-    const interval = setInterval(fetchQueue, 10000);
-    return () => clearInterval(interval);
+    return startPolling(fetchQueue, 10000);
   }, [fetchQueue, isPageVisible]);
 
   useEffect(() => {
     if (myActiveTicket && prevMyActiveTicketRef.current === null) {
+      tabViewRef.current = "chat";
       setTabView("chat");
     }
     prevMyActiveTicketRef.current = myActiveTicket?.id ?? null;
   }, [myActiveTicket]);
 
-  const fetchMessages = useCallback(async () => {
-    if (!myActiveTicket) {
+  const activeTicketId = myActiveTicket?.id ?? null;
+
+  const fetchMessages = useCallback(async (signal?: AbortSignal) => {
+    if (!activeTicketId) {
       setMessages([]);
       return;
     }
 
-    try {
-      const data = await getTicketMessages(myActiveTicket.id);
-      setMessages(data);
-    } catch {}
-  }, [myActiveTicket]);
-
-  useEffect(() => {
-    const shouldPollMessages = myActiveTicket && tabView === "chat" && isPageVisible;
-
-    if (shouldPollMessages) {
-      fetchMessages();
-      pollRef.current = setInterval(fetchMessages, 5000);
-      return () => {
-        if (pollRef.current) clearInterval(pollRef.current);
-      };
-    }
-
-    if (pollRef.current) clearInterval(pollRef.current);
-
-    if (!myActiveTicket) {
+    const isNewTicket = messageTicketIdRef.current !== activeTicketId;
+    if (isNewTicket) {
+      messageTicketIdRef.current = activeTicketId;
+      lastMessageIdRef.current = 0;
       setMessages([]);
     }
-  }, [fetchMessages, isPageVisible, myActiveTicket, tabView]);
+
+    try {
+      const data = await getTicketMessages(activeTicketId, {
+        afterId:
+          lastMessageIdRef.current > 0
+            ? lastMessageIdRef.current
+            : undefined,
+        signal,
+      });
+      if (messageTicketIdRef.current !== activeTicketId) return;
+
+      setMessages((current) => mergeSupportMessages(current, data));
+      if (data.length > 0) {
+        lastMessageIdRef.current = Math.max(
+          lastMessageIdRef.current,
+          ...data.map((message) => message.id),
+        );
+      }
+    } catch {}
+  }, [activeTicketId]);
+
+  useEffect(() => {
+    const shouldPollMessages = activeTicketId !== null && tabView === "chat" && isPageVisible;
+
+    if (shouldPollMessages) {
+      return startPolling(fetchMessages, 5000);
+    }
+
+    if (activeTicketId === null) {
+      setMessages([]);
+      messageTicketIdRef.current = null;
+      lastMessageIdRef.current = 0;
+    }
+  }, [activeTicketId, fetchMessages, isPageVisible, tabView]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -163,13 +259,19 @@ export function CustomerService() {
   }, [messages, scrollToBottom]);
 
   const handleAccept = async (ticketId: number) => {
+    if (queueMutationPendingRef.current) return;
+    queueMutationPendingRef.current = true;
+    queueMutationVersionRef.current += 1;
+
     try {
       await acceptTicket(ticketId);
-      await fetchQueue();
+      await fetchQueue(undefined, true);
       toast.success("Ticket accepted");
     } catch (error: unknown) {
       const err = error as { message?: string };
       toast.error(err?.message || "Failed to accept ticket");
+    } finally {
+      queueMutationPendingRef.current = false;
     }
   };
 
@@ -178,9 +280,9 @@ export function CustomerService() {
 
     try {
       setSending(true);
-      await sendMessageAsStaff(myActiveTicket.id, chatInput.trim());
+      const message = await sendMessageAsStaff(myActiveTicket.id, chatInput.trim());
+      setMessages((current) => mergeSupportMessages(current, [message]));
       setChatInput("");
-      await fetchMessages();
     } catch (error: unknown) {
       const err = error as { message?: string };
       toast.error(err?.message || "Failed to send message");
@@ -197,32 +299,39 @@ export function CustomerService() {
   };
 
   const handleResolve = async (data: ResolveTicketData) => {
-    if (!myActiveTicket) return;
+    if (!myActiveTicket || queueMutationPendingRef.current) return;
+    queueMutationPendingRef.current = true;
+    queueMutationVersionRef.current += 1;
 
     try {
       await resolveTicketFromDialog(myActiveTicket.id, data);
       setShowResolveDialog(false);
-      await fetchQueue();
+      await fetchQueue(undefined, true);
       toast.success("Ticket resolved");
     } catch (error: unknown) {
       const err = error as { message?: string };
       toast.error(err?.message || "Failed to resolve ticket");
+    } finally {
+      queueMutationPendingRef.current = false;
     }
   };
 
   const handleCancel = async (reason: string) => {
-    if (!myActiveTicket) return;
+    if (!myActiveTicket || queueMutationPendingRef.current) return;
 
     setIsCancelling(true);
+    queueMutationPendingRef.current = true;
+    queueMutationVersionRef.current += 1;
     try {
       await cancelTicketAsStaff(myActiveTicket.id, reason);
       setShowCancelDialog(false);
-      await fetchQueue();
+      await fetchQueue(undefined, true);
       toast.success("Ticket cancelled");
     } catch (error: unknown) {
       const err = error as { message?: string };
       toast.error(err?.message || "Failed to cancel ticket");
     } finally {
+      queueMutationPendingRef.current = false;
       setIsCancelling(false);
     }
   };
@@ -243,6 +352,112 @@ export function CustomerService() {
   };
 
   const [isCancelling, setIsCancelling] = useState(false);
+
+  const fetchHistory = useCallback(async (
+    signal?: AbortSignal,
+    updatedAfter?: string,
+  ) => {
+    const requestVersion = historyRequestVersionRef.current + 1;
+    historyRequestVersionRef.current = requestVersion;
+
+    if (!updatedAfter) {
+      setHistoryLoading(true);
+    }
+
+    try {
+      const data = await getQueueHistory({ signal, updatedAfter });
+      if (requestVersion !== historyRequestVersionRef.current) return;
+
+      const currentQueue = queueRef.current;
+      const liveTickets = new Map(
+        [
+          ...(currentQueue?.waiting ?? []),
+          ...(currentQueue?.active ?? []),
+        ].map((ticket) => [ticket.id, ticket]),
+      );
+      const resolvedTickets = updatedAfter
+        ? mergeSupportTickets(currentQueue?.resolved ?? [], data.resolved)
+        : data.resolved;
+      const cancelledTickets = updatedAfter
+        ? mergeSupportTickets(currentQueue?.cancelled ?? [], data.cancelled)
+        : data.cancelled;
+      const terminalTickets = new Map(
+        [...resolvedTickets, ...cancelledTickets].map((ticket) => [ticket.id, ticket]),
+      );
+      const waiting = (currentQueue?.waiting ?? []).filter((ticket) => {
+        const terminalTicket = terminalTickets.get(ticket.id);
+        return !terminalTicket || !isTerminalTicketCurrent(terminalTicket, ticket);
+      });
+      const active = (currentQueue?.active ?? []).filter((ticket) => {
+        const terminalTicket = terminalTickets.get(ticket.id);
+        return !terminalTicket || !isTerminalTicketCurrent(terminalTicket, ticket);
+      });
+      const resolved = resolvedTickets.filter((ticket) => {
+        const liveTicket = liveTickets.get(ticket.id);
+        return !liveTicket || isTerminalTicketCurrent(ticket, liveTicket);
+      });
+      const cancelled = cancelledTickets.filter((ticket) => {
+        const liveTicket = liveTickets.get(ticket.id);
+        return !liveTicket || isTerminalTicketCurrent(ticket, liveTicket);
+      });
+      const nextQueue = { waiting, active, resolved, cancelled };
+      queueRef.current = nextQueue;
+      setQueue(nextQueue);
+      if (
+        data.checked_at &&
+        (!historyCheckedAtRef.current ||
+          new Date(data.checked_at).getTime() >
+            new Date(historyCheckedAtRef.current).getTime())
+      ) {
+        historyCheckedAtRef.current = data.checked_at;
+      }
+    } catch {
+    } finally {
+      if (!updatedAfter && !signal?.aborted) {
+        setHistoryLoading(false);
+      }
+    }
+  }, []);
+
+  const refreshHistory = useCallback(() => {
+    historyControllerRef.current?.abort();
+    const controller = new AbortController();
+    historyControllerRef.current = controller;
+    void fetchHistory(controller.signal);
+  }, [fetchHistory]);
+
+  useEffect(() => {
+    refreshHistoryRef.current = refreshHistory;
+    return () => {
+      refreshHistoryRef.current = null;
+    };
+  }, [refreshHistory]);
+
+  useEffect(() => {
+    if (tabView !== "history" || !isPageVisible) return;
+
+    return startPolling(async (signal) => {
+      const updatedAfter = historyCheckedAtRef.current;
+      if (!updatedAfter) return;
+      await fetchHistory(signal, updatedAfter);
+    }, 60000);
+  }, [fetchHistory, isPageVisible, tabView]);
+
+  const handleTabChange = (tab: TabView) => {
+    tabViewRef.current = tab;
+    setTabView(tab);
+    if (tab !== "history") {
+      historyControllerRef.current?.abort();
+      historyControllerRef.current = null;
+      return;
+    }
+
+    refreshHistory();
+  };
+
+  useEffect(() => {
+    return () => historyControllerRef.current?.abort();
+  }, []);
 
   const historyTickets = queue
     ? [...queue.resolved, ...queue.cancelled]
@@ -295,6 +510,9 @@ export function CustomerService() {
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
           Customer Service
         </h1>
+        <p className="text-gray-500 mt-1">
+          Manage customer support tickets and conversations
+        </p>
       </div>
 
       <div className="px-4 sm:px-6 pb-0 flex gap-1">
@@ -302,7 +520,7 @@ export function CustomerService() {
           <button
             key={tab}
             type="button"
-            onClick={() => setTabView(tab)}
+            onClick={() => handleTabChange(tab)}
             className={cn(
               "py-2 px-4 text-sm font-medium rounded-t-lg capitalize transition-colors",
               tabView === tab
@@ -620,7 +838,11 @@ export function CustomerService() {
                   </div>
 
                   <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
-                    {filteredHistory.length === 0 ? (
+                    {historyLoading ? (
+                      <div className="flex justify-center p-8">
+                        <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                      </div>
+                    ) : filteredHistory.length === 0 ? (
                       <div className="p-6 text-center text-gray-400 text-sm">
                         No {historyFilter !== "all" ? historyFilter : ""} tickets found.
                       </div>

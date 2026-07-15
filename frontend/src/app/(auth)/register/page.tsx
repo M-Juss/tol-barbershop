@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 import { RegisterForm } from "@/forms/RegisterForm";
 import { RedirectIfAuthenticated } from "@/components/common/RedirectIfAuthenticated";
@@ -26,12 +27,20 @@ export default function RegisterPage() {
           </p>
 
           <RegisterForm />
-          <p>
+          <p className="text-sm">
             Already have an account?{" "}
-            <a href="/login" className="text-accent hover:underline">
+            <Link href="/login" className="text-accent hover:underline">
               Login
-            </a>
+            </Link>
           </p>
+          <nav
+            aria-label="Legal documents"
+            className="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-gray-500"
+          >
+            <Link href="/privacy-policy" className="hover:text-accent">Privacy</Link>
+            <Link href="/terms-of-use" className="hover:text-accent">Terms</Link>
+            <Link href="/data-compliance" className="hover:text-accent">Data Compliance</Link>
+          </nav>
         </div>
       </div>
     </RedirectIfAuthenticated>

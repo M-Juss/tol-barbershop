@@ -24,6 +24,8 @@ it('registers an unverified customer and sends a verification email', function (
         'email' => 'juan@example.com',
         'password' => 'Secure1!',
         'password_confirmation' => 'Secure1!',
+        'terms_accepted' => true,
+        'privacy_acknowledged' => true,
     ])->assertCreated();
 
     $user = User::where('email', 'juan@example.com')->firstOrFail();

@@ -1,6 +1,5 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRealtimeEvent } from "@/contexts/RealtimeContext";
 import { Bell, Calendar, CalendarPlus, LayoutDashboard, User } from "lucide-react";
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { SupportFab } from "@/components/common/SupportFab";
@@ -51,14 +50,12 @@ export default function CustomerLayout({
     };
   }, [isPageVisible, loadUnreadCount]);
 
-  useRealtimeEvent('notifications', loadUnreadCount);
-
   const sections = useMemo(
     () => [
       {
-        label: "Overview",
+        label: "Dashboard",
         items: [
-          { key: "overview", href: "/customer", icon: LayoutDashboard, label: "Overview" },
+          { key: "overview", href: "/customer", icon: LayoutDashboard, label: "Dashboard" },
         ],
       },
       {

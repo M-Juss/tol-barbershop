@@ -11,7 +11,6 @@ export interface LandingService {
 
 export interface LandingFeedback {
   id: number;
-  appointment_id: number;
   rating: number;
   comment: string | null;
   customer_name: string;

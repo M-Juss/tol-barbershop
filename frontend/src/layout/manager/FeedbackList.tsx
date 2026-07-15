@@ -218,12 +218,13 @@ export function FeedbackList() {
                     </span>
                   </div>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleToggleFeature(item.id);
                     }}
                     disabled={togglingIds.has(item.id)}
-                    className="p-1 shrink-0"
+                    className="p-1 shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
                     title={item.is_featured ? "Unfeature" : "Feature on landing page"}
                   >
                     {item.is_featured ? (
@@ -286,10 +287,12 @@ export function FeedbackList() {
                     key={item.id}
                     className="cursor-pointer"
                   >
-                    <TableCell onClick={() => handleToggleFeature(item.id)}>
+                    <TableCell>
                       <button
+                        type="button"
+                        onClick={() => handleToggleFeature(item.id)}
                         disabled={togglingIds.has(item.id)}
-                        className="p-1"
+                        className="p-1 disabled:cursor-not-allowed disabled:opacity-50"
                         title={item.is_featured ? "Unfeature" : "Feature on landing page"}
                       >
                         {item.is_featured ? (

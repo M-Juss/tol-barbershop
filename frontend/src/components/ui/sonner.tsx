@@ -1,15 +1,30 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()
+  const [position, setPosition] = useState<ToasterProps["position"]>("bottom-right")
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767px)")
+    const updatePosition = () => {
+      setPosition(mediaQuery.matches ? "top-center" : "bottom-right")
+    }
+
+    updatePosition()
+    mediaQuery.addEventListener("change", updatePosition)
+
+    return () => mediaQuery.removeEventListener("change", updatePosition)
+  }, [])
 
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
+      position={position}
       className="toaster group"
       icons={{
         success: (

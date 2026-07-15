@@ -3,7 +3,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { Poppins } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RealtimeProvider } from "@/contexts/RealtimeContext";
-import { PushNotificationProvider } from "@/contexts/PushNotificationProvider";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
@@ -47,7 +46,6 @@ export default function RootLayout({
       <body className="min-h-dvh flex flex-col bg-background font-sans">
         <AuthProvider>
           <RealtimeProvider>
-            <PushNotificationProvider />
             {children}
           </RealtimeProvider>
         </AuthProvider>

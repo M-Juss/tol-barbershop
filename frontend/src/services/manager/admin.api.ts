@@ -2,8 +2,10 @@ import { authFetch } from "@/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
-export const getPendingAppointmentCount = async (): Promise<number> => {
-  const res = await authFetch(`${API}/appointments/pending-count`);
+export const getPendingAppointmentCount = async (
+  signal?: AbortSignal,
+): Promise<number> => {
+  const res = await authFetch(`${API}/appointments/pending-count`, { signal });
   return res.data?.count ?? 0;
 };
 

@@ -36,7 +36,6 @@ import {
 } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatBookingId } from "@/lib/booking";
-import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { cn } from "@/lib/utils";
 import { Star, User as UserIcon } from "lucide-react";
 import {
@@ -88,20 +87,20 @@ function formatTime(time24: string): string {
 }
 
 export function MyAppointment() {
-  const { user: authUser } = useAuth();
-  const isPageVisible = usePageVisibility();
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const appointmentLoading = loading && (isAuthLoading || authUser !== null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [page, setPage] = useState(1);
   const [selectedRow, setSelectedRow] = useState<Row | null>(null);
   const pageSize = 10;
 
-  const fetchAppointments = useCallback(async () => {
+  const fetchAppointments = useCallback(async (signal?: AbortSignal) => {
     try {
       const currentUserId = authUser?.id;
-      const data = await getAppointments();
+      const data = await getAppointments(signal);
 
       const mapped = data
         .filter((appt) =>
@@ -136,21 +135,15 @@ export function MyAppointment() {
 
       setRows(mapped);
     } catch (error) {
-      console.error("Failed to load appointments:", error);
+      if (!(error instanceof DOMException && error.name === "AbortError")) {
+        console.error("Failed to load appointments:", error);
+      }
     } finally {
       setLoading(false);
     }
   }, [authUser?.id]);
 
-  useEffect(() => {
-    if (!isPageVisible) return;
-
-    fetchAppointments();
-    const interval = setInterval(fetchAppointments, 60000);
-    return () => clearInterval(interval);
-  }, [fetchAppointments, isPageVisible]);
-
-  useRealtimeEvent('appointments', fetchAppointments);
+  useRealtimeEvent("appointments", fetchAppointments);
 
   const filteredRows = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -220,7 +213,7 @@ export function MyAppointment() {
 
       <div className="space-y-3">
         <div className="block md:hidden space-y-3">
-          {loading ? (
+          {appointmentLoading ? (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center text-gray-400 text-sm">
               Loading appointments...
             </div>
@@ -275,7 +268,7 @@ export function MyAppointment() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {appointmentLoading ? (
                 <TableRow>
                   <TableCell className="text-gray-500" colSpan={7}>
                     Loading appointments...

@@ -6,6 +6,18 @@ const roleBasePath: Record<string, string> = {
   customer: "/customer",
 };
 
+const publicPaths = new Set([
+  "/",
+  "/login",
+  "/register",
+  "/verify-email",
+  "/forgot-password",
+  "/reset-password",
+  "/privacy-policy",
+  "/terms-of-use",
+  "/data-compliance",
+]);
+
 function getRequestedBasePath(
   pathname: string,
 ): "/admin" | "/manager" | "/customer" | null {
@@ -20,18 +32,7 @@ export function proxy(request: NextRequest) {
   const role = request.cookies.get("auth_role")?.value;
   const allowedBasePath = role ? roleBasePath[role] : undefined;
 
-  if (pathname === "/") {
-    return NextResponse.next();
-  }
-
-  const isPublicAuthPath =
-    pathname === "/login" ||
-    pathname === "/register" ||
-    pathname === "/verify-email" ||
-    pathname === "/forgot-password" ||
-    pathname === "/reset-password";
-
-  if (isPublicAuthPath) {
+  if (publicPaths.has(pathname)) {
     return NextResponse.next();
   }
 
@@ -64,6 +65,9 @@ export const config = {
     "/verify-email",
     "/forgot-password",
     "/reset-password",
+    "/privacy-policy",
+    "/terms-of-use",
+    "/data-compliance",
     "/admin/:path*",
     "/manager/:path*",
     "/customer/:path*",

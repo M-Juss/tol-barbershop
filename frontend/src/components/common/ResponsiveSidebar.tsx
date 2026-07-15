@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { PushNotificationControl } from "@/components/common/PushNotificationControl";
 import { useAuth } from "@/contexts/AuthContext";
 
 type NavItem = {
@@ -202,6 +203,7 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
         </nav>
 
         <div className="p-3 border-t border-slate-600">
+          <PushNotificationControl />
           <button
             type="button"
             onClick={() => setShowLogoutDialog(true)}

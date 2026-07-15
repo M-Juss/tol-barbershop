@@ -18,6 +18,8 @@ test('customer registration accepts a simple six character password', function (
         'email' => 'simple-registration@example.test',
         'password' => 'aaaaaa',
         'password_confirmation' => 'aaaaaa',
+        'terms_accepted' => true,
+        'privacy_acknowledged' => true,
     ])->assertCreated();
 
     $user = User::where('email', 'simple-registration@example.test')->firstOrFail();
@@ -34,6 +36,8 @@ test('customer registration rejects passwords shorter than six characters', func
         'email' => 'short-registration@example.test',
         'password' => 'aaaaa',
         'password_confirmation' => 'aaaaa',
+        'terms_accepted' => true,
+        'privacy_acknowledged' => true,
     ])->assertUnprocessable()
         ->assertJsonValidationErrors('password');
 });

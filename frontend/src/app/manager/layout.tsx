@@ -70,9 +70,9 @@ export default function ManagerLayout({
   const isFirstLoadRef = useRef(true);
   const isFirstWaitingLoadRef = useRef(true);
 
-  const fetchPendingCount = useCallback(async () => {
+  const fetchPendingCount = useCallback(async (signal?: AbortSignal) => {
     try {
-      const count = await getPendingAppointmentCount();
+      const count = await getPendingAppointmentCount(signal);
       if (!isFirstLoadRef.current && count > prevCountRef.current) {
         const diff = count - prevCountRef.current;
         toast(`${diff} New Pending Appointment${diff > 1 ? "s" : ""}`, {
@@ -114,22 +114,23 @@ export default function ManagerLayout({
     if (!isPageVisible) return;
 
     queueMicrotask(() => {
-      fetchPendingCount();
       fetchWaitingCount();
     });
-    const interval = setInterval(() => {
-      fetchPendingCount();
-      fetchWaitingCount();
-    }, 60000);
+    const interval = setInterval(fetchWaitingCount, 60000);
+
+    return () => clearInterval(interval);
+  }, [fetchWaitingCount, isPageVisible]);
+
+  useEffect(() => {
     const onAppointmentsUpdated = () => fetchPendingCount();
     window.addEventListener("appointments:updated", onAppointmentsUpdated);
+
     return () => {
-      clearInterval(interval);
       window.removeEventListener("appointments:updated", onAppointmentsUpdated);
     };
-  }, [fetchPendingCount, fetchWaitingCount, isPageVisible]);
+  }, [fetchPendingCount]);
 
-  useRealtimeEvent('appointments', fetchPendingCount);
+  useRealtimeEvent("appointments", fetchPendingCount);
 
   const sections = navSections.map((section) => ({
     ...section,

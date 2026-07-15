@@ -10,6 +10,23 @@ export interface PushSubscriptionData {
   keys: PushSubscriptionKeys;
 }
 
+export function isPushSupported(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    "Notification" in window &&
+    "serviceWorker" in navigator &&
+    "PushManager" in window
+  );
+}
+
+export function isIOSWithoutInstalledApp(): boolean {
+  if (typeof window === "undefined") return false;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if (!isIOS) return false;
+
+  return !(navigator as Navigator & { standalone?: boolean }).standalone;
+}
+
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
     promise,
@@ -46,47 +63,94 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return Uint8Array.from(rawData.split("").map((char) => char.charCodeAt(0)));
 }
 
-export async function getVapidPublicKey(): Promise<string> {
+function getVapidPublicKey(): string {
   return process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
 }
 
-export async function createPushSubscription(): Promise<PushSubscriptionData | null> {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    return null;
+function serializePushSubscription(
+  subscription: PushSubscription,
+): PushSubscriptionData {
+  return {
+    endpoint: subscription.endpoint,
+    keys: {
+      p256dh: arrayBufferToBase64(subscription.getKey("p256dh")),
+      auth: arrayBufferToBase64(subscription.getKey("auth")),
+    },
+  };
+}
+
+export async function getBrowserPushSubscription(): Promise<PushSubscription | null> {
+  if (!isPushSupported()) return null;
+
+  const registrations = await navigator.serviceWorker.getRegistrations();
+
+  for (const registration of registrations) {
+    const subscription = await registration.pushManager.getSubscription();
+    if (subscription) return subscription;
   }
+
+  return null;
+}
+
+export async function syncBrowserPush(): Promise<boolean> {
+  if (!isPushSupported() || Notification.permission !== "granted") {
+    return false;
+  }
+
+  const subscription = await getBrowserPushSubscription();
+  if (!subscription) return false;
+
+  await subscribePush(serializePushSubscription(subscription));
+  return true;
+}
+
+export async function enableBrowserPush(): Promise<boolean> {
+  if (!isPushSupported() || isIOSWithoutInstalledApp()) {
+    return false;
+  }
+
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") {
+    return false;
+  }
+
+  await navigator.serviceWorker.register("/sw.js");
 
   let registration: ServiceWorkerRegistration;
   try {
     registration = await withTimeout(navigator.serviceWorker.ready, 5_000);
   } catch {
-    return null;
+    return false;
   }
 
-  const existing = await registration.pushManager.getSubscription();
-  if (existing) {
-    const p256dh = arrayBufferToBase64(existing.getKey("p256dh"));
-    const auth = arrayBufferToBase64(existing.getKey("auth"));
-    return {
-      endpoint: existing.endpoint,
-      keys: { p256dh, auth },
-    };
+  let subscription = await registration.pushManager.getSubscription();
+
+  if (!subscription) {
+    const vapidKey = getVapidPublicKey();
+    if (!vapidKey) return false;
+
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey) as unknown as PushSubscriptionOptionsInit["applicationServerKey"],
+    });
   }
 
-  const vapidKey = await getVapidPublicKey();
-  if (!vapidKey) return null;
+  await subscribePush(serializePushSubscription(subscription));
 
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(vapidKey) as unknown as PushSubscriptionOptionsInit["applicationServerKey"],
-  });
+  return true;
+}
 
-  const p256dh = arrayBufferToBase64(subscription.getKey("p256dh"));
-  const auth = arrayBufferToBase64(subscription.getKey("auth"));
+export async function disableBrowserPush(): Promise<void> {
+  if (!isPushSupported()) return;
 
-  return {
-    endpoint: subscription.endpoint,
-    keys: { p256dh, auth },
-  };
+  const subscription = await getBrowserPushSubscription();
+  if (!subscription) return;
+
+  try {
+    await unsubscribePush(subscription.endpoint);
+  } catch {}
+
+  await subscription.unsubscribe();
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer | null): string {

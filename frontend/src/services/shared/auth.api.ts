@@ -25,6 +25,16 @@ export type RegisterResponse = {
   data: AuthUser;
 };
 
+export type RegisterPayload = {
+  fullname: string;
+  contact_number: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+  terms_accepted: boolean;
+  privacy_acknowledged: boolean;
+};
+
 export type AuthActionResponse = {
   success: boolean;
   message?: string;
@@ -53,13 +63,9 @@ type CurrentUserResponse = {
   data: AuthUser;
 };
 
-export const registerCustomerRequest = async (data: {
-  fullname: string;
-  contact_number: string;
-  email: string;
-  password: string;
-  password_confirmation: string;
-}): Promise<RegisterResponse> => {
+export const registerCustomerRequest = async (
+  data: RegisterPayload,
+): Promise<RegisterResponse> => {
   return publicFetch(`${process.env.NEXT_PUBLIC_API_URL}/register`, {
     method: "POST",
     body: JSON.stringify(data),

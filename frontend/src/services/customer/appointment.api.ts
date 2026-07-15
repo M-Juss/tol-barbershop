@@ -135,9 +135,12 @@ export const getActiveServices = async (): Promise<Service[]> => {
   return response.data.services;
 };
 
-export const getAppointments = async (): Promise<Appointment[]> => {
+export const getAppointments = async (
+  signal?: AbortSignal,
+): Promise<Appointment[]> => {
   const response = await authFetch(
     `${process.env.NEXT_PUBLIC_API_URL}/appointments`,
+    { signal },
   );
   return response.data;
 };

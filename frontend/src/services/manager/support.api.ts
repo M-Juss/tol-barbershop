@@ -9,11 +9,36 @@ export interface QueueResponse {
   active: SupportTicket[];
   resolved: SupportTicket[];
   cancelled: SupportTicket[];
+  checked_at?: string;
 }
 
 export const getQueue = async (): Promise<QueueResponse> => {
   const response = await authFetch(
     `${process.env.NEXT_PUBLIC_API_URL}/support/queue`,
+  );
+  return response.data;
+};
+
+export const getLiveQueue = async (
+  signal?: AbortSignal,
+): Promise<QueueResponse> => {
+  const response = await authFetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/support/queue?view=live`,
+    { signal },
+  );
+  return response.data;
+};
+
+export const getQueueHistory = async (
+  options: { updatedAfter?: string; signal?: AbortSignal } = {},
+): Promise<QueueResponse> => {
+  const params = new URLSearchParams({ view: "history" });
+  if (options.updatedAfter) {
+    params.set("updated_after", options.updatedAfter);
+  }
+  const response = await authFetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/support/queue?${params.toString()}`,
+    { signal: options.signal },
   );
   return response.data;
 };
@@ -80,9 +105,13 @@ export const sendMessageAsStaff = async (
 
 export const getTicketMessages = async (
   ticketId: number,
+  options: { afterId?: number; signal?: AbortSignal } = {},
 ): Promise<SupportMessage[]> => {
+  const query =
+    options.afterId === undefined ? "" : `?after_id=${options.afterId}`;
   const response = await authFetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/support/tickets/${ticketId}/messages`,
+    `${process.env.NEXT_PUBLIC_API_URL}/support/tickets/${ticketId}/messages${query}`,
+    { signal: options.signal },
   );
   return response.data;
 };

@@ -1,7 +1,5 @@
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { ManagerRevenueChart } from "@/components/common/ManagerRevenueChart";
-import { ManagerServiceChart } from "@/components/common/ManagerServiceChart";
 import { StatCard } from "@/components/common/StatCard";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -23,8 +21,6 @@ import {
 } from "lucide-react";
 import {
   getOverviewStats,
-  getMonthlyRevenue,
-  getServiceStats,
   getTimeSlotsForDate,
   type TimeSlot,
   type OverviewStats,
@@ -293,12 +289,6 @@ export function Overview() {
     total_customers: 0,
     total_revenue: 0,
   });
-  const [monthlyRevenue, setMonthlyRevenue] = useState<
-    { date: string; revenue: number }[]
-  >([]);
-  const [serviceStats, setServiceStats] = useState<
-    { service_name: string; completed_count: number }[]
-  >([]);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [closedDates, setClosedDates] = useState<string[]>([]);
   const [kpi, setKpi] = useState<AnalyticsKPI | null>(null);
@@ -309,15 +299,11 @@ export function Overview() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [statsData, revenueData, serviceData, kpiData] = await Promise.all([
+        const [statsData, kpiData] = await Promise.all([
           getOverviewStats(),
-          getMonthlyRevenue(),
-          getServiceStats(),
           getAnalyticsKPI("monthly"),
         ]);
         setStats(statsData);
-        setMonthlyRevenue(revenueData);
-        setServiceStats(serviceData);
         setKpi(kpiData);
       } catch (error) {
         console.error("Failed to load overview data:", error);
@@ -398,23 +384,7 @@ export function Overview() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-          <h2 className="text-base font-bold text-gray-900 mb-4">
-            Daily Revenue
-          </h2>
-          <ManagerRevenueChart data={monthlyRevenue} />
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-          <h2 className="text-base font-bold text-gray-900 mb-4">
-            Services by Completed Appointments
-          </h2>
-          <ManagerServiceChart data={serviceStats} />
-        </div>
-      </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-4 items-start min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-4 items-start min-w-0">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 w-full overflow-hidden">
           <h2 className="text-base font-bold text-gray-900">Calendar</h2>
           <p className="text-sm text-gray-400 mb-3">

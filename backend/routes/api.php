@@ -9,6 +9,7 @@ use App\Http\Controllers\ClosedDatesController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\EditUserController;
 use App\Http\Controllers\EmailVerificationController;
+use App\Http\Controllers\EntityChangeController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\GalleryImageController;
 use App\Http\Controllers\LoginController;
@@ -54,6 +55,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/push/subscribe', [PushSubscriptionController::class, 'subscribe'])->middleware('throttle:30,1');
         Route::post('/push/unsubscribe', [PushSubscriptionController::class, 'unsubscribe'])->middleware('throttle:30,1');
         Route::post('/push/unsubscribe-all', [PushSubscriptionController::class, 'unsubscribeAll'])->middleware('throttle:10,1');
+        Route::get('/changes', [EntityChangeController::class, 'index'])->middleware('throttle:120,1');
 
         Route::middleware('role:admin,manager')->group(function () {
             Route::get('/appointments/pending-count', [AppointmentController::class, 'pendingCount'])->middleware('throttle:300,1');

@@ -740,15 +740,18 @@ function HomeContent() {
 
         <div className="flex flex-col sm:flex-row justify-between items-center gap-3 px-6 sm:px-8 py-4 border-t border-white/10 bg-black/10 text-center">
           <p className="text-sm text-neutral">
-            &copy; 2024 TOL Barbershop. All rights reserved.
+            &copy; 2026 TOL Barbershop. All rights reserved.
           </p>
-          <div className="flex justify-center items-center space-x-3 sm:text-sm  text-xs">
-            <a href="#" className=" text-neutral">
+          <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1 sm:text-sm text-xs">
+            <Link href="/privacy-policy" className="text-neutral hover:text-white">
               Privacy Policy
-            </a>
-            <a href="#" className=" text-neutral">
-              Terms of Service
-            </a>
+            </Link>
+            <Link href="/terms-of-use" className="text-neutral hover:text-white">
+              Terms of Use
+            </Link>
+            <Link href="/data-compliance" className="text-neutral hover:text-white">
+              Data Compliance
+            </Link>
           </div>
         </div>
       </footer>

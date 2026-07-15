@@ -1,14 +1,50 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
-import { Lock, Trash2 } from "lucide-react";
+import { AlertTriangle, Lock, Trash2 } from "lucide-react";
 
+import { PasswordInputWithLabel } from "@/components/common/PasswordInputWithLabel";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useAuth } from "@/contexts/AuthContext";
 import { ChangePasswordForm } from "@/forms/ChangePasswordForm";
 import { AccountInformationForm } from "@/forms/AccountInformationForm";
-import { changePassword } from "@/services/customer/user.api";
+import {
+  changePassword,
+  deleteAccount,
+} from "@/services/customer/user.api";
 import { toast } from "sonner";
 
 export default function Profile() {
+  const { logout } = useAuth();
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showDeactivateAccount, setShowDeactivateAccount] = useState(false);
+  const [password, setPassword] = useState("");
+  const [isDeactivating, setIsDeactivating] = useState(false);
+
+  const handleDeactivateAccount = async () => {
+    if (!password) {
+      toast.error("Enter your current password");
+      return;
+    }
+
+    setIsDeactivating(true);
+    try {
+      await deleteAccount(password);
+      toast.success("Account deactivated");
+      await logout();
+    } catch {
+      toast.error("Account could not be deactivated. Check your password.");
+      setIsDeactivating(false);
+    }
+  };
 
   return (
     <div className="w-full h-full bg-slate-100 p-4 sm:p-6 pb-24 font-sans">
@@ -47,17 +83,79 @@ export default function Profile() {
 
         <div className="flex flex-col items-start sm:flex-row sm:items-center sm:justify-between gap-3 pt-5">
           <div>
-            <p className="text-sm font-bold text-red-500">Delete Account</p>
+            <p className="text-sm font-bold text-red-500">Deactivate Account</p>
             <p className="text-gray-500 text-sm mt-0.5">
-              Permanently delete your account and all associated data
+              End account access and submit your account for deactivation
             </p>
           </div>
-          <button className="flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white rounded-lg px-4 py-2.5 text-sm font-semibold whitespace-nowrap ">
+          <button
+            type="button"
+            onClick={() => setShowDeactivateAccount(true)}
+            className="flex items-center gap-2 bg-red-500 hover:bg-red-600 transition-colors text-white rounded-lg px-4 py-2.5 text-sm font-semibold whitespace-nowrap"
+          >
             <Trash2 className="w-4 h-4" strokeWidth={2} />
-            Delete Account
+            Deactivate Account
           </button>
         </div>
       </div>
+
+      <Dialog
+        open={showDeactivateAccount}
+        onOpenChange={(open) => {
+          if (isDeactivating) return;
+          setShowDeactivateAccount(open);
+          if (!open) setPassword("");
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-red-500" />
+              Deactivate account
+            </DialogTitle>
+            <DialogDescription className="text-left leading-6">
+              You will be signed out immediately. Sessions, access tokens, push
+              subscriptions will be removed. Booking, walk-in, support,
+              feedback, notification, and consent records may be retained where
+              needed for operations, transparency, disputes, or legal
+              obligations.
+            </DialogDescription>
+          </DialogHeader>
+          <PasswordInputWithLabel
+            id="deactivate-password"
+            label="Current password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="current-password"
+            disabled={isDeactivating}
+          />
+          <p className="text-xs leading-5 text-muted-foreground">
+            See the{" "}
+            <Link href="/privacy-policy" target="_blank" className="text-accent hover:underline">
+              Privacy Policy
+            </Link>{" "}
+            or contact support for a specific data request.
+          </p>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isDeactivating}
+              onClick={() => setShowDeactivateAccount(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isDeactivating || !password}
+              onClick={handleDeactivateAccount}
+            >
+              {isDeactivating ? "Deactivating..." : "Deactivate Account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ChangePasswordForm
         open={showChangePassword}

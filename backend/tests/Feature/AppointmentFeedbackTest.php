@@ -118,9 +118,101 @@ test('customer can submit feedback for their completed appointment', function ()
         'user_id' => $customer->id,
         'rating' => 5,
         'comment' => 'Excellent barber service and clean booking experience.',
+        'is_featured' => false,
     ]);
 
     expect(AppointmentFeedback::where('appointment_id', $appointment->id)->count())->toBe(1);
+
+    $this->getJson('/api/v1/public-feedback')
+        ->assertOk()
+        ->assertJsonCount(1, 'data.feedback');
+
+    $this->getJson('/api/v1/featured-feedback')
+        ->assertOk()
+        ->assertJsonCount(0, 'data.feedback');
+});
+
+test('featured five star feedback is available to public landing endpoints', function () {
+    $customer = createFeedbackTestUser('customer', 'historical-feedback-customer@example.test');
+    $barber = createFeedbackTestUser('barber', 'historical-feedback-barber@example.test');
+    $service = createFeedbackTestService();
+
+    $appointment = Appointment::create([
+        'user_id' => $customer->id,
+        'service_id' => $service->id,
+        'barber_user_id' => $barber->id,
+        'appointment_date' => now()->subDay()->toDateString(),
+        'appointment_time' => '12:00',
+        'duration_minutes' => 45,
+        'price' => 250,
+        'status' => 'completed',
+        'completed_at' => now()->subDay(),
+    ]);
+
+    AppointmentFeedback::create([
+        'appointment_id' => $appointment->id,
+        'user_id' => $customer->id,
+        'rating' => 5,
+        'comment' => 'Legacy public feedback',
+        'is_featured' => true,
+        'customer_name_snapshot' => $customer->fullname,
+    ]);
+
+    $this->getJson('/api/v1/public-feedback')
+        ->assertOk()
+        ->assertJsonCount(1, 'data.feedback');
+
+    $this->getJson('/api/v1/featured-feedback')
+        ->assertOk()
+        ->assertJsonCount(1, 'data.feedback');
+});
+
+test('manager can feature submitted feedback for the landing page', function () {
+    $customer = createFeedbackTestUser('customer', 'public-feedback-customer@example.test');
+    $customer->update(['fullname' => 'Jamie Marie Rivera']);
+    $barber = createFeedbackTestUser('barber', 'public-feedback-barber@example.test');
+    $manager = createFeedbackTestUser('manager', 'public-feedback-manager@example.test');
+    $service = createFeedbackTestService();
+
+    $appointment = Appointment::create([
+        'user_id' => $customer->id,
+        'service_id' => $service->id,
+        'barber_user_id' => $barber->id,
+        'appointment_date' => now()->toDateString(),
+        'appointment_time' => '13:00',
+        'duration_minutes' => 45,
+        'price' => 250,
+        'status' => 'completed',
+        'completed_at' => now(),
+    ]);
+
+    Sanctum::actingAs($customer);
+
+    $this->postJson('/api/v1/appointment-feedback', [
+        'appointment_id' => $appointment->id,
+        'rating' => 5,
+        'comment' => 'Excellent service from start to finish.',
+    ])->assertOk();
+
+    $feedback = AppointmentFeedback::where('appointment_id', $appointment->id)->firstOrFail();
+
+    Sanctum::actingAs($manager);
+
+    $this->putJson("/api/v1/feedback/{$feedback->id}/toggle-feature")
+        ->assertOk()
+        ->assertJsonPath('data.is_featured', true);
+
+    $this->getJson('/api/v1/featured-feedback')
+        ->assertOk()
+        ->assertJsonCount(1, 'data.feedback')
+        ->assertJsonPath('data.feedback.0.customer_name', 'Jamie Marie Rivera')
+        ->assertJsonPath('data.feedback.0.service_name', 'Classic Haircut')
+        ->assertJsonPath('data.feedback.0.is_featured', true);
+
+    $this->getJson('/api/v1/public-feedback')
+        ->assertOk()
+        ->assertJsonCount(1, 'data.feedback')
+        ->assertJsonPath('data.feedback.0.customer_name', 'Jamie Marie Rivera');
 });
 
 test('appointment status notifications include the appointment reference', function () {

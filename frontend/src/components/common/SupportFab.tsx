@@ -23,17 +23,21 @@ import {
 import { formatTicketId } from "@/lib/booking";
 import {
   getMyTickets,
+  getTicketState,
   createTicket,
   cancelTicket,
   getMessages,
   sendMessage,
   type SupportTicket,
+  type SupportTicketState,
   type SupportMessage,
 } from "@/services/customer/support.api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { usePageVisibility } from "@/hooks/usePageVisibility";
+import { startPolling } from "@/lib/polling";
 import { cn } from "@/lib/utils";
+import { mergeSupportMessages } from "@/lib/support";
 
 type FabState = "idle" | "submitting" | "waiting" | "active" | "resolved";
 type SheetTab = "ticketing" | "history";
@@ -73,7 +77,7 @@ function formatDate(dateString: string): string {
 export function SupportFab() {
   const { user } = useAuth();
   const isPageVisible = usePageVisibility();
-  const [ticket, setTicket] = useState<SupportTicket | null>(null);
+  const [ticket, setTicket] = useState<SupportTicketState | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [fabState, setFabState] = useState<FabState>("idle");
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -83,7 +87,10 @@ export function SupportFab() {
   const [concernText, setConcernText] = useState("");
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const messageTicketIdRef = useRef<number | null>(null);
+  const lastMessageIdRef = useRef(0);
+  const ticketMutationVersionRef = useRef(0);
+  const ticketMutationPendingRef = useRef(false);
 
   const [historyTickets, setHistoryTickets] = useState<SupportTicket[]>([]);
 
@@ -95,47 +102,78 @@ export function SupportFab() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  const fetchTicketState = useCallback(async () => {
-    try {
-      const tickets = await getMyTickets();
-      const activeOrWaiting = tickets.find(
-        (t) => t.status === "active" || t.status === "waiting",
-      );
-      const lastResolved = tickets.find((t) => t.status === "resolved");
+  const fetchTicketState = useCallback(async (signal?: AbortSignal) => {
+    if (ticketMutationPendingRef.current) return;
+    const mutationVersion = ticketMutationVersionRef.current;
 
-      if (activeOrWaiting) {
-        setTicket(activeOrWaiting);
-        if (activeOrWaiting.status === "waiting") {
+    try {
+      const currentTicket = await getTicketState(signal);
+      if (
+        ticketMutationPendingRef.current ||
+        mutationVersion !== ticketMutationVersionRef.current
+      ) {
+        return;
+      }
+
+      if (currentTicket) {
+        setTicket((ticket) =>
+          ticket?.id === currentTicket.id &&
+          ticket.status === currentTicket.status
+            ? ticket
+            : currentTicket,
+        );
+        if (currentTicket.status === "waiting") {
           setFabState("waiting");
-        } else {
+        } else if (currentTicket.status === "active") {
           setFabState("active");
+        } else {
+          setFabState("resolved");
         }
-      } else if (lastResolved) {
-        setTicket(lastResolved);
-        setFabState("resolved");
       } else {
-        setTicket(null);
+        setTicket((ticket) => (ticket === null ? ticket : null));
         setFabState("idle");
       }
-    } catch {
-      setFabState("idle");
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError")) {
+        setFabState("idle");
+      }
     }
   }, []);
 
   useEffect(() => {
     if (!user || !isPageVisible) return;
-    fetchTicketState();
 
-    const interval = setInterval(fetchTicketState, 10000);
-    return () => clearInterval(interval);
+    return startPolling(fetchTicketState, 10000);
   }, [user, fetchTicketState, isPageVisible]);
 
-  const fetchMessages = useCallback(async () => {
+  const fetchMessages = useCallback(async (signal?: AbortSignal) => {
     if (!ticket || ticket.status !== "active") return;
 
+    const ticketId = ticket.id;
+    const isNewTicket = messageTicketIdRef.current !== ticketId;
+    if (isNewTicket) {
+      messageTicketIdRef.current = ticketId;
+      lastMessageIdRef.current = 0;
+      setMessages([]);
+    }
+
     try {
-      const data = await getMessages(ticket.id);
-      setMessages(data);
+      const data = await getMessages(ticketId, {
+        afterId:
+          lastMessageIdRef.current > 0
+            ? lastMessageIdRef.current
+            : undefined,
+        signal,
+      });
+      if (messageTicketIdRef.current !== ticketId) return;
+
+      setMessages((current) => mergeSupportMessages(current, data));
+      if (data.length > 0) {
+        lastMessageIdRef.current = Math.max(
+          lastMessageIdRef.current,
+          ...data.map((message) => message.id),
+        );
+      }
     } catch {}
   }, [ticket]);
 
@@ -147,19 +185,22 @@ export function SupportFab() {
       isPageVisible;
 
     if (shouldPollMessages) {
-      fetchMessages();
-      pollRef.current = setInterval(fetchMessages, 5000);
-      return () => {
-        if (pollRef.current) clearInterval(pollRef.current);
-      };
+      return startPolling(fetchMessages, 5000);
     }
-
-    if (pollRef.current) clearInterval(pollRef.current);
 
     if (ticket?.status !== "active") {
       setMessages([]);
+      messageTicketIdRef.current = ticket?.id ?? null;
+      lastMessageIdRef.current = 0;
     }
-  }, [fetchMessages, isPageVisible, isSheetOpen, sheetTab, ticket?.status]);
+  }, [
+    fetchMessages,
+    isPageVisible,
+    isSheetOpen,
+    sheetTab,
+    ticket?.id,
+    ticket?.status,
+  ]);
 
   const fetchHistoryTickets = useCallback(async () => {
     try {
@@ -170,6 +211,9 @@ export function SupportFab() {
 
   const handleSubmitTicket = async () => {
     if (!concernCategory || !concernText.trim()) return;
+
+    ticketMutationPendingRef.current = true;
+    ticketMutationVersionRef.current += 1;
 
     try {
       setFabState("submitting");
@@ -187,6 +231,11 @@ export function SupportFab() {
         setFabState("active");
         const msgs = await getMessages(newTicket.id);
         setMessages(msgs);
+        messageTicketIdRef.current = newTicket.id;
+        lastMessageIdRef.current = Math.max(
+          0,
+          ...msgs.map((message) => message.id),
+        );
       }
 
       toast.success("Ticket created successfully");
@@ -194,11 +243,16 @@ export function SupportFab() {
       const err = error as { message?: string };
       toast.error(err?.message || "Failed to create ticket");
       setFabState("idle");
+    } finally {
+      ticketMutationPendingRef.current = false;
     }
   };
 
   const handleCancelTicket = async () => {
     if (!ticket) return;
+
+    ticketMutationPendingRef.current = true;
+    ticketMutationVersionRef.current += 1;
 
     try {
       await cancelTicket(ticket.id);
@@ -208,6 +262,8 @@ export function SupportFab() {
       toast.success("Ticket cancelled");
     } catch {
       toast.error("Failed to cancel ticket");
+    } finally {
+      ticketMutationPendingRef.current = false;
     }
   };
 
@@ -217,7 +273,7 @@ export function SupportFab() {
     try {
       setSending(true);
       const msg = await sendMessage(ticket.id, newMessage.trim());
-      setMessages((prev) => [...prev, msg]);
+      setMessages((current) => mergeSupportMessages(current, [msg]));
       setNewMessage("");
     } catch (error: unknown) {
       const err = error as { message?: string };
@@ -239,13 +295,7 @@ export function SupportFab() {
     if (fabState === "idle") {
       setIsSheetOpen(true);
     } else if (ticket) {
-      if (ticket.status === "active") {
-        fetchMessages().then(() => {
-          setIsSheetOpen(true);
-        });
-      } else {
-        setIsSheetOpen(true);
-      }
+      setIsSheetOpen(true);
     }
     fetchHistoryTickets();
   };

@@ -31,6 +31,8 @@ class RegisterRequest extends FormRequest
             'contact_number' => ['required', 'string', 'max:11', 'regex:/^09\d{9}$/'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', 'string', 'min:6', 'max:255'],
+            'terms_accepted' => ['required', 'boolean', 'accepted'],
+            'privacy_acknowledged' => ['required', 'boolean', 'accepted'],
         ];
     }
 
@@ -54,6 +56,12 @@ class RegisterRequest extends FormRequest
             'password.string' => 'Password must be a string.',
             'password.min' => 'Password must be at least 6 characters long.',
             'password.confirmed' => 'Password confirmation does not match.',
+            'terms_accepted.required' => 'You must accept the Terms of Use to register.',
+            'terms_accepted.boolean' => 'Terms acceptance must be true or false.',
+            'terms_accepted.accepted' => 'You must accept the Terms of Use to register.',
+            'privacy_acknowledged.required' => 'You must acknowledge the Privacy Policy to register.',
+            'privacy_acknowledged.boolean' => 'Privacy acknowledgement must be true or false.',
+            'privacy_acknowledged.accepted' => 'You must acknowledge the Privacy Policy to register.',
         ];
     }
 }

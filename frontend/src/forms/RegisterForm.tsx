@@ -1,6 +1,7 @@
 "use client";
 
 import { Circle, CircleCheck } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   type SubmitErrorHandler,
@@ -48,6 +49,10 @@ export function RegisterForm() {
     formState: { errors, isSubmitting },
   } = useForm<RegisterSchemaFormValues>({
     resolver: zodResolver(registerSchema),
+    defaultValues: {
+      terms_accepted: false,
+      privacy_acknowledged: false,
+    },
   });
   const password = useWatch({ control, name: "password", defaultValue: "" });
   const passwordConfirmation = useWatch({
@@ -243,6 +248,60 @@ export function RegisterForm() {
           )}
           {passwordsMatch ? "Passwords match" : "Passwords must match"}
         </p>
+      </div>
+
+      <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <div>
+          <label className="flex cursor-pointer items-start gap-3 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 shrink-0 accent-primary"
+              {...formRegister("terms_accepted")}
+            />
+            <span>
+              I have read and agree to the{" "}
+              <Link
+                href="/terms-of-use"
+                target="_blank"
+                className="font-medium text-accent hover:underline"
+              >
+                Terms of Use
+              </Link>
+              .
+            </span>
+          </label>
+          {errors.terms_accepted && (
+            <p className="mt-1 text-xs text-red-500">
+              {errors.terms_accepted.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="flex cursor-pointer items-start gap-3 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 shrink-0 accent-primary"
+              {...formRegister("privacy_acknowledged")}
+            />
+            <span>
+              I acknowledge that I have read the{" "}
+              <Link
+                href="/privacy-policy"
+                target="_blank"
+                className="font-medium text-accent hover:underline"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
+          {errors.privacy_acknowledged && (
+            <p className="mt-1 text-xs text-red-500">
+              {errors.privacy_acknowledged.message}
+            </p>
+          )}
+        </div>
       </div>
 
       <button

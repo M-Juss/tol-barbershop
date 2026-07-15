@@ -25,7 +25,6 @@ import {
   type PendingFeedbackItem,
 } from "@/services/customer/feedback.api";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -68,10 +67,10 @@ function formatTime(time24: string): string {
 
 export function Overview() {
   const router = useRouter();
-  const { user: authUser } = useAuth();
-  const isPageVisible = usePageVisibility();
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const appointmentLoading = loading && (isAuthLoading || authUser !== null);
 
   const [pendingFeedbackList, setPendingFeedbackList] = useState<
     PendingFeedbackItem[]
@@ -124,56 +123,26 @@ export function Overview() {
     feedbackComment,
   ]);
 
-  useEffect(() => {
-    const fetchAppointments = async () => {
-      try {
-        const currentUserId = authUser?.id;
-        if (!currentUserId) {
-          setAppointments([]);
-          return;
-        }
-
-        const data = await getAppointments();
-        const userAppointments = data.filter(
-          (appointment) => appointment.customer.id === currentUserId,
-        );
-
-        setAppointments(userAppointments);
-      } catch (error) {
-        console.error("Failed to load appointments:", error);
-        toast.error("Failed to load appointments");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAppointments();
-  }, [authUser?.id]);
-
-  const refreshAppointments = useCallback(async () => {
+  const refreshAppointments = useCallback(async (signal?: AbortSignal) => {
     try {
       const currentUserId = authUser?.id;
       if (!currentUserId) {
         setAppointments([]);
         return;
       }
-      const data = await getAppointments();
+      const data = await getAppointments(signal);
       const userAppointments = data.filter(
         (appointment) => appointment.customer.id === currentUserId,
       );
       setAppointments(userAppointments);
     } catch (error) {
-      console.error("Failed to load appointments:", error);
+      if (!(error instanceof DOMException && error.name === "AbortError")) {
+        console.error("Failed to load appointments:", error);
+      }
+    } finally {
+      setLoading(false);
     }
   }, [authUser?.id]);
-
-  useEffect(() => {
-    if (!isPageVisible) return;
-
-    refreshAppointments();
-    const interval = setInterval(refreshAppointments, 60000);
-    return () => clearInterval(interval);
-  }, [isPageVisible, refreshAppointments]);
 
   useRealtimeEvent("appointments", refreshAppointments);
 
@@ -292,7 +261,7 @@ export function Overview() {
         </h2>
         <p className="text-gray-500 text-sm mb-4">Your approved appointments</p>
 
-        {loading ? (
+        {appointmentLoading ? (
           <div className="rounded-lg p-8 text-center text-gray-400 border border-gray-100">
             Loading appointments...
           </div>

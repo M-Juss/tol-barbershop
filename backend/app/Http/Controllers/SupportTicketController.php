@@ -23,6 +23,20 @@ class SupportTicketController extends Controller
         $user = $request->user();
 
         if ($user->role === 'customer') {
+            $validated = $request->validate([
+                'view' => ['nullable', 'in:state'],
+            ]);
+
+            if (($validated['view'] ?? null) === 'state') {
+                $ticket = SupportTicket::where('customer_id', $user->id)
+                    ->whereIn('status', ['waiting', 'active', 'resolved'])
+                    ->orderByRaw("CASE WHEN status IN ('waiting', 'active') THEN 0 ELSE 1 END")
+                    ->latest()
+                    ->first(['id', 'status']);
+
+                return $this->success('Ticket state retrieved successfully', $ticket);
+            }
+
             $tickets = SupportTicket::with([
                 'customer:id,fullname,email,image',
                 'assignedTo:id,fullname',
@@ -435,9 +449,17 @@ class SupportTicketController extends Controller
             abort(403, 'Forbidden.');
         }
 
+        $validated = $request->validate([
+            'after_id' => ['nullable', 'integer', 'min:0'],
+        ]);
+
         $messages = SupportMessage::with('sender:id,fullname,role,image')
             ->where('support_ticket_id', $ticket->id)
-            ->oldest('created_at')
+            ->when(
+                isset($validated['after_id']),
+                fn ($query) => $query->where('id', '>', $validated['after_id'])
+            )
+            ->oldest('id')
             ->get();
 
         return $this->success('Messages retrieved successfully', $messages);
@@ -451,41 +473,67 @@ class SupportTicketController extends Controller
             abort(403, 'Forbidden.');
         }
 
-        $waiting = SupportTicket::with([
-            'customer:id,fullname,email,image',
-        ])
-            ->where('status', 'waiting')
-            ->oldest('created_at')
-            ->get();
+        $validated = $request->validate([
+            'view' => ['nullable', 'in:live,history'],
+            'updated_after' => ['nullable', 'date'],
+        ]);
+        $view = $validated['view'] ?? null;
+        $historyCheckedAt = Carbon::now();
+        $historyUpdatedAfter = isset($validated['updated_after'])
+            ? Carbon::parse($validated['updated_after'])->subSecond()
+            : null;
 
-        $active = SupportTicket::with([
-            'customer:id,fullname,email,image',
-            'assignedTo:id,fullname',
-        ])
-            ->where('status', 'active')
-            ->oldest('claimed_at')
-            ->get();
+        $waiting = $view === 'history'
+            ? collect()
+            : SupportTicket::with(['customer:id,fullname'])
+                ->where('status', 'waiting')
+                ->oldest('created_at')
+                ->get();
 
-        $resolved = SupportTicket::with([
-            'customer:id,fullname,email,image',
-            'assignedTo:id,fullname',
-        ])
-            ->where('status', 'resolved')
-            ->latest('resolved_at')
-            ->get();
+        $active = $view === 'history'
+            ? collect()
+            : SupportTicket::with([
+                'customer:id,fullname',
+                'assignedTo:id,fullname',
+            ])
+                ->where('status', 'active')
+                ->oldest('claimed_at')
+                ->get();
 
-        $cancelled = SupportTicket::with([
-            'customer:id,fullname,email,image',
-        ])
-            ->where('status', 'cancelled')
-            ->latest('resolved_at')
-            ->get();
+        $resolved = $view === 'live'
+            ? collect()
+            : SupportTicket::with([
+                'customer:id,fullname',
+                'assignedTo:id,fullname',
+            ])
+                ->where('status', 'resolved')
+                ->when(
+                    $historyUpdatedAfter,
+                    fn ($query) => $query->where('updated_at', '>=', $historyUpdatedAfter)
+                )
+                ->latest('resolved_at')
+                ->get();
+
+        $cancelled = $view === 'live'
+            ? collect()
+            : SupportTicket::with([
+                'customer:id,fullname',
+                'assignedTo:id,fullname',
+            ])
+                ->where('status', 'cancelled')
+                ->when(
+                    $historyUpdatedAfter,
+                    fn ($query) => $query->where('updated_at', '>=', $historyUpdatedAfter)
+                )
+                ->latest('resolved_at')
+                ->get();
 
         return $this->success('Queue retrieved successfully', [
             'waiting' => $waiting,
             'active' => $active,
             'resolved' => $resolved,
             'cancelled' => $cancelled,
+            'checked_at' => $historyCheckedAt->toIso8601String(),
         ]);
     }
 
