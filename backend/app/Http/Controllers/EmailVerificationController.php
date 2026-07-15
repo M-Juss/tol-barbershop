@@ -26,21 +26,38 @@ class EmailVerificationController extends Controller
             return $this->invalidVerificationRedirect();
         }
 
-        $user = User::find($request->route('id'));
+        $result = DB::transaction(function () use ($request): array {
+            $user = User::query()
+                ->whereKey($request->route('id'))
+                ->lockForUpdate()
+                ->first();
 
-        if (! $user
-            || $user->role !== 'customer'
-            || ! hash_equals((string) $request->route('hash'), sha1($user->getEmailForVerification()))) {
+            if (! $user
+                || $user->role !== 'customer'
+                || ! hash_equals((string) $request->route('hash'), sha1($user->getEmailForVerification()))) {
+                return ['status' => 'invalid'];
+            }
+
+            if ($user->hasVerifiedEmail()) {
+                return ['status' => 'already_verified'];
+            }
+
+            if (! $user->markEmailAsVerified()) {
+                return ['status' => 'invalid'];
+            }
+
+            return ['status' => 'verified', 'user' => $user];
+        });
+
+        if ($result['status'] === 'invalid') {
             return $this->invalidVerificationRedirect();
         }
 
-        if ($user->hasVerifiedEmail()) {
+        if ($result['status'] === 'already_verified') {
             return redirect()->away(rtrim((string) config('app.frontend_url'), '/').'/login?verified=already');
         }
 
-        if ($user->markEmailAsVerified()) {
-            event(new Verified($user));
-        }
+        event(new Verified($result['user']));
 
         return redirect()->away(rtrim((string) config('app.frontend_url'), '/').'/login?verified=1');
     }

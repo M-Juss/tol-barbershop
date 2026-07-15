@@ -52,7 +52,8 @@ it('verifies a customer using a signed email link', function () {
     Event::assertDispatched(Verified::class);
 });
 
-it('redirects an already verified customer to the already verified login state', function () {
+it('uses a verification link only once', function () {
+    Event::fake([Verified::class]);
     $user = User::factory()->unverified()->create();
     $url = URL::temporarySignedRoute(
         'verification.verify',
@@ -65,6 +66,7 @@ it('redirects an already verified customer to the already verified login state',
         ->assertRedirect(rtrim((string) config('app.frontend_url'), '/').'/login?verified=1');
     $this->get($url)
         ->assertRedirect(rtrim((string) config('app.frontend_url'), '/').'/login?verified=already');
+    Event::assertDispatchedTimes(Verified::class, 1);
 });
 
 it('rejects an expired verification link', function () {
@@ -82,15 +84,26 @@ it('rejects an expired verification link', function () {
     expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
 });
 
-it('renders a Gmail-safe verification button and fallback link', function () {
-    $user = User::factory()->unverified()->create();
+it('renders a branded verification email with a fallback link', function () {
+    $user = User::factory()->unverified()->create(['fullname' => 'Juan Dela Cruz']);
     $mail = (new VerifyEmail)->toMail($user);
     $html = (string) $mail->render();
+    $text = view('emails.auth-action-text', $mail->data())->render();
+    $verificationUrl = $mail->viewData['actionUrl'];
 
-    expect($html)
-        ->toContain('href="'.e($mail->actionUrl).'"')
-        ->toContain('padding: 12px 24px')
-        ->toContain('Verify Email Address');
+    expect($mail->subject)->toBe('Verify your TOL Barbershop email')
+        ->and($html)
+        ->toContain('background-color: #143c62')
+        ->toContain('background-color: #de3b3d')
+        ->toContain('Hi Juan Dela Cruz,')
+        ->toContain(e("You're almost there."))
+        ->toContain('Verify Email')
+        ->toContain('expires in 60 minutes')
+        ->toContain('href="'.e($verificationUrl).'"')
+        ->toContain('/privacy-policy')
+        ->and($text)
+        ->toContain($verificationUrl)
+        ->toContain("If you didn't create this account, you can safely ignore this email.");
 });
 
 it('resends verification without revealing whether the account exists', function () {
@@ -290,6 +303,35 @@ it('returns the same forgot password response for known and unknown emails', fun
     Notification::assertSentTo($user, ResetPassword::class);
 });
 
+it('renders a branded password reset email with a fallback link', function () {
+    $user = User::factory()->create([
+        'fullname' => 'Maria Santos',
+        'email' => 'maria@example.com',
+    ]);
+    $token = 'secure-reset-token';
+    $mail = (new ResetPassword($token))->toMail($user);
+    $html = (string) $mail->render();
+    $text = view('emails.auth-action-text', $mail->data())->render();
+    $resetUrl = rtrim((string) config('app.frontend_url'), '/').'/reset-password?'.http_build_query([
+        'email' => $user->email,
+        'token' => $token,
+    ]);
+
+    expect($mail->subject)->toBe('Reset your TOL Barbershop password')
+        ->and($html)
+        ->toContain('background-color: #143c62')
+        ->toContain('background-color: #de3b3d')
+        ->toContain('Hi Maria Santos,')
+        ->toContain('We received a request to reset your TOL Barbershop password.')
+        ->toContain('Reset Password')
+        ->toContain('expires in 60 minutes')
+        ->toContain('href="'.e($resetUrl).'"')
+        ->toContain('/terms-of-use')
+        ->and($text)
+        ->toContain($resetUrl)
+        ->toContain("If you didn't request a password reset, you can safely ignore this email.");
+});
+
 it('resets a password with a valid one-use emailed token', function () {
     Notification::fake();
     Event::fake([PasswordResetEvent::class]);
@@ -340,6 +382,7 @@ it('resets a password with a valid one-use emailed token', function () {
     ])->assertOk()->assertJsonPath('data.valid', false);
 
     $this->postJson('/api/v1/reset-password', $payload)->assertUnprocessable();
+    Event::assertDispatchedTimes(PasswordResetEvent::class, 1);
 });
 
 it('rejects invalid password reset tokens', function () {
