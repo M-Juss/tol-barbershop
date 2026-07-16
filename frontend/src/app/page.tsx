@@ -416,7 +416,7 @@ function HomeContent() {
               description="A closer look at our crafts and space behind every fresh cut."
             />
 
-            <div className="flex w-full flex-wrap justify-center gap-3 sm:gap-4">
+            <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-center sm:gap-4">
               {galleryCategories.map((category) => (
                 <button
                   key={category}
@@ -424,7 +424,7 @@ function HomeContent() {
                   onClick={() => setActiveCategory(category)}
                   aria-pressed={activeCategory === category}
                   className={cn(
-                    "min-h-11 rounded-full border px-5 py-2 text-sm font-medium shadow-md transition-all duration-300 hover:-translate-y-0.5 sm:px-6",
+                    "min-h-11 w-full rounded-full border px-2 py-2 text-xs font-medium shadow-md transition-all duration-300 hover:-translate-y-0.5 sm:w-auto sm:px-6 sm:text-sm",
                     activeCategory === category
                       ? "border-accent bg-accent text-accent-foreground shadow-accent/15"
                       : "border-white/10 bg-white/[0.03] text-white hover:border-white/25 hover:bg-white/[0.07]",
@@ -748,9 +748,6 @@ function HomeContent() {
             </Link>
             <Link href="/terms-of-use" className="text-neutral hover:text-white">
               Terms of Use
-            </Link>
-            <Link href="/data-compliance" className="text-neutral hover:text-white">
-              Data Compliance
             </Link>
           </div>
         </div>

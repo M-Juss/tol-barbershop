@@ -25,8 +25,8 @@ const galleryImageSchema = z.object({
   alt_text: z
     .string()
     .trim()
-    .min(1, "Alt text is required")
-    .max(160, "Alt text must not exceed 160 characters"),
+    .min(1, "Alternative text is required")
+    .max(160, "Alternative text must not exceed 160 characters"),
   display_order: z
     .number()
     .int("Display order must be a whole number")

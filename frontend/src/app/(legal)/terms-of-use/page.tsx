@@ -115,8 +115,8 @@ export default function TermsOfUsePage() {
       <section>
         <h2>8. Your content</h2>
         <p>
-          You retain rights you hold in notes, messages, feedback, profile
-          media, and other content you submit. You give TOL Barbershop a
+          You retain rights you hold in notes, messages, feedback, and other
+          content you submit. You give TOL Barbershop a
           non-exclusive license to host, copy, display internally, and process
           that content only as reasonably needed to operate, secure, support,
           document, and explain the service. For submitted feedback, this

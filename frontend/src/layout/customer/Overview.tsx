@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { StatCard } from "@/components/common/StatCard";
 import { AppointmentCardCustomer } from "@/components/common/AppointmentCardCustomer";
+import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
 import {
   getAppointments,
   type Appointment,
@@ -27,7 +28,6 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -371,14 +371,9 @@ export function Overview() {
           <div className="h-px bg-gray-200" />
 
           <div className="space-y-2 pt-2">
-            <label
-              htmlFor="overview-feedback-comment"
-              className="text-sm font-medium text-gray-700"
-            >
-              Your feedback (optional)
-            </label>
-            <Textarea
+            <TextAreaWithLabel
               id="overview-feedback-comment"
+              label="Your feedback (optional)"
               value={feedbackComment}
               onChange={(event) => setFeedbackComment(event.target.value)}
               maxLength={300}

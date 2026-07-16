@@ -36,6 +36,8 @@ import {
   type Role,
   type Module,
 } from "@/services/manager/role.api";
+import { CheckboxWithLabel } from "@/components/common/CheckboxWithLabel";
+import { InputWithLabel } from "@/components/common/InputWithLabel";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +46,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -586,7 +587,7 @@ export function Admin() {
       </Dialog>
 
       <Dialog open={showRoleModal} onOpenChange={closeRoleModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="grid max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-gray-900">
               {editingRole ? "Edit Role" : "Create Role"}
@@ -598,30 +599,29 @@ export function Admin() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Role Name
-              </label>
-              <Input
+              <InputWithLabel
+                id="role-name"
+                label="Role Name"
                 value={roleName}
                 onChange={(e) => setRoleName(e.target.value)}
                 placeholder="e.g. Front Desk"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="flex min-h-0 flex-1 flex-col">
+              <p className="block text-sm font-medium text-gray-700 mb-2">
                 Module Permissions
-              </label>
-              <div className="space-y-4">
+              </p>
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-2">
                 {(() => {
                   const categories = [
                     { label: "Overview", keys: ["dashboard"] },
                     { label: "Operations", keys: ["appointment", "walkin", "history"] },
-                    { label: "Analytics", keys: ["reports", "feedback"] },
-                    { label: "Relations", keys: ["crm", "customer-service"] },
                     { label: "Administration", keys: ["management"] },
+                    { label: "Relations", keys: ["crm", "customer-service"] },
+                    { label: "Analytics", keys: ["reports", "feedback"] },
                   ];
                   const moduleByKey = Object.fromEntries(
                     modules.map((m) => [m.key, m]),
@@ -638,22 +638,16 @@ export function Admin() {
                         </p>
                         <div className="space-y-1 pl-2">
                           {catModules.map((mod) => (
-                            <div
+                            <CheckboxWithLabel
                               key={mod.id}
-                              onClick={() => toggleModule(mod.id)}
-                              className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
-                            >
-                              <div
-                                className={cn("w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors", selectedModuleIds.includes(mod.id) ? "bg-red-500 border-red-500" : "border-gray-300")}
-                              >
-                                {selectedModuleIds.includes(mod.id) && (
-                                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                                )}
-                              </div>
-                              <span className="text-sm font-medium text-gray-900">
-                                {mod.name}
-                              </span>
-                            </div>
+                              id={`module-${mod.id}`}
+                              label={mod.name}
+                              checked={selectedModuleIds.includes(mod.id)}
+                              onCheckedChange={() => toggleModule(mod.id)}
+                              containerClassName="rounded-lg border border-gray-200 p-2.5 transition-colors hover:bg-gray-50"
+                              className="mt-0.5 border-gray-300 data-checked:border-red-500 data-checked:bg-red-500"
+                              labelClassName="flex-1 font-medium text-gray-900"
+                            />
                           ))}
                         </div>
                       </div>

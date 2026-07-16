@@ -67,7 +67,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           >
             <Link href="/privacy-policy" className="hover:text-accent">Privacy</Link>
             <Link href="/terms-of-use" className="hover:text-accent">Terms</Link>
-            <Link href="/data-compliance" className="hover:text-accent">Data Compliance</Link>
           </nav>
         </div>
       </div>

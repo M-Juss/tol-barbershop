@@ -27,10 +27,9 @@ const navSections = [
     ],
   },
   {
-    label: "Analytics",
+    label: "Administration",
     items: [
-      { key: "reports", href: "/admin/reports", icon: BarChart3, label: "Reports" },
-      { key: "feedback", href: "/admin/feedback", icon: MessageSquareText, label: "Feedback" },
+      { key: "management", href: "/admin/management", icon: Settings, label: "Management" },
     ],
   },
   {
@@ -41,9 +40,10 @@ const navSections = [
     ],
   },
   {
-    label: "Administration",
+    label: "Analytics",
     items: [
-      { key: "management", href: "/admin/management", icon: Settings, label: "Management" },
+      { key: "reports", href: "/admin/reports", icon: BarChart3, label: "Reports" },
+      { key: "feedback", href: "/admin/feedback", icon: MessageSquareText, label: "Feedback" },
     ],
   },
 ];

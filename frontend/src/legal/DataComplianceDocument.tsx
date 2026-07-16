@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     "A practical summary of TOL Barbershop data protection controls and compliance approach.",
 };
 
-export default function DataCompliancePage() {
+export default function DataComplianceDocument() {
   return (
     <LegalDocument
       title="Data Compliance Statement"

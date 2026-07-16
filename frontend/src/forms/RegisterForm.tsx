@@ -4,6 +4,7 @@ import { Circle, CircleCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Controller,
   type SubmitErrorHandler,
   useForm,
   useWatch,
@@ -11,6 +12,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
+import { CheckboxWithLabel } from "@/components/common/CheckboxWithLabel";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { PasswordInputWithLabel } from "@/components/common/PasswordInputWithLabel";
 import { useRateLimit } from "@/hooks/useRateLimit";
@@ -251,57 +253,61 @@ export function RegisterForm() {
       </div>
 
       <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
-        <div>
-          <label className="flex cursor-pointer items-start gap-3 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              className="mt-0.5 size-4 shrink-0 accent-primary"
-              {...formRegister("terms_accepted")}
+        <Controller
+          name="terms_accepted"
+          control={control}
+          render={({ field }) => (
+            <CheckboxWithLabel
+              id="terms_accepted"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+              onBlur={field.onBlur}
+              ref={field.ref}
+              error={errors.terms_accepted?.message}
+              label={
+                <span>
+                  I have read and agree to the{" "}
+                  <Link
+                    href="/terms-of-use"
+                    target="_blank"
+                    className="font-medium text-accent hover:underline"
+                  >
+                    Terms of Use
+                  </Link>
+                  .
+                </span>
+              }
             />
-            <span>
-              I have read and agree to the{" "}
-              <Link
-                href="/terms-of-use"
-                target="_blank"
-                className="font-medium text-accent hover:underline"
-              >
-                Terms of Use
-              </Link>
-              .
-            </span>
-          </label>
-          {errors.terms_accepted && (
-            <p className="mt-1 text-xs text-red-500">
-              {errors.terms_accepted.message}
-            </p>
           )}
-        </div>
+        />
 
-        <div>
-          <label className="flex cursor-pointer items-start gap-3 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              className="mt-0.5 size-4 shrink-0 accent-primary"
-              {...formRegister("privacy_acknowledged")}
+        <Controller
+          name="privacy_acknowledged"
+          control={control}
+          render={({ field }) => (
+            <CheckboxWithLabel
+              id="privacy_acknowledged"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+              onBlur={field.onBlur}
+              ref={field.ref}
+              error={errors.privacy_acknowledged?.message}
+              label={
+                <span>
+                  I acknowledge that I have read the{" "}
+                  <Link
+                    href="/privacy-policy"
+                    target="_blank"
+                    className="font-medium text-accent hover:underline"
+                  >
+                    Privacy Policy
+                  </Link>
+                  .
+                </span>
+              }
             />
-            <span>
-              I acknowledge that I have read the{" "}
-              <Link
-                href="/privacy-policy"
-                target="_blank"
-                className="font-medium text-accent hover:underline"
-              >
-                Privacy Policy
-              </Link>
-              .
-            </span>
-          </label>
-          {errors.privacy_acknowledged && (
-            <p className="mt-1 text-xs text-red-500">
-              {errors.privacy_acknowledged.message}
-            </p>
           )}
-        </div>
+        />
       </div>
 
       <button

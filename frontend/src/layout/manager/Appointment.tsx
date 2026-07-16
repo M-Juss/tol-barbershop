@@ -27,6 +27,7 @@ import {
 import { GroupPendingCard } from "@/components/common/GroupPendingCard";
 import { PendingAppointmentDetailDialog } from "@/components/common/PendingAppointmentDetailDialog";
 import { SectionCard } from "@/components/common/SectionCard";
+import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getAppointments,
@@ -1145,11 +1146,9 @@ export function Appointment() {
             </div>
           )}
           <div className="space-y-2">
-            <label htmlFor="batch-reject-reason" className="text-sm font-medium text-gray-700">
-              Reason (optional)
-            </label>
-            <textarea
+            <TextAreaWithLabel
               id="batch-reject-reason"
+              label="Reason (optional)"
               rows={3}
               value={batchRejectReason}
               onChange={(e) => setBatchRejectReason(e.target.value)}

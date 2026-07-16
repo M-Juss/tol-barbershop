@@ -15,7 +15,6 @@ const publicPaths = new Set([
   "/reset-password",
   "/privacy-policy",
   "/terms-of-use",
-  "/data-compliance",
 ]);
 
 function getRequestedBasePath(
@@ -67,7 +66,6 @@ export const config = {
     "/reset-password",
     "/privacy-policy",
     "/terms-of-use",
-    "/data-compliance",
     "/admin/:path*",
     "/manager/:path*",
     "/customer/:path*",

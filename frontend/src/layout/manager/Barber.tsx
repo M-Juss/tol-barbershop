@@ -27,6 +27,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { toast } from "sonner";
 
 const isActiveValue = (value: unknown): boolean => {
@@ -130,61 +138,86 @@ export function Barber() {
           <p className="text-gray-500">Loading barbers...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {barbers.map((barber) => (
-            <div
-              key={barber.id}
-              className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col items-center relative"
-            >
-              <div className="absolute top-3 right-3">
-                <span
-                  className={cn(
-                    "text-xs font-medium px-2.5 py-1 rounded-full",
-                    !isActiveValue(barber.is_active)
-                      ? "bg-gray-100 text-gray-500"
-                      : "bg-green-100 text-green-600",
-                  )}
-                >
-                  {!isActiveValue(barber.is_active) ? "Inactive" : "Active"}
-                </span>
-              </div>
-
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full mb-3 sm:mb-4 bg-blue-50 border border-blue-100 shrink-0 flex items-center justify-center">
-                <User className="w-10 h-10 text-blue-400" />
-              </div>
-
-              <p className="font-bold text-gray-900 text-base sm:text-lg mb-3 text-center">
-                {barber.fullname}
-              </p>
-
-              <div className="w-full space-y-2 mb-4">
-                <div className="flex items-center gap-2 text-gray-500 text-sm">
-                  <Mail className="w-4 h-4 shrink-0" strokeWidth={1.8} />
-                  <span className="truncate">{barber.email}</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-500 text-sm">
-                  <Phone className="w-4 h-4 shrink-0" strokeWidth={1.8} />
-                  <span>{barber.contact_number}</span>
-                </div>
-              </div>
-
-              <div className="w-full border-t border-gray-100 pt-3 flex items-center gap-2">
-                <button
-                  onClick={() => openEditModal(barber)}
-                  className="flex-1 flex items-center justify-center gap-2 border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 transition-colors"
-                >
-                  <Pencil className="w-4 h-4" strokeWidth={2} />
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(barber.id)}
-                  className="bg-red-500 hover:bg-red-600 transition-colors text-white rounded-lg p-2"
-                >
-                  <Trash2 className="w-5 h-5" strokeWidth={2} />
-                </button>
-              </div>
-            </div>
-          ))}
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <Table className="min-w-[680px]">
+            <TableHeader className="bg-gray-50">
+              <TableRow>
+                <TableHead>Barber</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {barbers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-10 text-center text-gray-500">
+                    No barbers found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                barbers.map((barber) => (
+                  <TableRow key={barber.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-blue-100 bg-blue-50">
+                          <User className="size-4 text-blue-500" />
+                        </div>
+                        <span className="font-semibold text-gray-900">
+                          {barber.fullname}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Mail className="size-4 shrink-0 text-gray-400" />
+                        {barber.email}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 whitespace-nowrap text-gray-600">
+                        <Phone className="size-4 shrink-0 text-gray-400" />
+                        {barber.contact_number}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={cn(
+                          "rounded-full px-2.5 py-1 text-xs font-medium",
+                          !isActiveValue(barber.is_active)
+                            ? "bg-gray-100 text-gray-500"
+                            : "bg-green-100 text-green-600",
+                        )}
+                      >
+                        {!isActiveValue(barber.is_active) ? "Inactive" : "Active"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(barber)}
+                          className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100"
+                          aria-label={`Edit ${barber.fullname}`}
+                        >
+                          <Pencil className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(barber.id)}
+                          className="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50"
+                          aria-label={`Delete ${barber.fullname}`}
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
       )}
 

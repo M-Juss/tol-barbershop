@@ -75,7 +75,8 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-export function FeedbackList() {
+export function 
+FeedbackList() {
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [meta, setMeta] = useState<FeedbackMeta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -401,6 +402,7 @@ export function FeedbackList() {
                 />
               </PaginationItem>
             </PaginationContent>
+            <div className="my-10" />
           </Pagination>
         ) : null}
       </div>

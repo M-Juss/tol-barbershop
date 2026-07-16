@@ -32,7 +32,7 @@ export default function PrivacyPolicyPage() {
         <ul>
           <li>
             <strong>Account data:</strong> full name, email address, contact
-            number, optional profile image, account role and status, email
+            number, account role and status, email
             verification information, and account timestamps. Passwords are
             stored as hashes rather than readable passwords. Password-reset
             data and the accepted Terms and Privacy Policy versions and

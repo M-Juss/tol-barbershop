@@ -150,8 +150,8 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
             <Image
               src="/Tol-Logo-White-Bg.png"
               alt="Logo"
-              height={40}
-              width={40}
+              height={35}
+              width={35}
               className="rounded-lg"
             />
             <h1 className="font-bold text-primary-foreground text-xl">

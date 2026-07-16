@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { DatePickerWithLabel } from "@/components/common/DatePickerWithLabel";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/SelectWithLabel";
+import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
 import {
   getActiveBarbers,
   getActiveServices,
@@ -539,21 +540,23 @@ export function NewAppointmentForm() {
               <p className="text-sm font-medium text-gray-700">Per Person</p>
               {Array.from({ length: slotCount }).map((_, index) => (
                 <div key={index} className="grid grid-cols-1 sm:grid-cols-[3fr_1fr_1fr] gap-3 items-end p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-500">
-                      {index === 0 ? "You" : `Person ${index + 1}`}
-                    </label>
-                    <input
-                      type="text"
-                      value={slotNames[index] ?? (index === 0 ? authUser?.fullname ?? "" : "")}
-                      onChange={(e) => {
-                        if (index > 0) handleSlotNameChange(index, e.target.value);
-                      }}
-                      disabled={index === 0}
-                      placeholder="Full name"
-                      className={cn("w-full rounded-lg border px-3 py-2 text-sm", index === 0 ? "border-gray-200 bg-gray-100 text-gray-500" : "border-gray-200 bg-white text-gray-900", "placeholder:text-gray-400 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100")}
-                    />
-                  </div>
+                  <InputWithLabel
+                    id={`slot-name-${index}`}
+                    label={index === 0 ? "You" : `Person ${index + 1}`}
+                    value={slotNames[index] ?? (index === 0 ? authUser?.fullname ?? "" : "")}
+                    onChange={(e) => {
+                      if (index > 0) handleSlotNameChange(index, e.target.value);
+                    }}
+                    disabled={index === 0}
+                    placeholder="Full name"
+                    className={cn(
+                      "h-10 border-gray-200",
+                      index === 0
+                        ? "bg-gray-100 text-gray-500"
+                        : "bg-white text-gray-900",
+                      "focus-visible:border-red-400 focus-visible:ring-red-100",
+                    )}
+                  />
                   <SelectWithLabel
                     id={`slot-service-${index}`}
                     label="Service"
@@ -584,19 +587,14 @@ export function NewAppointmentForm() {
           )}
 
           <div className="col-span-1 md:col-span-2">
-            <label
-              htmlFor="notes"
-              className="mb-1.5 block text-sm font-medium text-gray-700"
-            >
-              Notes
-            </label>
-            <textarea
+            <TextAreaWithLabel
               id="notes"
+              label="Notes"
               placeholder="Add notes for your barber (optional)"
               rows={4}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100"
+              className="border-gray-200 text-gray-900 focus-visible:border-red-400 focus-visible:ring-red-100"
             />
           </div>
 

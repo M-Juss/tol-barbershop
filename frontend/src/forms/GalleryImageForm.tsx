@@ -17,8 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useRateLimit } from "@/hooks/useRateLimit";
 import {
   galleryCategories,
@@ -136,12 +134,10 @@ export function GalleryImageForm({
 
         <form onSubmit={handleSubmit(submit)} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="gallery-image">
-              {initialData ? "Replace Image (optional)" : "Image"}
-            </Label>
-            <Input
+            <InputWithLabel
               key={`${initialData?.id ?? "new"}-${open}`}
               id="gallery-image"
+              label={initialData ? "Replace Image (optional)" : "Image"}
               type="file"
               accept="image/jpeg,image/png,image/webp"
               className="h-10 cursor-pointer border-gray-300 file:mr-3"

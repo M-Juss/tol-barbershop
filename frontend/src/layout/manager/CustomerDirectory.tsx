@@ -417,8 +417,10 @@ export function CustomerDirectory() {
                 />
               </PaginationItem>
             </PaginationContent>
+            
           </Pagination>
         ) : null}
+        <div className="h-10" />
       </div>
     </div>
   );

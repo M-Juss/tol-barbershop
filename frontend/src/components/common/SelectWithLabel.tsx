@@ -1,3 +1,5 @@
+import type React from "react";
+
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -6,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 type SelectOption = {
   value: string;
@@ -15,13 +18,14 @@ type SelectOption = {
 
 type SelectWithLabelProps = {
   id: string;
-  label: string;
+  label: React.ReactNode;
   placeholder?: string;
   options: SelectOption[];
   value?: string;
   defaultValue?: string;
   onValueChange?: (value: string) => void;
   disabled?: boolean;
+  triggerClassName?: string;
 };
 
 export function SelectWithLabel({
@@ -33,6 +37,7 @@ export function SelectWithLabel({
   defaultValue,
   onValueChange,
   disabled = false,
+  triggerClassName,
 }: SelectWithLabelProps) {
   return (
     <div className="grid w-full gap-2">
@@ -45,7 +50,10 @@ export function SelectWithLabel({
       >
         <SelectTrigger
           id={id}
-          className=" w-full border-gray-300 px-3 py-5 text-sm data-[placeholder]:text-muted-foreground"
+          className={cn(
+            "w-full border-gray-300 px-3 py-5 text-sm data-[placeholder]:text-muted-foreground",
+            triggerClassName,
+          )}
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
