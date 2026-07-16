@@ -129,6 +129,7 @@ Route::prefix('v1')->group(function () {
             ->middlewareFor('update', ['role:manager', 'throttle:30,1']);
         Route::post('/appointments/batch', [AppointmentController::class, 'storeBatch'])->middleware(['role:admin,manager,customer', 'throttle:30,1']);
         Route::get('/appointments/available-slots', [AppointmentController::class, 'availableSlots'])->middleware(['role:admin,manager,customer', 'throttle:300,1']);
+        Route::get('/appointments/history', [AppointmentController::class, 'history'])->middleware(['role:admin,manager,customer', 'throttle:300,1']);
         Route::apiResource('/appointments', AppointmentController::class)
             ->middlewareFor('index', ['role:admin,manager,customer', 'throttle:300,1'])
             ->middlewareFor('store', ['role:admin,manager,customer', 'throttle:60,1'])

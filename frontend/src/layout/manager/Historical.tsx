@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+
+import { TablePagination } from "@/components/common/TablePagination";
 import {
-  getAppointments,
-  type Appointment,
-  type AppointmentStatus,
-} from "@/services/customer/appointment.api";
+  type AppointmentHistoryStatusFilter,
+  useAppointmentHistory,
+} from "@/hooks/useAppointmentHistory";
+import { type AppointmentStatus } from "@/services/customer/appointment.api";
 import { Input } from "@/components/ui/input";
 import { SectionCard } from "@/components/common/SectionCard";
 import { AppointmentStatusBadge } from "@/components/common/AppointmentStatusBadge";
@@ -18,15 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
   Table,
   TableBody,
   TableCell,
@@ -34,8 +27,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-type StatusFilter = "all" | "walkin" | AppointmentStatus;
 
 type Row = {
   id: number;
@@ -46,9 +37,7 @@ type Row = {
   time: string;
   status: AppointmentStatus;
   price: number;
-  created_at: string;
   cancellation_reason: string | null;
-  is_walkin: boolean;
 };
 
 function formatDate(date: string): string {
@@ -71,76 +60,34 @@ function formatTime(time24: string): string {
 }
 
 export function Historical() {
-  const [rows, setRows] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
-
-  useEffect(() => {
-    const fetchAppointments = async () => {
-      try {
-        const data = await getAppointments();
-        const mapped = data
-          .map((appt: Appointment) => ({
-            id: appt.id,
-            customer: appt.customer.fullname ?? "Unknown customer",
-            service: appt.service.name ?? "Unknown service",
-            barber: appt.barber.fullname ?? "Unknown barber",
-            date: formatDate(appt.appointment_date),
-            time: formatTime(appt.appointment_time),
-            status: appt.status,
-            price: Number(appt.price) || 0,
-            created_at: appt.created_at,
-            cancellation_reason: appt.cancellation_reason,
-            is_walkin: appt.is_walkin,
-          }))
-          .sort(
-            (a, b) =>
-              new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-          );
-
-        setRows(mapped);
-      } catch (error) {
-        console.error("Failed to load appointments:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAppointments();
-  }, []);
-
-  const filteredRows = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-
-    return rows.filter((row) => {
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "walkin" ? row.is_walkin : row.status === statusFilter);
-      const matchesSearch =
-        !keyword ||
-        row.customer.toLowerCase().includes(keyword) ||
-        row.service.toLowerCase().includes(keyword) ||
-        row.barber.toLowerCase().includes(keyword) ||
-        formatBookingId(row.id).toLowerCase().includes(keyword) ||
-        String(row.id).includes(keyword);
-
-      return matchesStatus && matchesSearch;
-    });
-  }, [rows, search, statusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
-
-  const paginatedRows = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredRows.slice(start, start + pageSize);
-  }, [filteredRows, page]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, statusFilter]);
+  const {
+    appointments,
+    meta,
+    loading,
+    refreshing,
+    error,
+    search,
+    setSearch,
+    status,
+    setStatus,
+    setPage,
+    getPageHref,
+  } = useAppointmentHistory();
+  const rows = useMemo<Row[]>(
+    () =>
+      appointments.map((appointment) => ({
+        id: appointment.id,
+        customer: appointment.customer.fullname ?? "Unknown customer",
+        service: appointment.service.name ?? "Unknown service",
+        barber: appointment.barber.fullname ?? "Unknown barber",
+        date: formatDate(appointment.appointment_date),
+        time: formatTime(appointment.appointment_time),
+        status: appointment.status,
+        price: Number(appointment.price) || 0,
+        cancellation_reason: appointment.cancellation_reason,
+      })),
+    [appointments],
+  );
 
   return (
     <div className="w-full h-full bg-slate-100 p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
@@ -158,10 +105,13 @@ export function Historical() {
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search by appointment ID, customer, service, barber"
             className="w-full sm:w-3/4"
+            maxLength={100}
           />
           <Select
-            value={statusFilter}
-            onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+            value={status}
+            onValueChange={(value) =>
+              setStatus(value as AppointmentHistoryStatusFilter)
+            }
           >
             <SelectTrigger className="w-full sm:w-1/4 border-gray-300">
               <SelectValue placeholder="All Status" />
@@ -172,6 +122,7 @@ export function Historical() {
               <SelectItem value="approved">Approved</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
               <SelectItem value="no_show">No-show</SelectItem>
               <SelectItem value="walkin">Walk-in</SelectItem>
             </SelectContent>
@@ -179,18 +130,23 @@ export function Historical() {
         </div>
       </SectionCard>
 
-      <div className="space-y-3">
+      <div className="space-y-3" aria-busy={loading || refreshing}>
+        {error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+            {error}
+          </div>
+        ) : null}
         <div className="block md:hidden space-y-3">
           {loading ? (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center text-gray-400 text-sm">
               Loading appointments...
             </div>
-          ) : paginatedRows.length === 0 ? (
+          ) : rows.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center text-gray-400 text-sm">
               No appointments found.
             </div>
           ) : (
-            paginatedRows.map((row) => (
+            rows.map((row) => (
               <div
                 key={row.id}
                 className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-2"
@@ -244,14 +200,14 @@ export function Historical() {
                     Loading appointments...
                   </TableCell>
                 </TableRow>
-              ) : paginatedRows.length === 0 ? (
+              ) : rows.length === 0 ? (
                 <TableRow>
                   <TableCell className="text-gray-500" colSpan={8}>
                     No appointments found.
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedRows.map((row) => (
+                rows.map((row) => (
                   <TableRow key={row.id} className="group relative">
                     <TableCell>{formatBookingId(row.id)}</TableCell>
                     <TableCell>{row.customer}</TableCell>
@@ -277,70 +233,18 @@ export function Historical() {
           </Table>
         </div>
 
-        {filteredRows.length > pageSize ? (
-          <Pagination className="overflow-hidden px-1">
-            <PaginationContent className="flex-nowrap gap-0.5">
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  className="h-8 w-8 sm:h-9 sm:w-auto"
-                  text=""
-                  onClick={(event) => {
-                    event.preventDefault();
-                    setPage((prev) => Math.max(1, prev - 1));
-                  }}
-                />
-              </PaginationItem>
-              {(() => {
-                const pages: (number | "...")[] = [];
-                const total = totalPages;
-                const current = page;
-                pages.push(1);
-                if (current > 3) pages.push("...");
-                const start = Math.max(2, current - 1);
-                const end = Math.min(total - 1, current + 1);
-                for (let i = start; i <= end; i++) pages.push(i);
-                if (current < total - 2) pages.push("...");
-                if (total > 1) pages.push(total);
-                return pages.map((pageNo, idx) =>
-                  pageNo === "..." ? (
-                    <PaginationItem key={`ellipsis-${idx}`}>
-                      <PaginationEllipsis className="size-7 sm:size-8" />
-                    </PaginationItem>
-                  ) : (
-                    <PaginationItem key={pageNo}>
-                      <PaginationLink
-                        href="#"
-                        isActive={pageNo === current}
-                        className="h-7 w-7 sm:h-8 sm:w-8 text-xs sm:text-sm font-medium rounded-lg"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          setPage(pageNo);
-                        }}
-                      >
-                        {pageNo}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ),
-                );
-              })()}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  className="h-8 w-8 sm:h-9 sm:w-auto"
-                  text=""
-                  onClick={(event) => {
-                    event.preventDefault();
-                    setPage((prev) => Math.min(totalPages, prev + 1));
-                  }}
-                />
-              </PaginationItem>
-            </PaginationContent>
-            <div className="my-10" />
-          </Pagination>
+        {meta ? (
+          <TablePagination
+            currentPage={meta.current_page}
+            lastPage={meta.last_page}
+            getPageHref={getPageHref}
+            onPageChange={setPage}
+            disabled={loading}
+          />
         ) : null}
+
+        <div className="h-5" />
       </div>
-      
     </div>
   );
 }

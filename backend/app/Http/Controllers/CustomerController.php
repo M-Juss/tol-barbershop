@@ -2,24 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CustomerListRequest;
 use App\Http\Resources\CustomerResource;
 use App\Http\Resources\CustomerResourceDetail;
 use App\Models\Appointment;
 use App\Models\User;
 use App\Traits\ApiResponseTrait;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
     use ApiResponseTrait;
 
-    public function index(Request $request)
+    public function index(CustomerListRequest $request)
     {
-        $validated = $request->validate([
-            'search' => ['nullable', 'string', 'max:100'],
-            'status' => ['nullable', 'string', 'in:active,inactive'],
-        ]);
+        $validated = $request->validated();
 
         $baseQuery = User::where('role', 'customer');
 
@@ -55,10 +52,11 @@ class CustomerController extends Controller
 
         if (! empty($validated['search'])) {
             $search = $validated['search'];
-            $query->where(function ($q) use ($search) {
-                $q->where('fullname', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('contact_number', 'like', "%{$search}%");
+            $like = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search).'%';
+            $query->where(function ($q) use ($like) {
+                $q->whereRaw("fullname LIKE ? ESCAPE '!'", [$like])
+                    ->orWhereRaw("email LIKE ? ESCAPE '!'", [$like])
+                    ->orWhereRaw("contact_number LIKE ? ESCAPE '!'", [$like]);
             });
         }
 
@@ -74,15 +72,13 @@ class CustomerController extends Controller
             }
         }
 
-        $sortField = $request->input('sort', 'fullname');
-        $sortDir = $request->input('dir', 'asc');
-        $allowedSorts = ['fullname', 'total_visits', 'lifetime_value', 'last_visit_date', 'average_rating'];
-        if (in_array($sortField, $allowedSorts)) {
-            $query->orderBy($sortField, $sortDir === 'asc' ? 'asc' : 'desc');
-        }
-
-        $perPage = min((int) $request->input('per_page', 15), 50);
-        $customers = $query->paginate($perPage);
+        $sortField = $validated['sort'] ?? 'fullname';
+        $sortDir = $validated['dir'] ?? 'asc';
+        $perPage = $validated['per_page'] ?? 15;
+        $customers = $query
+            ->orderBy($sortField, $sortDir)
+            ->orderBy('id', $sortDir)
+            ->paginate($perPage, ['*'], 'page', $validated['page'] ?? 1);
 
         return $this->success('Customers retrieved successfully.', [
             'customers' => CustomerResource::collection($customers),

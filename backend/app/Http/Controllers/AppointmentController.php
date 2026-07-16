@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AppointmentHistoryRequest;
 use App\Http\Requests\AppointmentRequest;
 use App\Http\Requests\BatchAppointmentRequest;
 use App\Http\Resources\AppointmentResource;
@@ -12,12 +13,15 @@ use App\Models\User;
 use App\Services\PushNotificationService;
 use App\Support\DisplayId;
 use App\Support\EntityChange;
+use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AppointmentController extends Controller
 {
+    use ApiResponseTrait;
+
     private const DASHBOARD_SLOT_STATUSES = ['completed', 'approved', 'pending', 'no_show'];
 
     /**
@@ -42,6 +46,71 @@ class AppointmentController extends Controller
         $appointments = $query->get();
 
         return AppointmentResource::collection($appointments);
+    }
+
+    public function history(AppointmentHistoryRequest $request)
+    {
+        $validated = $request->validated();
+        $user = $request->user();
+        $query = Appointment::with([
+            'user:id,fullname,email,contact_number',
+            'barber:id,fullname,email,contact_number',
+            'service:id,name',
+            'feedback:id,appointment_id,rating,comment,created_at',
+        ]);
+
+        if ($user->role === 'customer') {
+            $query->where('user_id', $user->id);
+        }
+
+        if (! empty($validated['status'])) {
+            $query->where('status', $validated['status']);
+        }
+
+        if (array_key_exists('is_walkin', $validated)) {
+            $query->where('is_walkin', (bool) $validated['is_walkin']);
+        }
+
+        if (! empty($validated['search'])) {
+            $search = $validated['search'];
+            $like = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search).'%';
+
+            $query->where(function ($searchQuery) use ($search, $like) {
+                if (ctype_digit($search)) {
+                    $searchQuery->orWhere('id', (int) $search);
+                }
+
+                if (preg_match('/^APT-(\d{5})$/i', $search, $matches) === 1) {
+                    $searchQuery->orWhereRaw('((id * 12345 + 67890) % 90000) + 10000 = ?', [(int) $matches[1]]);
+                }
+
+                $searchQuery
+                    ->orWhereRaw("customer_name LIKE ? ESCAPE '!'", [$like])
+                    ->orWhereRaw("customer_name_snapshot LIKE ? ESCAPE '!'", [$like])
+                    ->orWhereRaw("walkin_customer_name LIKE ? ESCAPE '!'", [$like])
+                    ->orWhereRaw("service_name_snapshot LIKE ? ESCAPE '!'", [$like])
+                    ->orWhereRaw("barber_name_snapshot LIKE ? ESCAPE '!'", [$like])
+                    ->orWhereHas('user', fn ($userQuery) => $userQuery->whereRaw("fullname LIKE ? ESCAPE '!'", [$like]))
+                    ->orWhereHas('service', fn ($serviceQuery) => $serviceQuery->whereRaw("name LIKE ? ESCAPE '!'", [$like]))
+                    ->orWhereHas('barber', fn ($barberQuery) => $barberQuery->whereRaw("fullname LIKE ? ESCAPE '!'", [$like]));
+            });
+        }
+
+        $perPage = $validated['per_page'] ?? 15;
+        $appointments = $query
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate($perPage, ['*'], 'page', $validated['page'] ?? 1);
+
+        return $this->success('Appointment history retrieved successfully.', [
+            'appointments' => AppointmentResource::collection($appointments),
+            'meta' => [
+                'current_page' => $appointments->currentPage(),
+                'last_page' => $appointments->lastPage(),
+                'per_page' => $appointments->perPage(),
+                'total' => $appointments->total(),
+            ],
+        ]);
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\AppointmentFeedbackRequest;
+use App\Http\Requests\FeedbackListRequest;
 use App\Http\Resources\AppointmentFeedbackResource;
 use App\Models\Appointment;
 use App\Models\AppointmentFeedback;
@@ -130,23 +131,20 @@ class AppointmentFeedbackController extends Controller
         ]);
     }
 
-    public function index(Request $request)
+    public function index(FeedbackListRequest $request)
     {
-        $validated = $request->validate([
-            'search' => ['nullable', 'string', 'max:100'],
-            'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
-            'featured' => ['nullable', 'string', 'in:all,featured,not_featured'],
-        ]);
+        $validated = $request->validated();
 
         $query = AppointmentFeedback::with(['user:id,fullname', 'appointment.service:id,name', 'appointment.barber:id,fullname']);
 
         if (! empty($validated['search'])) {
             $search = $validated['search'];
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('user', fn ($uq) => $uq->where('fullname', 'like', "%{$search}%"))
-                    ->orWhereHas('appointment.barber', fn ($bq) => $bq->where('fullname', 'like', "%{$search}%"))
-                    ->orWhereHas('appointment.service', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
-                    ->orWhere('comment', 'like', "%{$search}%");
+            $like = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search).'%';
+            $query->where(function ($q) use ($like) {
+                $q->whereHas('user', fn ($uq) => $uq->whereRaw("fullname LIKE ? ESCAPE '!'", [$like]))
+                    ->orWhereHas('appointment.barber', fn ($bq) => $bq->whereRaw("fullname LIKE ? ESCAPE '!'", [$like]))
+                    ->orWhereHas('appointment.service', fn ($sq) => $sq->whereRaw("name LIKE ? ESCAPE '!'", [$like]))
+                    ->orWhereRaw("comment LIKE ? ESCAPE '!'", [$like]);
             });
         }
 
@@ -162,15 +160,13 @@ class AppointmentFeedbackController extends Controller
             }
         }
 
-        $sortField = $request->input('sort', 'created_at');
-        $sortDir = $request->input('dir', 'desc');
-        $allowedSorts = ['created_at', 'rating'];
-        if (in_array($sortField, $allowedSorts)) {
-            $query->orderBy($sortField, $sortDir === 'asc' ? 'asc' : 'desc');
-        }
-
-        $perPage = min((int) $request->input('per_page', 15), 50);
-        $feedback = $query->paginate($perPage);
+        $sortField = $validated['sort'] ?? 'created_at';
+        $sortDir = $validated['dir'] ?? 'desc';
+        $perPage = $validated['per_page'] ?? 15;
+        $feedback = $query
+            ->orderBy($sortField, $sortDir)
+            ->orderBy('id', $sortDir)
+            ->paginate($perPage, ['*'], 'page', $validated['page'] ?? 1);
 
         return $this->success('Feedback retrieved successfully.', [
             'feedback' => AppointmentFeedbackResource::collection($feedback),
