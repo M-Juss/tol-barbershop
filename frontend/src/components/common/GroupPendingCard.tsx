@@ -1,6 +1,7 @@
 import { ChevronRight, Mail, Phone, Scissors, User, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 import type { Appointment } from "@/services/customer/appointment.api";
 
@@ -26,6 +27,7 @@ function formatTime(time24: string): string {
 
 type GroupPendingCardProps = {
   appointments: Appointment[];
+  overdue?: boolean;
   onViewDetails: (appts: Appointment[]) => void;
   onApproveAll: (appts: Appointment[]) => void;
   onRejectAll: (appts: Appointment[]) => void;
@@ -34,6 +36,7 @@ type GroupPendingCardProps = {
 
 export function GroupPendingCard({
   appointments,
+  overdue = false,
   onViewDetails,
   onApproveAll,
   onRejectAll,
@@ -64,7 +67,12 @@ export function GroupPendingCard({
           <span className="font-semibold text-gray-900 text-sm">
             Group Booking ({appointments.length})
           </span>
-          <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+          {overdue && (
+            <span className="ml-auto rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+              Overdue
+            </span>
+          )}
+          <span className={cn("rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700", overdue && "ml-0")}>
             {formatShortDate(first.appointment_date)}
           </span>
           <ChevronRight className="size-4 shrink-0 text-amber-600 transition-transform group-hover:translate-x-0.5" />
@@ -119,8 +127,14 @@ export function GroupPendingCard({
       <div className="mt-3 grid grid-cols-2 gap-2">
         <Button
           onClick={() => onApproveAll(appointments)}
-          disabled={disabled}
-          className="bg-green-600 hover:bg-green-700 text-white gap-1.5 text-sm h-9"
+          disabled={disabled || overdue}
+          title={overdue ? "Cannot approve an overdue booking" : undefined}
+          className={cn(
+            "gap-1.5 text-sm h-9",
+            overdue
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-green-600 hover:bg-green-700 text-white",
+          )}
         >
           {appointments.length > 1 ? "Approve All" : "Approve"}
         </Button>

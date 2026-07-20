@@ -115,6 +115,37 @@ function normalizeToHHmm(time: string): string {
 
 const todayDate = new Date().toISOString().split("T")[0];
 
+type PendingUnit =
+  | { kind: "group"; batchId: string; appointments: Appointment[]; sortKey: string; overdue: boolean }
+  | { kind: "individual"; appointment: Appointment; sortKey: string; overdue: boolean };
+
+function toManilaTimestamp(date: string, time: string): number {
+  const hhmm = normalizeToHHmm(time);
+  return new Date(`${date}T${hhmm}:00+08:00`).getTime();
+}
+
+function isUnitOverdue(appts: Appointment[], nowMs: number): boolean {
+  const earliest = appts.reduce(
+    (min, a) => Math.min(min, toManilaTimestamp(a.appointment_date, a.appointment_time)),
+    Infinity,
+  );
+  return earliest < nowMs;
+}
+
+function sortPendingUnits(units: PendingUnit[]): PendingUnit[] {
+  const upcoming: PendingUnit[] = [];
+  const overdue: PendingUnit[] = [];
+
+  for (const unit of units) {
+    (unit.overdue ? overdue : upcoming).push(unit);
+  }
+
+  upcoming.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  overdue.sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+
+  return [...upcoming, ...overdue];
+}
+
 function ActionMenu({
   onSelect,
   onCancel,
@@ -260,17 +291,24 @@ function AppointmentRow({
 
 function PendingCard({
   req,
+  overdue = false,
   onApprove,
   onCancel,
   disabled = false,
 }: {
   req: Appointment;
+  overdue?: boolean;
   onApprove: (appt: Appointment) => void;
   onCancel: (appt: Appointment) => void;
   disabled?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+    <div className="relative rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+      {overdue && (
+        <span className="absolute top-2 right-2 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+          Overdue
+        </span>
+      )}
       <div className="flex items-center gap-1.5 mb-1">
         <User className="w-4 h-4 text-gray-400" />
         <span className="font-semibold text-gray-900 text-sm">
@@ -314,8 +352,14 @@ function PendingCard({
         <div className="grid grid-cols-2 gap-2">
           <Button
             onClick={() => onApprove(req)}
-            disabled={disabled}
-            className="bg-green-600 hover:bg-green-700 text-white gap-1.5 text-sm h-9"
+            disabled={disabled || overdue}
+            title={overdue ? "Cannot approve an overdue appointment" : undefined}
+            className={cn(
+              "gap-1.5 text-sm h-9",
+              overdue
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700 text-white",
+            )}
           >
             <Check className="w-4 h-4" /> Approve
           </Button>
@@ -397,6 +441,7 @@ export function Appointment() {
   const [pendingDetailAppointments, setPendingDetailAppointments] = useState<
     Appointment[] | null
   >(null);
+  const [now, setNow] = useState(() => Date.now());
 
   const loadAppointments = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -411,6 +456,11 @@ export function Appointment() {
     }
   }, []);
 
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   useRealtimeEvent("appointments", loadAppointments);
 
   const pending = useMemo(
@@ -419,7 +469,7 @@ export function Appointment() {
   );
   const showPendingRequests = appointmentLoading || pending.length > 0;
 
-  const pendingGroups = useMemo(() => {
+  const sortedPending = useMemo(() => {
     const grouped = new Map<string, Appointment[]>();
     const individuals: Appointment[] = [];
 
@@ -436,26 +486,33 @@ export function Appointment() {
       }
     }
 
-    const groups = Array.from(grouped.values()).sort((a, b) => {
-      const aTime = a.reduce(
-        (earliest, s) =>
-          s.appointment_time < earliest ? s.appointment_time : earliest,
-        a[0]?.appointment_time ?? "",
-      );
-      const bTime = b.reduce(
-        (earliest, s) =>
-          s.appointment_time < earliest ? s.appointment_time : earliest,
-        b[0]?.appointment_time ?? "",
-      );
-      return aTime.localeCompare(bTime);
-    });
+    const units: PendingUnit[] = [];
 
-    individuals.sort((a, b) =>
-      a.appointment_time.localeCompare(b.appointment_time),
-    );
+    for (const appts of grouped.values()) {
+      const sortKey = appts
+        .map((a) => `${a.appointment_date}T${normalizeToHHmm(a.appointment_time)}`)
+        .sort()[0];
+      units.push({
+        kind: "group",
+        batchId: appts[0].batch_id ?? "",
+        appointments: appts,
+        sortKey,
+        overdue: isUnitOverdue(appts, now),
+      });
+    }
 
-    return { groups, individuals };
-  }, [pending]);
+    for (const appt of individuals) {
+      const sortKey = `${appt.appointment_date}T${normalizeToHHmm(appt.appointment_time)}`;
+      units.push({
+        kind: "individual",
+        appointment: appt,
+        sortKey,
+        overdue: toManilaTimestamp(appt.appointment_date, appt.appointment_time) < now,
+      });
+    }
+
+    return sortPendingUnits(units);
+  }, [pending, now]);
 
   const approvedAppointments = useMemo(
     () => appointments.filter((a) => a.status === "approved"),
@@ -774,37 +831,41 @@ export function Appointment() {
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                {pendingGroups.groups.map((group) => {
-                  const batchId = group[0]?.batch_id ?? "";
-                  const isUpdating = updatingBatchIds.includes(batchId);
+                {sortedPending.map((unit) => {
+                  if (unit.kind === "group") {
+                    const isUpdating = updatingBatchIds.includes(unit.batchId);
+                    return (
+                      <div
+                        key={unit.batchId}
+                        className={isUpdating ? "opacity-60" : ""}
+                      >
+                        <GroupPendingCard
+                          appointments={unit.appointments}
+                          overdue={unit.overdue}
+                          onViewDetails={setPendingDetailAppointments}
+                          onApproveAll={setApproveTarget}
+                          onRejectAll={handleBatchRejectClick}
+                          disabled={isUpdating}
+                        />
+                      </div>
+                    );
+                  }
+
                   return (
                     <div
-                      key={batchId}
-                      className={isUpdating ? "opacity-60" : ""}
+                      key={unit.appointment.id}
+                      className={updatingIds.includes(unit.appointment.id) ? "opacity-60" : ""}
                     >
-                      <GroupPendingCard
-                        appointments={group}
-                        onViewDetails={setPendingDetailAppointments}
-                        onApproveAll={setApproveTarget}
-                        onRejectAll={handleBatchRejectClick}
-                        disabled={isUpdating}
+                      <PendingCard
+                        req={unit.appointment}
+                        overdue={unit.overdue}
+                        onApprove={(appt) => setApproveTarget([appt])}
+                        onCancel={handleCancelClick}
+                        disabled={updatingIds.includes(unit.appointment.id)}
                       />
                     </div>
                   );
                 })}
-                {pendingGroups.individuals.map((req) => (
-                  <div
-                    key={req.id}
-                    className={updatingIds.includes(req.id) ? "opacity-60" : ""}
-                  >
-                    <PendingCard
-                      req={req}
-                      onApprove={(appt) => setApproveTarget([appt])}
-                      onCancel={handleCancelClick}
-                      disabled={updatingIds.includes(req.id)}
-                    />
-                  </div>
-                ))}
               </div>
             )}
           </SectionCard>
