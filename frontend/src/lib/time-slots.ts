@@ -58,6 +58,13 @@ export function generateTimeOptions(
     const mins = currentMinutes % 60;
     const period = hours >= 12 ? "PM" : "AM";
     const displayH = hours % 12 || 12;
+
+    if (hours === 12 && mins === 0) {
+      options.push({ value: "12:30 PM", label: "12:30 PM" });
+      currentMinutes += intervalMinutes;
+      continue;
+    }
+
     const value = `${displayH}:${String(mins).padStart(2, "0")} ${period}`;
     options.push({ value, label: value });
     currentMinutes += intervalMinutes;

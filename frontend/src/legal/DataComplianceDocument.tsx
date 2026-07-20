@@ -179,8 +179,8 @@ export default function DataComplianceDocument() {
         <p>
           Questions, rights requests, and security or privacy reports may be
           sent to{" "}
-          <a href="mailto:tolbarbershop23@gmail.com">
-            tolbarbershop23@gmail.com
+          <a href="mailto:ofcl.tolbarbershop@gmail.com">
+            ofcl.tolbarbershop@gmail.com
           </a>
           , or delivered to TOL Barbershop, 2nd Floor, Osrem Building, Gen.
           Trias Drive, Tejero, General Trias City, Cavite, Philippines.

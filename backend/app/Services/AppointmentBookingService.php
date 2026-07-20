@@ -304,13 +304,16 @@ class AppointmentBookingService
 
     private function parseSlotTime(string $value, string $field): int
     {
-        if (preg_match('/^(09|1[0-9]):00$/', $value, $matches) !== 1) {
+        if (preg_match('/^(09|1[0-1]):00$|^12:30$|^(1[3-9]):00$/', $value, $matches) !== 1) {
             throw ValidationException::withMessages([
-                $field => 'Appointments must start on the hour from 09:00 through 19:00.',
+                $field => 'The selected start time is not available.',
             ]);
         }
 
-        return (int) $matches[1] * 60;
+        $time = substr($value, 0, 5);
+        [$hour, $minute] = explode(':', $time);
+
+        return ((int) $hour * 60) + (int) $minute;
     }
 
     private function minutesFromStoredTime(string $value): int

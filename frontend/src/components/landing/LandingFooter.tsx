@@ -77,10 +77,10 @@ export function LandingFooter() {
           <div className="flex items-center space-x-3">
             <Mail />
             <a
-              href="mailto:tolbarbershop23@gmail.com"
+              href="mailto:ofcl.tolbarbershop@gmail.com"
               className="text-sm hover:text-accent transition-colors"
             >
-              tolbarbershop23@gmail.com
+              ofcl.tolbarbershop@gmail.com
             </a>
           </div>
 

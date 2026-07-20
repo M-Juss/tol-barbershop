@@ -9,7 +9,7 @@ export const appointmentStatusSchema = z.enum([
   "rejected",
 ]);
 
-const bookingTimePattern = /^(09|1[0-9]):00$/;
+const bookingTimePattern = /^(09|1[0-1]):00$|^12:30$|^(1[3-9]):00$/;
 
 const bookingDateSchema = z
   .string()

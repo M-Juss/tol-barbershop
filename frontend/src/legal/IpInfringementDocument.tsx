@@ -48,8 +48,8 @@ export default function IpInfringementDocument() {
         <h2>3. Submitting an infringement complaint</h2>
         <p>
           Send a complaint with the subject &quot;IP Infringement Complaint&quot; to{" "}
-          <a href="mailto:tolbarbershop23@gmail.com">
-            tolbarbershop23@gmail.com
+          <a href="mailto:ofcl.tolbarbershop@gmail.com">
+            ofcl.tolbarbershop@gmail.com
           </a>
           . A complete complaint should include:
         </p>
@@ -142,8 +142,8 @@ export default function IpInfringementDocument() {
         </p>
         <p>
           Contact TOL Barbershop at{" "}
-          <a href="mailto:tolbarbershop23@gmail.com">
-            tolbarbershop23@gmail.com
+          <a href="mailto:ofcl.tolbarbershop@gmail.com">
+            ofcl.tolbarbershop@gmail.com
           </a>
           , or at 2nd Floor, Osrem Building, Gen. Trias Drive, Tejero, General
           Trias City, Cavite, Philippines.
