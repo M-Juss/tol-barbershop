@@ -137,6 +137,7 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
       </p>
 
       <form
+        method="post"
         onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
         className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6"
       >
@@ -145,6 +146,7 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
             id="customer-name"
             label="Customer Name *"
             placeholder="Enter customer name"
+            maxLength={255}
             className="h-10 border-gray-200 text-gray-500"
             {...register("customer_name")}
           />
@@ -204,6 +206,7 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
             id="notes"
             label="Notes"
             placeholder="Add notes (optional)"
+            maxLength={500}
             {...register("notes")}
           />
           {errors.notes && (

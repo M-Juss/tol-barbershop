@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import {
   Plus,
@@ -36,6 +38,8 @@ import {
   type Role,
   type Module,
 } from "@/services/manager/role.api";
+import { CheckboxWithLabel } from "@/components/common/CheckboxWithLabel";
+import { InputWithLabel } from "@/components/common/InputWithLabel";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +48,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -78,6 +81,7 @@ export function Admin() {
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [adminToDelete, setAdminToDelete] = useState<number | null>(null);
+  const [isDeletingAdmin, setIsDeletingAdmin] = useState(false);
 
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -86,6 +90,8 @@ export function Admin() {
 
   const [deleteRoleConfirmOpen, setDeleteRoleConfirmOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<number | null>(null);
+  const [isDeletingRole, setIsDeletingRole] = useState(false);
+  const [isSavingRole, setIsSavingRole] = useState(false);
   const [adminPage, setAdminPage] = useState(1);
   const adminPageSize = 8;
 
@@ -140,15 +146,15 @@ export function Admin() {
     try {
       if (editingAdmin) {
         await updateAdmin(editingAdmin.id, data);
-        toast.success("Admin updated successfully");
+        toast.success("Admin profile updated");
       } else {
         await createAdmin(data);
-        toast.success("Admin created successfully");
+        toast.success("Admin added successfully");
       }
       await loadData();
       closeAdminModal();
-    } catch {
-      toast.error("Failed to save admin");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save admin. Please try again.");
     }
   };
 
@@ -158,15 +164,18 @@ export function Admin() {
   };
 
   const confirmDeleteAdmin = async () => {
-    if (!adminToDelete) return;
+    if (!adminToDelete || isDeletingAdmin) return;
+    setIsDeletingAdmin(true);
     try {
       await deleteAdmin(adminToDelete);
       await loadData();
       setDeleteConfirmOpen(false);
       setAdminToDelete(null);
-      toast.success("Admin deleted successfully");
-    } catch {
-      toast.error("Failed to delete admin");
+      toast.success("Admin removed");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete admin. Please try again.");
+    } finally {
+      setIsDeletingAdmin(false);
     }
   };
 
@@ -190,32 +199,50 @@ export function Admin() {
   };
 
   const handleRoleSubmit = async () => {
-    if (!roleName.trim()) {
+    const name = roleName.trim();
+    if (!name) {
       toast.error("Role name is required");
+      return;
+    }
+    if (name.length > 255) {
+      toast.error("Role name must not exceed 255 characters");
       return;
     }
     if (selectedModuleIds.length === 0) {
       toast.error("Please select at least one module");
       return;
     }
+    const validModuleIds = new Set(modules.map((module) => module.id));
+    if (
+      new Set(selectedModuleIds).size !== selectedModuleIds.length ||
+      selectedModuleIds.some((id) => !validModuleIds.has(id))
+    ) {
+      toast.error("The selected module list is invalid");
+      return;
+    }
+
+    if (isSavingRole) return;
+    setIsSavingRole(true);
     try {
       if (editingRole) {
         await updateRole(editingRole.id, {
-          name: roleName.trim(),
+          name,
           module_ids: selectedModuleIds,
         });
-        toast.success("Role updated successfully");
+        toast.success("Role updated");
       } else {
         await createRole({
-          name: roleName.trim(),
+          name,
           module_ids: selectedModuleIds,
         });
-        toast.success("Role created successfully");
+        toast.success("Role added");
       }
       await loadData();
       closeRoleModal();
-    } catch {
-      toast.error("Failed to save role");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save role. Please try again.");
+    } finally {
+      setIsSavingRole(false);
     }
   };
 
@@ -225,15 +252,18 @@ export function Admin() {
   };
 
   const confirmDeleteRole = async () => {
-    if (!roleToDelete) return;
+    if (!roleToDelete || isDeletingRole) return;
+    setIsDeletingRole(true);
     try {
       await deleteRole(roleToDelete);
       await loadData();
       setDeleteRoleConfirmOpen(false);
       setRoleToDelete(null);
-      toast.success("Role deleted successfully");
-    } catch {
-      toast.error("Failed to delete role");
+      toast.success("Role removed");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete role. Please try again.");
+    } finally {
+      setIsDeletingRole(false);
     }
   };
 
@@ -559,7 +589,12 @@ export function Admin() {
         title={editingAdmin ? "Edit Admin" : "Add New Admin"}
       />
 
-      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <Dialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          if (!isDeletingAdmin) setDeleteConfirmOpen(open);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -572,21 +607,33 @@ export function Admin() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteConfirmOpen(false)}
+              disabled={isDeletingAdmin}
+            >
               Cancel
             </Button>
             <Button
+              type="button"
               onClick={confirmDeleteAdmin}
+              disabled={isDeletingAdmin}
               className="bg-red-500 hover:bg-red-600 text-white"
             >
-              Delete
+              {isDeletingAdmin ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showRoleModal} onOpenChange={closeRoleModal}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog
+        open={showRoleModal}
+        onOpenChange={(open) => {
+          if (!open && !isSavingRole) closeRoleModal();
+        }}
+      >
+        <DialogContent className="grid max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-gray-900">
               {editingRole ? "Edit Role" : "Create Role"}
@@ -598,30 +645,31 @@ export function Admin() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Role Name
-              </label>
-              <Input
+              <InputWithLabel
+                id="role-name"
+                label="Role Name"
                 value={roleName}
                 onChange={(e) => setRoleName(e.target.value)}
                 placeholder="e.g. Front Desk"
+                maxLength={255}
+                disabled={isSavingRole}
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="flex min-h-0 flex-1 flex-col">
+              <p className="block text-sm font-medium text-gray-700 mb-2">
                 Module Permissions
-              </label>
-              <div className="space-y-4">
+              </p>
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-2">
                 {(() => {
                   const categories = [
                     { label: "Overview", keys: ["dashboard"] },
                     { label: "Operations", keys: ["appointment", "walkin", "history"] },
-                    { label: "Analytics", keys: ["reports", "feedback"] },
-                    { label: "Relations", keys: ["crm", "customer-service"] },
                     { label: "Administration", keys: ["management"] },
+                    { label: "Relations", keys: ["crm", "customer-service"] },
+                    { label: "Analytics", keys: ["reports", "feedback"] },
                   ];
                   const moduleByKey = Object.fromEntries(
                     modules.map((m) => [m.key, m]),
@@ -638,22 +686,16 @@ export function Admin() {
                         </p>
                         <div className="space-y-1 pl-2">
                           {catModules.map((mod) => (
-                            <div
+                            <CheckboxWithLabel
                               key={mod.id}
-                              onClick={() => toggleModule(mod.id)}
-                              className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
-                            >
-                              <div
-                                className={cn("w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors", selectedModuleIds.includes(mod.id) ? "bg-red-500 border-red-500" : "border-gray-300")}
-                              >
-                                {selectedModuleIds.includes(mod.id) && (
-                                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                                )}
-                              </div>
-                              <span className="text-sm font-medium text-gray-900">
-                                {mod.name}
-                              </span>
-                            </div>
+                              id={`module-${mod.id}`}
+                              label={mod.name}
+                              checked={selectedModuleIds.includes(mod.id)}
+                              onCheckedChange={() => toggleModule(mod.id)}
+                              containerClassName="rounded-lg border border-gray-200 p-2.5 transition-colors hover:bg-gray-50"
+                              className="mt-0.5 border-gray-300 data-checked:border-red-500 data-checked:bg-red-500"
+                              labelClassName="flex-1 font-medium text-gray-900"
+                            />
                           ))}
                         </div>
                       </div>
@@ -665,20 +707,36 @@ export function Admin() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={closeRoleModal}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeRoleModal}
+              disabled={isSavingRole}
+            >
               Cancel
             </Button>
             <Button
+              type="button"
               onClick={handleRoleSubmit}
+              disabled={isSavingRole}
               className="bg-red-500 hover:bg-red-600 text-white"
             >
-              {editingRole ? "Update Role" : "Create Role"}
+              {isSavingRole
+                ? "Saving..."
+                : editingRole
+                  ? "Update Role"
+                  : "Create Role"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleteRoleConfirmOpen} onOpenChange={setDeleteRoleConfirmOpen}>
+      <Dialog
+        open={deleteRoleConfirmOpen}
+        onOpenChange={(open) => {
+          if (!isDeletingRole) setDeleteRoleConfirmOpen(open);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -690,14 +748,21 @@ export function Admin() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteRoleConfirmOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteRoleConfirmOpen(false)}
+              disabled={isDeletingRole}
+            >
               Cancel
             </Button>
             <Button
+              type="button"
               onClick={confirmDeleteRole}
+              disabled={isDeletingRole}
               className="bg-red-500 hover:bg-red-600 text-white"
             >
-              Delete
+              {isDeletingRole ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

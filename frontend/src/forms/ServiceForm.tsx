@@ -105,12 +105,17 @@ export function ServiceForm({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onFormSubmit, onFormInvalid)} className="space-y-5">
+        <form
+          method="post"
+          onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
+          className="space-y-5"
+        >
           <div className="relative ">
             <InputWithLabel
               id="name"
               label="Service Name"
               placeholder="e.g., Premium Haircut"
+              maxLength={255}
               className="border-gray-300 focus:border-gray-400 h-10"
               {...formRegister("name")}
             />
@@ -124,6 +129,7 @@ export function ServiceForm({
               id="description"
               label="Description"
               placeholder="Describe the service..."
+              maxLength={1000}
               rows={3}
               className="border border-gray-300 focus:border-gray-400"
               {...formRegister("description")}
@@ -141,6 +147,8 @@ export function ServiceForm({
                 id="duration"
                 label="Duration (minutes)"
                 type="number"
+                min={1}
+                max={480}
                 className="border-gray-300 focus:border-gray-400 h-10"
                 {...formRegister("duration", { valueAsNumber: true })}
               />
@@ -155,6 +163,8 @@ export function ServiceForm({
                 id="price"
                 label="Price (₱)"
                 type="number"
+                min={0}
+                max={999999}
                 className="border-gray-300 focus:border-gray-400 h-10"
                 {...formRegister("price", { valueAsNumber: true })}
               />

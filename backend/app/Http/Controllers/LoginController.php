@@ -5,12 +5,18 @@ namespace App\Http\Controllers;
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\UserResource;
 use App\Traits\ApiResponseTrait;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
 {
     use ApiResponseTrait;
+
+    public function unauthenticated(): JsonResponse
+    {
+        return response()->json(['message' => 'Unauthenticated'], 401);
+    }
 
     public function login(LoginRequest $request)
     {

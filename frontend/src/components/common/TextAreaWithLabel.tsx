@@ -9,7 +9,7 @@ type TextAreaWithLabelProps = Omit<
   React.ComponentProps<"textarea">,
   "readOnly" | "disabled"
 > & {
-  label: string;
+  label: React.ReactNode;
   icon?: React.ReactNode;
   disabled?: boolean;
 };

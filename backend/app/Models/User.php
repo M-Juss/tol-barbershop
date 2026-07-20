@@ -6,6 +6,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -52,5 +53,32 @@ class User extends Authenticatable implements MustVerifyEmail
     public function policyAcceptances(): HasMany
     {
         return $this->hasMany(UserPolicyAcceptance::class);
+    }
+
+    public function scopeActiveStaffForModule(Builder $query, string $moduleKey): Builder
+    {
+        return $query
+            ->where('is_active', true)
+            ->where(function (Builder $staffQuery) use ($moduleKey): void {
+                $staffQuery
+                    ->where('role', 'manager')
+                    ->orWhere(function (Builder $adminQuery) use ($moduleKey): void {
+                        $adminQuery
+                            ->where('role', 'admin')
+                            ->whereHas('roleModel.modules', fn (Builder $moduleQuery) => $moduleQuery->where('key', $moduleKey));
+                    });
+            });
+    }
+
+    public function canAccessModule(string $moduleKey): bool
+    {
+        if ($this->role === 'manager') {
+            return true;
+        }
+
+        return $this->role === 'admin'
+            && $this->roleModel()
+                ->whereHas('modules', fn (Builder $query) => $query->where('key', $moduleKey))
+                ->exists();
     }
 }

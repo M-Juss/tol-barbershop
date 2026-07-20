@@ -12,6 +12,14 @@ import {
 import { SupportChatSheet } from "@/components/common/SupportChatSheet";
 import { SupportChatBubble } from "@/components/common/SupportChatBubble";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -37,7 +45,11 @@ import { toast } from "sonner";
 import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { startPolling } from "@/lib/polling";
 import { cn } from "@/lib/utils";
-import { mergeSupportMessages } from "@/lib/support";
+import {
+  mergeSupportMessages,
+  SUPPORT_CATEGORY_MAX_LENGTH,
+  SUPPORT_TEXT_MAX_LENGTH,
+} from "@/lib/support";
 
 type FabState = "idle" | "submitting" | "waiting" | "active" | "resolved";
 type SheetTab = "ticketing" | "history";
@@ -86,6 +98,8 @@ export function SupportFab() {
   const [concernCategory, setConcernCategory] = useState("");
   const [concernText, setConcernText] = useState("");
   const [sending, setSending] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageTicketIdRef = useRef<number | null>(null);
   const lastMessageIdRef = useRef(0);
@@ -93,6 +107,9 @@ export function SupportFab() {
   const ticketMutationPendingRef = useRef(false);
 
   const [historyTickets, setHistoryTickets] = useState<SupportTicket[]>([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyHasMore, setHistoryHasMore] = useState(false);
+  const [historyLoadingMore, setHistoryLoadingMore] = useState(false);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -202,15 +219,32 @@ export function SupportFab() {
     ticket?.status,
   ]);
 
-  const fetchHistoryTickets = useCallback(async () => {
+  const fetchHistoryTickets = useCallback(async (page = 1) => {
+    if (page > 1) setHistoryLoadingMore(true);
+
     try {
-      const tickets = await getMyTickets();
-      setHistoryTickets(tickets);
-    } catch {}
+      const result = await getMyTickets(page);
+      setHistoryTickets((current) =>
+        page === 1 ? result.tickets : [...current, ...result.tickets],
+      );
+      setHistoryPage(result.meta.current_page);
+      setHistoryHasMore(result.meta.current_page < result.meta.last_page);
+    } catch {
+    } finally {
+      if (page > 1) setHistoryLoadingMore(false);
+    }
   }, []);
 
   const handleSubmitTicket = async () => {
-    if (!concernCategory || !concernText.trim()) return;
+    const message = concernText.trim();
+    if (!concernCategory || !message) return;
+    if (
+      concernCategory.length > SUPPORT_CATEGORY_MAX_LENGTH ||
+      message.length > SUPPORT_TEXT_MAX_LENGTH
+    ) {
+      toast.error("Your support request is too long.");
+      return;
+    }
 
     ticketMutationPendingRef.current = true;
     ticketMutationVersionRef.current += 1;
@@ -219,7 +253,7 @@ export function SupportFab() {
       setFabState("submitting");
       const newTicket = await createTicket({
         category: concernCategory,
-        message: concernText.trim(),
+        message,
       });
       setTicket(newTicket);
       setConcernCategory("");
@@ -249,8 +283,9 @@ export function SupportFab() {
   };
 
   const handleCancelTicket = async () => {
-    if (!ticket) return;
+    if (!ticket || cancelling || ticketMutationPendingRef.current) return;
 
+    setCancelling(true);
     ticketMutationPendingRef.current = true;
     ticketMutationVersionRef.current += 1;
 
@@ -258,21 +293,28 @@ export function SupportFab() {
       await cancelTicket(ticket.id);
       setTicket(null);
       setFabState("idle");
+      setCancelConfirmOpen(false);
       setIsSheetOpen(false);
       toast.success("Ticket cancelled");
     } catch {
       toast.error("Failed to cancel ticket");
     } finally {
       ticketMutationPendingRef.current = false;
+      setCancelling(false);
     }
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !ticket || sending) return;
+    const message = newMessage.trim();
+    if (!message || !ticket || sending) return;
+    if (message.length > SUPPORT_TEXT_MAX_LENGTH) {
+      toast.error(`Messages must not exceed ${SUPPORT_TEXT_MAX_LENGTH} characters.`);
+      return;
+    }
 
     try {
       setSending(true);
-      const msg = await sendMessage(ticket.id, newMessage.trim());
+      const msg = await sendMessage(ticket.id, message);
       setMessages((current) => mergeSupportMessages(current, [msg]));
       setNewMessage("");
     } catch (error: unknown) {
@@ -403,6 +445,7 @@ export function SupportFab() {
                     value={concernText}
                     onChange={(e) => setConcernText(e.target.value)}
                     placeholder="Tell us what you need help with..."
+                    maxLength={SUPPORT_TEXT_MAX_LENGTH}
                     className="flex-1 min-h-[120px] resize-none border-gray-200 bg-gray-50 text-sm focus-visible:ring-blue-500/20"
                   />
                   <Button
@@ -435,7 +478,8 @@ export function SupportFab() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleCancelTicket}
+                    onClick={() => setCancelConfirmOpen(true)}
+                    disabled={cancelling}
                     className="mt-2 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
                   >
                     <X className="w-4 h-4 mr-2" />
@@ -473,6 +517,7 @@ export function SupportFab() {
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
+                        maxLength={SUPPORT_TEXT_MAX_LENGTH}
                         className="min-h-[40px] max-h-[100px] resize-none border-gray-200 bg-gray-50 text-sm focus-visible:ring-blue-500/20"
                         rows={1}
                       />
@@ -507,7 +552,8 @@ export function SupportFab() {
                   </p>
                 </div>
               ) : (
-                historyTickets.map((t) => {
+                <>
+                  {historyTickets.map((t) => {
                   const StatusIcon =
                     statusIcons[t.status as keyof typeof statusIcons] ||
                     MessageCircle;
@@ -564,12 +610,60 @@ export function SupportFab() {
                       </div>
                     </div>
                   );
-                })
+                  })}
+                  {historyHasMore && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      disabled={historyLoadingMore}
+                      onClick={() => fetchHistoryTickets(historyPage + 1)}
+                    >
+                      {historyLoadingMore ? "Loading..." : "Load older tickets"}
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           )}
         </div>
       </SupportChatSheet>
+
+      <Dialog
+        open={cancelConfirmOpen}
+        onOpenChange={(open) => {
+          if (!cancelling) setCancelConfirmOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Cancel Support Ticket</DialogTitle>
+            <DialogDescription>
+              Remove this ticket from the queue? You will need to submit a new
+              ticket if you still need help.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCancelConfirmOpen(false)}
+              disabled={cancelling}
+            >
+              Keep Ticket
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleCancelTicket}
+              disabled={cancelling}
+            >
+              {cancelling ? "Cancelling..." : "Cancel Ticket"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -3,10 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\RegisterRequest;
-use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Traits\ApiResponseTrait;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use LogicException;
 use Throwable;
 
@@ -27,26 +28,43 @@ class RegisterController extends Controller
             'terms_accepted',
             'privacy_acknowledged',
         ]);
+        $userAttributes['password'] = Hash::make($userAttributes['password']);
         $acceptedAt = now();
 
-        $user = DB::transaction(function () use ($userAttributes, $termsVersion, $privacyVersion, $acceptedAt): User {
-            $user = User::create($userAttributes);
-            $user->policyAcceptances()->create([
-                'terms_version' => $termsVersion,
-                'privacy_version' => $privacyVersion,
-                'accepted_at' => $acceptedAt,
-            ]);
-
-            return $user;
-        });
-
         try {
-            $user->sendEmailVerificationNotification();
-        } catch (Throwable $exception) {
-            report($exception);
+            $user = DB::transaction(function () use ($userAttributes, $termsVersion, $privacyVersion, $acceptedAt): ?User {
+                if (User::where('email', $userAttributes['email'])->lockForUpdate()->exists()) {
+                    return null;
+                }
+
+                $user = User::create($userAttributes);
+                $user->policyAcceptances()->create([
+                    'terms_version' => $termsVersion,
+                    'privacy_version' => $privacyVersion,
+                    'accepted_at' => $acceptedAt,
+                ]);
+
+                return $user;
+            });
+        } catch (UniqueConstraintViolationException) {
+            $user = null;
         }
 
-        return $this->success('User registered successfully', new UserResource($user), 201);
+        if ($user) {
+            defer(function () use ($user): void {
+                try {
+                    $user->sendEmailVerificationNotification();
+                } catch (Throwable $exception) {
+                    report($exception);
+                }
+            });
+        }
+
+        return $this->success(
+            'If registration can be completed, check your inbox for a verification email.',
+            ['email' => $userAttributes['email']],
+            201,
+        );
 
     }
 }

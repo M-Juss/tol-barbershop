@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Clock, Pencil, Trash2 } from "lucide-react";
+import { Archive, Clock, Pencil } from "lucide-react";
 
 type ServiceCardProps = {
   id: number;
@@ -55,6 +55,7 @@ export function ServicesCard({
         </div>
         <div className="border-t border-gray-100 pt-3 flex items-center gap-2">
           <button
+            type="button"
             onClick={() =>
               onEdit({ id, name, description, duration, price, is_active })
             }
@@ -64,10 +65,12 @@ export function ServicesCard({
             Edit
           </button>
           <button
+            type="button"
             onClick={() => onDelete(id)}
+            aria-label={`Archive ${name}`}
             className="bg-red-500 hover:bg-red-600 transition-colors text-white rounded-lg p-2"
           >
-            <Trash2 className="w-5 h-5" strokeWidth={2} />
+            <Archive className="w-5 h-5" strokeWidth={2} />
           </button>
         </div>
       </div>

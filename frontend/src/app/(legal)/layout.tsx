@@ -4,7 +4,6 @@ import Link from "next/link";
 const legalLinks = [
   { href: "/privacy-policy", label: "Privacy" },
   { href: "/terms-of-use", label: "Terms" },
-  { href: "/data-compliance", label: "Data Compliance" },
 ];
 
 export default function LegalLayout({

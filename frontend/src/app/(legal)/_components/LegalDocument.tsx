@@ -33,7 +33,7 @@ export function LegalDocument({
             Effective date
           </p>
           <p className="mt-2 text-sm font-semibold text-card-foreground">
-            July 14, 2026
+            July 20, 2026
           </p>
           <div className="my-5 h-px bg-border" />
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">

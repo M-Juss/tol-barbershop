@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\GalleryImage;
+use App\Models\Module;
+use App\Models\Role;
 use App\Models\User;
 use App\Services\CloudinaryMediaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -11,7 +13,16 @@ uses(RefreshDatabase::class);
 
 function galleryUser(string $role): User
 {
-    return User::factory()->create(['role' => $role]);
+    $user = User::factory()->create(['role' => $role]);
+
+    if ($role === 'admin') {
+        $managementModule = Module::create(['key' => 'management', 'name' => 'Management']);
+        $managementRole = Role::create(['name' => 'Gallery Admin']);
+        $managementRole->modules()->attach($managementModule);
+        $user->update(['role_id' => $managementRole->id]);
+    }
+
+    return $user;
 }
 
 function galleryImage(array $overrides = []): GalleryImage

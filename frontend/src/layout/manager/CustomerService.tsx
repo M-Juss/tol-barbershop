@@ -24,15 +24,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SupportChatBubble } from "@/components/common/SupportChatBubble";
-import { ResolveTicketDialog } from "@/layout/manager/ResolveTicketDialog";
-import { CancelTicketDialog } from "@/layout/manager/CancelTicketDialog";
+import dynamic from "next/dynamic";
+const ResolveTicketDialog = dynamic(
+  () =>
+    import("@/layout/manager/ResolveTicketDialog").then(
+      (mod) => mod.ResolveTicketDialog
+    ),
+  { ssr: false }
+);
+const CancelTicketDialog = dynamic(
+  () =>
+    import("@/layout/manager/CancelTicketDialog").then(
+      (mod) => mod.CancelTicketDialog
+    ),
+  { ssr: false }
+);
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { cn } from "@/lib/utils";
 import { startPolling } from "@/lib/polling";
 import { formatTicketId } from "@/lib/booking";
-import { mergeSupportMessages, mergeSupportTickets } from "@/lib/support";
+import {
+  mergeSupportMessages,
+  mergeSupportTickets,
+  SUPPORT_TEXT_MAX_LENGTH,
+} from "@/lib/support";
 import {
   getLiveQueue,
   getQueueHistory,
@@ -104,6 +121,9 @@ export function CustomerService() {
   const [tabView, setTabView] = useState<TabView>("queue");
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyLoadingMore, setHistoryLoadingMore] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyHasMore, setHistoryHasMore] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevMyActiveTicketRef = useRef<number | null>(null);
   const messageTicketIdRef = useRef<number | null>(null);
@@ -276,11 +296,16 @@ export function CustomerService() {
   };
 
   const handleSendMessage = async () => {
-    if (!chatInput.trim() || !myActiveTicket || sending) return;
+    const messageText = chatInput.trim();
+    if (!messageText || !myActiveTicket || sending) return;
+    if (messageText.length > SUPPORT_TEXT_MAX_LENGTH) {
+      toast.error(`Messages must not exceed ${SUPPORT_TEXT_MAX_LENGTH} characters.`);
+      return;
+    }
 
     try {
       setSending(true);
-      const message = await sendMessageAsStaff(myActiveTicket.id, chatInput.trim());
+      const message = await sendMessageAsStaff(myActiveTicket.id, messageText);
       setMessages((current) => mergeSupportMessages(current, [message]));
       setChatInput("");
     } catch (error: unknown) {
@@ -356,16 +381,19 @@ export function CustomerService() {
   const fetchHistory = useCallback(async (
     signal?: AbortSignal,
     updatedAfter?: string,
+    page = 1,
   ) => {
     const requestVersion = historyRequestVersionRef.current + 1;
     historyRequestVersionRef.current = requestVersion;
 
-    if (!updatedAfter) {
+    if (!updatedAfter && page === 1) {
       setHistoryLoading(true);
+    } else if (!updatedAfter) {
+      setHistoryLoadingMore(true);
     }
 
     try {
-      const data = await getQueueHistory({ signal, updatedAfter });
+      const data = await getQueueHistory({ signal, updatedAfter, page });
       if (requestVersion !== historyRequestVersionRef.current) return;
 
       const currentQueue = queueRef.current;
@@ -375,10 +403,10 @@ export function CustomerService() {
           ...(currentQueue?.active ?? []),
         ].map((ticket) => [ticket.id, ticket]),
       );
-      const resolvedTickets = updatedAfter
+      const resolvedTickets = updatedAfter || page > 1
         ? mergeSupportTickets(currentQueue?.resolved ?? [], data.resolved)
         : data.resolved;
-      const cancelledTickets = updatedAfter
+      const cancelledTickets = updatedAfter || page > 1
         ? mergeSupportTickets(currentQueue?.cancelled ?? [], data.cancelled)
         : data.cancelled;
       const terminalTickets = new Map(
@@ -403,6 +431,10 @@ export function CustomerService() {
       const nextQueue = { waiting, active, resolved, cancelled };
       queueRef.current = nextQueue;
       setQueue(nextQueue);
+      if (!updatedAfter) {
+        setHistoryPage(data.history_page ?? page);
+        setHistoryHasMore(Boolean(data.history_has_more));
+      }
       if (
         data.checked_at &&
         (!historyCheckedAtRef.current ||
@@ -413,8 +445,10 @@ export function CustomerService() {
       }
     } catch {
     } finally {
-      if (!updatedAfter && !signal?.aborted) {
+      if (!updatedAfter && page === 1 && !signal?.aborted) {
         setHistoryLoading(false);
+      } else if (!updatedAfter && !signal?.aborted) {
+        setHistoryLoadingMore(false);
       }
     }
   }, []);
@@ -423,8 +457,18 @@ export function CustomerService() {
     historyControllerRef.current?.abort();
     const controller = new AbortController();
     historyControllerRef.current = controller;
+    setHistoryPage(1);
     void fetchHistory(controller.signal);
   }, [fetchHistory]);
+
+  const loadMoreHistory = () => {
+    if (historyLoadingMore || !historyHasMore) return;
+
+    historyControllerRef.current?.abort();
+    const controller = new AbortController();
+    historyControllerRef.current = controller;
+    void fetchHistory(controller.signal, undefined, historyPage + 1);
+  };
 
   useEffect(() => {
     refreshHistoryRef.current = refreshHistory;
@@ -700,6 +744,7 @@ export function CustomerService() {
                       onChange={(e) => setChatInput(e.target.value)}
                       onKeyDown={handleKeyDown}
                       placeholder="Type a reply..."
+                      maxLength={SUPPORT_TEXT_MAX_LENGTH}
                       className="min-h-[40px] max-h-[100px] resize-none border-gray-200 bg-gray-50 text-sm focus-visible:ring-blue-500/20"
                       rows={1}
                     />
@@ -847,7 +892,8 @@ export function CustomerService() {
                         No {historyFilter !== "all" ? historyFilter : ""} tickets found.
                       </div>
                     ) : (
-                      filteredHistory.map((ticket) => {
+                      <>
+                        {filteredHistory.map((ticket) => {
                         const categoryLabel = ticket.category
                           ? (CONCERN_CATEGORIES[ticket.category] ?? ticket.category)
                           : "General";
@@ -889,7 +935,20 @@ export function CustomerService() {
                             <ChevronRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                           </button>
                         );
-                      })
+                        })}
+                        {historyHasMore && (
+                          <div className="p-4 text-center">
+                            <button
+                              type="button"
+                              onClick={loadMoreHistory}
+                              disabled={historyLoadingMore}
+                              className="rounded-md border border-gray-200 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {historyLoadingMore ? "Loading..." : "Load older tickets"}
+                            </button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

@@ -117,7 +117,7 @@ export function Gallery() {
       await loadImages();
       setDeleteConfirmOpen(false);
       setImageToDelete(null);
-      toast.success("Gallery image deleted successfully");
+      toast.success("Gallery image removed");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Could not delete gallery image",
@@ -137,25 +137,26 @@ export function Gallery() {
 
   return (
     <div className="w-full p-4 pb-12 font-sans sm:p-6 sm:pb-10">
-      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-gray-900">Landing Gallery</h2>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold text-gray-900">Landing Gallery</h2>
           <p className="mt-1 text-sm text-gray-500">
             Manage the images displayed in the public Services, Interior, and
             Tools gallery.
           </p>
         </div>
-        <Button
+        <button
           type="button"
           onClick={openCreateForm}
-          className="w-full bg-red-500 text-white hover:bg-red-600 sm:w-auto"
+          className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-600"
         >
-          <Plus className="h-4 w-4" />
-          Add Image
-        </Button>
+          <Plus className="size-3.5" strokeWidth={2.5} />
+          <span className="hidden xs:inline">Add Image</span>
+          <span className="xs:hidden">Add</span>
+        </button>
       </div>
 
-      <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+      <div className="mb-5 grid grid-cols-4 gap-1 sm:flex sm:flex-wrap sm:gap-2">
         {filters.map((filter) => {
           const count =
             filter.value === "all"
@@ -169,7 +170,7 @@ export function Gallery() {
               type="button"
               onClick={() => setActiveCategory(filter.value)}
               className={cn(
-                "shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
+                "min-w-0 w-full rounded-full border px-1 py-2 text-[10px] font-semibold transition-colors sm:w-auto sm:px-4 sm:text-sm",
                 activeCategory === filter.value
                   ? "border-gray-900 bg-gray-900 text-white"
                   : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
@@ -273,6 +274,7 @@ export function Gallery() {
       <Dialog
         open={deleteConfirmOpen}
         onOpenChange={(open) => {
+          if (deleting) return;
           setDeleteConfirmOpen(open);
           if (!open) setImageToDelete(null);
         }}

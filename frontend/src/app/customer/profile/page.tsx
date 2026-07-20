@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useAuth } from "@/contexts/AuthContext";
+import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/api";
 import { ChangePasswordForm } from "@/forms/ChangePasswordForm";
 import { AccountInformationForm } from "@/forms/AccountInformationForm";
 import {
@@ -23,7 +23,6 @@ import {
 import { toast } from "sonner";
 
 export default function Profile() {
-  const { logout } = useAuth();
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showDeactivateAccount, setShowDeactivateAccount] = useState(false);
   const [password, setPassword] = useState("");
@@ -39,9 +38,10 @@ export default function Profile() {
     try {
       await deleteAccount(password);
       toast.success("Account deactivated");
-      await logout();
-    } catch {
-      toast.error("Account could not be deactivated. Check your password.");
+      window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT));
+      window.location.replace("/");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Account could not be deactivated. Please check your password.");
       setIsDeactivating(false);
     }
   };
@@ -127,6 +127,7 @@ export default function Profile() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             autoComplete="current-password"
+            maxLength={255}
             disabled={isDeactivating}
           />
           <p className="text-xs leading-5 text-muted-foreground">
@@ -164,12 +165,12 @@ export default function Profile() {
           try {
             await changePassword(payload);
             toast.success("Password updated successfully");
-          } catch {
-            toast.error("Failed to update password");
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Could not update password. Please try again.");
           }
         }}
       />
-      <div className="my-10" />
+      <div className="h-10" />
     </div>
   );
 }

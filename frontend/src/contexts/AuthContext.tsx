@@ -15,6 +15,7 @@ import {
   type AuthUser,
   type LoginResponse,
 } from "@/services/shared/auth.api";
+import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/api";
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -29,7 +30,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 function setAuthRoleCookie(role: string): void {
   if (typeof document === "undefined") return;
-  document.cookie = `auth_role=${encodeURIComponent(role)}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`;
+  const secure = window.location.protocol === "https:" ? "; secure" : "";
+  document.cookie = `auth_role=${encodeURIComponent(role)}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax${secure}`;
 }
 
 function clearAuthRoleCookie(): void {
@@ -37,9 +39,34 @@ function clearAuthRoleCookie(): void {
   document.cookie = "auth_role=; path=/; max-age=0; samesite=lax";
 }
 
+function redirectFromProtectedRoute(reason: string): void {
+  if (
+    typeof window !== "undefined" &&
+    /^\/(admin|manager|customer)(?:\/|$)/.test(window.location.pathname)
+  ) {
+    window.location.replace(`/login?${reason}=1`);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const handleUnauthorized = (event: Event) => {
+      clearAuthRoleCookie();
+      setUser(null);
+
+      const code = (event as CustomEvent<{ code?: string | null }>).detail?.code;
+      redirectFromProtectedRoute(
+        code === "ACCOUNT_DISABLED" ? "account_disabled" : "session_expired",
+      );
+    };
+
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () =>
+      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
+  }, []);
 
   const refreshUser = useCallback(async () => {
     try {
@@ -54,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       clearAuthRoleCookie();
       setUser(null);
+      redirectFromProtectedRoute("session_expired");
     }
   }, []);
 
@@ -78,14 +106,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    try {
-      await logoutRequest();
-    } catch {
-    } finally {
-      clearAuthRoleCookie();
-      setUser(null);
-      window.location.href = "/";
+    const response = await logoutRequest();
+    if (!response?.success) {
+      throw new Error(response?.message || "Logout failed");
     }
+
+    clearAuthRoleCookie();
+    setUser(null);
+    window.location.replace("/");
   };
 
   return (

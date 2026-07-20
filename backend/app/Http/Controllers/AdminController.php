@@ -4,14 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StaffRequest;
 use App\Http\Resources\StaffResource;
+use App\Models\PushSubscription;
 use App\Models\User;
+use App\Services\SupportTicketAssignmentService;
 use App\Support\EntityChange;
 use App\Traits\ApiResponseTrait;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Throwable;
 
 class AdminController extends Controller
 {
     use ApiResponseTrait;
+
+    public function __construct(private readonly SupportTicketAssignmentService $supportTickets) {}
 
     /**
      * Display a listing of the resource.
@@ -24,7 +30,9 @@ class AdminController extends Controller
 
             return $this->success('Admin fetched successfully', $data);
 
-        } catch (\Exception $e) {
+        } catch (Throwable $exception) {
+            report($exception);
+
             return $this->error('Could not fetch staff', [], 500);
         }
     }
@@ -37,12 +45,6 @@ class AdminController extends Controller
         try {
             $validated = $request->validated();
 
-            // Handle image upload using Storage::store()
-            $imagePath = null;
-            if ($request->hasFile('image')) {
-                $imagePath = $request->file('image')->store('staff-images', 'public');
-            }
-
             $staffData = [
                 'fullname' => $validated['fullname'],
                 'email' => $validated['email'],
@@ -51,7 +53,6 @@ class AdminController extends Controller
                 'role' => 'admin',
                 'is_active' => $validated['is_active'] ?? true,
                 'role_id' => $validated['role_id'] ?? null,
-                'image' => $imagePath ? Storage::url($imagePath) : null,
             ];
 
             User::create($staffData);
@@ -59,8 +60,10 @@ class AdminController extends Controller
 
             return $this->created('Admin created successfully');
 
-        } catch (\Exception $e) {
-            return $this->error('Could not create admin: '.$e->getMessage(), [], 500);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return $this->error('Could not create admin', [], 500);
         }
     }
 
@@ -69,7 +72,19 @@ class AdminController extends Controller
      */
     public function show(string $id)
     {
-        //
+        try {
+            $admin = User::where('role', 'admin')->find($id);
+
+            if (! $admin) {
+                return $this->error('Admin not found', [], 404);
+            }
+
+            return $this->success('Admin fetched successfully', new StaffResource($admin));
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return $this->error('Could not fetch admin', [], 500);
+        }
     }
 
     /**
@@ -78,7 +93,7 @@ class AdminController extends Controller
     public function update(StaffRequest $request, string $id)
     {
         try {
-            $admin = User::find($id);
+            $admin = User::where('role', 'admin')->find($id);
 
             if (! $admin) {
                 return $this->error('Admin not found', [], 404);
@@ -86,39 +101,48 @@ class AdminController extends Controller
 
             $validated = $request->validated();
 
-            // Handle image upload using Storage::store()
-            if ($request->hasFile('image')) {
-                // Delete old image if exists
-                if ($admin->image) {
-                    $oldImagePath = str_replace('/storage/', '', $admin->image);
-                    if (Storage::disk('public')->exists($oldImagePath)) {
-                        Storage::disk('public')->delete($oldImagePath);
-                    }
-                }
-
-                $imagePath = $request->file('image')->store('staff-images', 'public');
-                $validated['image'] = Storage::url($imagePath);
-            } else {
-                $validated['image'] = $admin->image;
-            }
-
-            $admin->update([
+            $passwordChanged = ! empty($validated['password']);
+            $isBeingDeactivated = $admin->is_active && array_key_exists('is_active', $validated) && ! $validated['is_active'];
+            $updates = [
                 'fullname' => $validated['fullname'],
                 'email' => $validated['email'],
                 'contact_number' => $validated['contact_number'],
                 'is_active' => $validated['is_active'] ?? $admin->is_active,
-                'image' => $validated['image'],
                 'role_id' => array_key_exists('role_id', $validated) ? $validated['role_id'] : $admin->role_id,
-                'password' => ! empty($validated['password'])
-                    ? bcrypt($validated['password'])
-                    : $admin->password,
-            ]);
+            ];
+
+            if ($passwordChanged) {
+                $updates['password'] = bcrypt($validated['password']);
+                $updates['remember_token'] = Str::random(60);
+            }
+
+            $admin->forceFill($updates)->save();
+
+            if ($passwordChanged || $isBeingDeactivated) {
+                $admin->tokens()->delete();
+
+                if (config('session.driver') === 'database') {
+                    DB::table((string) config('session.table', 'sessions'))
+                        ->where('user_id', $admin->id)
+                        ->delete();
+                }
+            }
+
+            if ($isBeingDeactivated) {
+                PushSubscription::where('user_id', $admin->id)->delete();
+            }
+
+            if (! $admin->is_active || ! $admin->canAccessModule('customer-service')) {
+                $this->supportTickets->requeueAssignedTickets($admin->id);
+            }
 
             EntityChange::dispatch('admins');
 
             return $this->success('Admin updated successfully');
 
-        } catch (\Exception $e) {
+        } catch (Throwable $exception) {
+            report($exception);
+
             return $this->error('Could not update admin', [], 500);
         }
     }
@@ -129,18 +153,32 @@ class AdminController extends Controller
     public function destroy(string $id)
     {
         try {
-            $admin = User::find($id);
+            $admin = User::where('role', 'admin')->find($id);
 
             if (! $admin) {
                 return $this->error('Admin not found', [], 404);
             }
 
-            $admin->delete();
+            DB::transaction(function () use ($admin): void {
+                $this->supportTickets->requeueAssignedTickets($admin->id);
+                PushSubscription::where('user_id', $admin->id)->delete();
+                $admin->tokens()->delete();
+
+                if (config('session.driver') === 'database') {
+                    DB::table((string) config('session.table', 'sessions'))
+                        ->where('user_id', $admin->id)
+                        ->delete();
+                }
+
+                $admin->delete();
+            });
             EntityChange::dispatch('admins');
 
             return $this->success('Admin deleted successfully');
 
-        } catch (\Exception $e) {
+        } catch (Throwable $exception) {
+            report($exception);
+
             return $this->error('Could not delete admin', [], 500);
         }
     }

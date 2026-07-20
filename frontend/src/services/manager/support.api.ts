@@ -2,6 +2,7 @@ import { authFetch } from "@/lib/api";
 import type {
   SupportTicket,
   SupportMessage,
+  SupportTicketPage,
 } from "@/services/customer/support.api";
 
 export interface QueueResponse {
@@ -10,6 +11,8 @@ export interface QueueResponse {
   resolved: SupportTicket[];
   cancelled: SupportTicket[];
   checked_at?: string;
+  history_page?: number;
+  history_has_more?: boolean;
 }
 
 export const getQueue = async (): Promise<QueueResponse> => {
@@ -30,12 +33,19 @@ export const getLiveQueue = async (
 };
 
 export const getQueueHistory = async (
-  options: { updatedAfter?: string; signal?: AbortSignal } = {},
+  options: {
+    updatedAfter?: string;
+    page?: number;
+    perPage?: number;
+    signal?: AbortSignal;
+  } = {},
 ): Promise<QueueResponse> => {
   const params = new URLSearchParams({ view: "history" });
   if (options.updatedAfter) {
     params.set("updated_after", options.updatedAfter);
   }
+  if (options.page) params.set("history_page", options.page.toString());
+  if (options.perPage) params.set("per_page", options.perPage.toString());
   const response = await authFetch(
     `${process.env.NEXT_PUBLIC_API_URL}/support/queue?${params.toString()}`,
     { signal: options.signal },
@@ -127,9 +137,10 @@ export const getTicketDetail = async (
 
 export const getCustomerTickets = async (
   customerId: number,
-): Promise<SupportTicket[]> => {
+  page = 1,
+): Promise<SupportTicketPage> => {
   const response = await authFetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/support/customer/${customerId}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/support/customer/${customerId}?page=${page}&per_page=20`,
   );
   return response.data;
 };

@@ -1,4 +1,5 @@
-import { authFetch, publicFetch } from "@/lib/api";
+import { ApiError, authFetch, publicFetch } from "@/lib/api";
+import { formatBookingId } from "@/lib/booking";
 
 export interface Barber {
   id: number;
@@ -73,6 +74,26 @@ export interface Appointment {
   updated_at: string;
 }
 
+export interface AppointmentHistoryMeta {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}
+
+export interface AppointmentHistoryFilters {
+  search?: string;
+  status?: AppointmentStatus;
+  is_walkin?: boolean;
+  page?: number;
+  per_page?: number;
+}
+
+export interface AppointmentHistoryResponse {
+  appointments: Appointment[];
+  meta: AppointmentHistoryMeta;
+}
+
 export interface CreateAppointmentData {
   user_id?: number;
   service_id: number;
@@ -123,6 +144,11 @@ export interface BookingSettings {
   max_slots_per_booking: number;
 }
 
+export type OccupiedAppointmentSlot = {
+  appointment_time: string;
+  duration_minutes: number;
+};
+
 export const getActiveBarbers = async (): Promise<Barber[]> => {
   const response = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/barber`);
   return response.data?.data ?? response.data;
@@ -143,6 +169,77 @@ export const getAppointments = async (
     { signal },
   );
   return response.data;
+};
+
+export const getAppointmentHistory = async (
+  filters: AppointmentHistoryFilters = {},
+  signal?: AbortSignal,
+): Promise<AppointmentHistoryResponse> => {
+  const params = new URLSearchParams();
+  if (filters.search) params.set("search", filters.search);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.is_walkin !== undefined) {
+    params.set("is_walkin", filters.is_walkin ? "1" : "0");
+  }
+  if (filters.page) params.set("page", String(filters.page));
+  if (filters.per_page) params.set("per_page", String(filters.per_page));
+
+  const query = params.toString();
+  try {
+    const response = await authFetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/appointments/history${query ? `?${query}` : ""}`,
+      { signal },
+    );
+
+    return response.data as AppointmentHistoryResponse;
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status !== 404) throw error;
+
+    const allAppointments = await getAppointments(signal);
+    const search = filters.search?.trim().toLowerCase();
+    const filtered = allAppointments
+      .filter((appointment) => {
+        if (filters.status && appointment.status !== filters.status) return false;
+        if (
+          filters.is_walkin !== undefined &&
+          appointment.is_walkin !== filters.is_walkin
+        ) {
+          return false;
+        }
+        if (!search) return true;
+
+        return [
+          String(appointment.id),
+          formatBookingId(appointment.id),
+          appointment.customer.fullname,
+          appointment.customer_name,
+          appointment.customer_name_snapshot,
+          appointment.service.name,
+          appointment.service_name_snapshot,
+          appointment.barber.fullname,
+          appointment.barber_name_snapshot,
+        ].some((value) => value?.toLowerCase().includes(search));
+      })
+      .sort((first, second) => {
+        const createdDifference =
+          new Date(second.created_at).getTime() -
+          new Date(first.created_at).getTime();
+        return createdDifference || second.id - first.id;
+      });
+    const perPage = filters.per_page ?? 10;
+    const page = filters.page ?? 1;
+    const start = (page - 1) * perPage;
+
+    return {
+      appointments: filtered.slice(start, start + perPage),
+      meta: {
+        current_page: page,
+        last_page: Math.max(1, Math.ceil(filtered.length / perPage)),
+        per_page: perPage,
+        total: filtered.length,
+      },
+    };
+  }
 };
 
 export const createAppointment = async (
@@ -185,12 +282,40 @@ export const createBatchAppointment = async (
   return response.data;
 };
 
+export const updateBatchAppointmentStatus = async (
+  batchId: string,
+  status: "approved" | "rejected",
+  cancellationReason?: string | null,
+): Promise<Appointment[]> => {
+  const response = await authFetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/appointments/batch/${encodeURIComponent(batchId)}/status`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        status,
+        cancellation_reason: cancellationReason ?? null,
+      }),
+    },
+  );
+
+  return response.data;
+};
+
 export const getUnavailableSlots = async (
   barberId: number,
   date: string,
-): Promise<string[]> => {
+  ignoreAppointmentId?: number,
+): Promise<OccupiedAppointmentSlot[]> => {
+  const params = new URLSearchParams({
+    barber_id: barberId.toString(),
+    date,
+  });
+  if (ignoreAppointmentId) {
+    params.set("ignore_appointment_id", ignoreAppointmentId.toString());
+  }
+
   const response = await authFetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/appointments/available-slots?barber_id=${barberId}&date=${date}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/appointments/available-slots?${params.toString()}`,
   );
   return response.data;
 };

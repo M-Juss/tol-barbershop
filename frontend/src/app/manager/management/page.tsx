@@ -1,18 +1,35 @@
 "use client";
 import { useState } from "react";
-import { Service } from "@/layout/manager/Service";
-import { Admin } from "@/layout/manager/Admin";
-import { Barber } from "@/layout/manager/Barber";
-import { Slots } from "@/layout/manager/Slots";
-import { Gallery } from "@/layout/manager/Gallery";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+
+const Service = dynamic(
+  () => import("@/layout/manager/Service").then((m) => m.Service),
+  { ssr: false }
+);
+const Gallery = dynamic(
+  () => import("@/layout/manager/Gallery").then((m) => m.Gallery),
+  { ssr: false }
+);
+const Admin = dynamic(
+  () => import("@/layout/manager/Admin").then((m) => m.Admin),
+  { ssr: false }
+);
+const Barber = dynamic(
+  () => import("@/layout/manager/Barber").then((m) => m.Barber),
+  { ssr: false }
+);
+const Slots = dynamic(
+  () => import("@/layout/manager/Slots").then((m) => m.Slots),
+  { ssr: false }
+);
 
 type ManagementTab = "Service" | "Gallery" | "Admin" | "Barber" | "Slots";
 
 export default function Management() {
   const { user } = useAuth();
-  const allTabs: ManagementTab[] = ["Service",  "Admin", "Barber", "Slots", "Gallery"];
+  const allTabs: ManagementTab[] = ["Service", "Admin", "Barber", "Slots", "Gallery"];
   const tabs = user?.role === "admin"
     ? allTabs.filter((t) => t !== "Admin")
     : allTabs;
@@ -28,14 +45,14 @@ export default function Management() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-1 mb-4 shadow-sm border border-gray-100 overflow-x-auto">
-          <div className="flex min-w-max gap-1">
+        <div className="mb-4 rounded-xl border border-gray-100 bg-white p-1 shadow-sm">
+          <div className="flex w-full gap-1">
             {tabs.map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={cn("min-w-24 flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors", activeTab === tab ? "bg-gray-100 text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}
+                className={cn("flex min-h-10 min-w-0 flex-1 items-center justify-center rounded-lg px-1 py-2 text-[11px] font-semibold transition-colors sm:px-4 sm:text-sm", activeTab === tab ? "bg-gray-100 text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}
               >
                 {tab}
               </button>
@@ -44,7 +61,7 @@ export default function Management() {
         </div>
       </div>
 
-      <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+      <div className="pb-4 sm:pb-6">
         {activeTab === "Service" && <Service />}
         {activeTab === "Gallery" && <Gallery />}
         {activeTab === "Admin" && <Admin />}

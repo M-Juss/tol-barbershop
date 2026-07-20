@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import { StatCard } from "@/components/common/StatCard";
 import { Button } from "@/components/ui/button";
@@ -32,14 +34,7 @@ import {
   Download,
 } from "lucide-react";
 import {
-  getAnalyticsKPI,
-  getAnalyticsRevenue,
-  getAnalyticsAppointments,
-  getAnalyticsServices,
-  getAnalyticsBarbers,
-  getAnalyticsRatings,
-  getAnalyticsPeakHours,
-  getAnalyticsDayOfWeek,
+  getConsolidatedReports,
   type Period,
   type AnalyticsKPI,
   type TimeSeriesPoint,
@@ -50,7 +45,6 @@ import {
   type PeakHourStat,
   type DayOfWeekStat,
 } from "@/services/manager/analytics.api";
-import { downloadAnalyticsReportPdf } from "@/lib/reportPdf";
 import { cn } from "@/lib/utils";
 
 const periods: { key: Period; label: string }[] = [
@@ -87,6 +81,30 @@ function formatLabel(label: string, period: Period): string {
   return label;
 }
 
+function formatTooltipLabel(label: string, period: Period): string {
+  if (period === "daily") {
+    const d = new Date(`${label}T00:00:00`);
+    return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  }
+  if (period === "weekly") {
+    const [year, week] = label.split("-");
+    const jan4 = new Date(parseInt(year), 0, 4);
+    const dayOfWeek = jan4.getDay() || 7;
+    const weekStart = new Date(jan4);
+    weekStart.setDate(jan4.getDate() - dayOfWeek + 1 + (parseInt(week) - 1) * 7);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return `Week ${week}, ${year} (${fmt(weekStart)} – ${fmt(weekEnd)})`;
+  }
+  if (period === "monthly") {
+    const [year, month] = label.split("-");
+    const d = new Date(parseInt(year), parseInt(month) - 1);
+    return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  }
+  return label;
+}
+
 export function ReportsAnalytics() {
   const [period, setPeriod] = useState<Period>("monthly");
   const [loadedPeriod, setLoadedPeriod] = useState<Period | null>(null);
@@ -109,39 +127,21 @@ export function ReportsAnalytics() {
     setLoading(true);
     setLoadedPeriod(null);
     try {
-      const [
-        kpiResult,
-        revenueResult,
-        appointmentResult,
-        serviceResult,
-        barberResult,
-        ratingResult,
-        peakHourResult,
-        dayOfWeekResult,
-      ] = await Promise.all([
-        getAnalyticsKPI(p),
-        getAnalyticsRevenue(p),
-        getAnalyticsAppointments(p),
-        getAnalyticsServices(p),
-        getAnalyticsBarbers(p),
-        getAnalyticsRatings(p),
-        getAnalyticsPeakHours(p),
-        getAnalyticsDayOfWeek(p),
-      ]);
+      const result = await getConsolidatedReports(p);
       if (id !== fetchId.current) return;
-      setKpi(kpiResult);
-      setRevenueData(revenueResult);
-      setAppointmentData(appointmentResult);
-      setServiceData(serviceResult);
-      setBarberData(barberResult);
-      setRatingData(ratingResult);
-      setPeakHourData(peakHourResult);
-      setDayOfWeekData(dayOfWeekResult);
+      setKpi(result.kpi);
+      setRevenueData(result.revenue);
+      setAppointmentData(result.appointments);
+      setServiceData(result.services);
+      setBarberData(result.barbers);
+      setRatingData(result.ratings);
+      setPeakHourData(result.peak_hours);
+      setDayOfWeekData(result.day_of_week);
       setLoadedPeriod(p);
     } catch (error) {
       if (id !== fetchId.current) return;
       console.error("Failed to load analytics data:", error);
-      toast.error("Failed to load analytics");
+      toast.error("Could not load report data. Please try again.");
     } finally {
       if (id !== fetchId.current) return;
       setLoading(false);
@@ -160,6 +160,7 @@ export function ReportsAnalytics() {
 
     try {
       setExporting(true);
+      const { downloadAnalyticsReportPdf } = await import("@/lib/reportPdf");
       await downloadAnalyticsReportPdf({
         period,
         kpi,
@@ -174,7 +175,7 @@ export function ReportsAnalytics() {
       toast.success("PDF exported successfully");
     } catch (error) {
       console.error("Export failed:", error);
-      toast.error("Failed to export PDF");
+      toast.error(error instanceof Error ? error.message : "Could not export PDF. Please try again.");
     } finally {
       setExporting(false);
     }
@@ -371,9 +372,9 @@ export function ReportsAnalytics() {
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      labelFormatter={(l) => formatLabel(String(l), period)}
+                      labelFormatter={(l) => formatTooltipLabel(String(l), period)}
                       formatter={(v) => `₱${Number(v).toLocaleString()}`}
-                      indicator="line"
+                      indicator="dot"
                     />
                   }
                 />
@@ -420,8 +421,9 @@ export function ReportsAnalytics() {
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      labelFormatter={(l) => formatLabel(String(l), period)}
+                      labelFormatter={(l) => formatTooltipLabel(String(l), period)}
                       indicator="dot"
+                      className="min-w-48"
                     />
                   }
                 />
@@ -512,7 +514,7 @@ export function ReportsAnalytics() {
                   config={serviceConfig}
                   className="h-[250px] w-full"
                 >
-                  <BarChart data={serviceData} layout="vertical" barSize={24}>
+                  <BarChart data={serviceData} layout="vertical" barSize={20}>
                     <CartesianGrid horizontal={false} strokeDasharray="4 4" />
                     <XAxis
                       type="number"
@@ -525,7 +527,7 @@ export function ReportsAnalytics() {
                       type="category"
                       axisLine={false}
                       tickLine={false}
-                      width={90}
+                      width={110}
                       tick={{ fontSize: 12 }}
                     />
                     <ChartTooltip
@@ -669,6 +671,13 @@ export function ReportsAnalytics() {
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
+                      labelFormatter={(l) => {
+                        const [hourStr, minute] = String(l).split(":");
+                        const hour = parseInt(hourStr, 10);
+                        const ampm = hour >= 12 ? "PM" : "AM";
+                        const hour12 = hour % 12 || 12;
+                        return `${hour12}:${minute} ${ampm}`;
+                      }}
                       formatter={(value) => [`${value} appointments`]}
                       indicator="dot"
                     />
@@ -698,7 +707,7 @@ export function ReportsAnalytics() {
             </div>
           ) : (
             <ChartContainer config={barberConfig} className="h-[250px] w-full">
-              <BarChart data={barberData} layout="vertical" barSize={24}>
+              <BarChart data={barberData} layout="vertical" barSize={20}>
                 <CartesianGrid horizontal={false} strokeDasharray="4 4" />
                 <XAxis
                   type="number"
@@ -711,7 +720,7 @@ export function ReportsAnalytics() {
                   type="category"
                   axisLine={false}
                   tickLine={false}
-                  width={80}
+                  width={110}
                   tick={{ fontSize: 12 }}
                 />
                 <ChartTooltip
@@ -750,7 +759,7 @@ export function ReportsAnalytics() {
               config={barberRevenueConfig}
               className="h-[250px] w-full"
             >
-              <BarChart data={barberData} layout="vertical" barSize={24}>
+              <BarChart data={barberData} layout="vertical" barSize={20}>
                 <CartesianGrid horizontal={false} strokeDasharray="4 4" />
                 <XAxis
                   type="number"
@@ -763,7 +772,7 @@ export function ReportsAnalytics() {
                   type="category"
                   axisLine={false}
                   tickLine={false}
-                  width={80}
+                  width={110}
                   tick={{ fontSize: 12 }}
                 />
                 <ChartTooltip

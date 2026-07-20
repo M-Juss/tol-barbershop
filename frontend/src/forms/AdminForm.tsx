@@ -17,13 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -133,13 +126,14 @@ export function AdminForm({
         </DialogHeader>
 
         <form
+          method="post"
           onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
           className="space-y-4"
         >
           <div className="relative ">
             <InputWithLabel
               id="fullname"
-              label="Full Name"
+              label="Name"
               placeholder="John Doe"
               className="border-gray-300 focus:border-gray-400 h-10"
               {...formRegister("fullname")}
@@ -235,28 +229,20 @@ export function AdminForm({
             onValueChange={(value) => setValue("is_active", value === "true")}
           />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Role
-            </label>
-            <Select
-              value={roleId != null ? String(roleId) : ""}
-              onValueChange={(value) =>
-                setValue("role_id", value ? Number(value) : null)
-              }
-            >
-              <SelectTrigger className="w-full border-gray-300 h-10">
-                <SelectValue placeholder="Select a role" />
-              </SelectTrigger>
-              <SelectContent>
-                {roles.map((role) => (
-                  <SelectItem key={role.id} value={String(role.id)}>
-                    {role.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <SelectWithLabel
+            id="role_id"
+            label="Role"
+            placeholder="Select a role"
+            options={roles.map((role) => ({
+              value: String(role.id),
+              label: role.name,
+            }))}
+            value={roleId != null ? String(roleId) : ""}
+            onValueChange={(value) =>
+              setValue("role_id", value ? Number(value) : null)
+            }
+            triggerClassName="h-10 py-0"
+          />
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>

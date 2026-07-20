@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { SelectWithLabel } from "@/components/common/SelectWithLabel";
+import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
 import {
   Dialog,
   DialogContent,
@@ -10,15 +12,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import { SUPPORT_TEXT_MAX_LENGTH } from "@/lib/support";
 
 const CANCEL_REASONS = [
   { value: "customer_unresponsive", label: "Customer unresponsive" },
@@ -75,41 +70,38 @@ export function CancelTicketDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
-              Reason <span className="text-red-500">*</span>
-            </label>
-            <Select value={reasonKey} onValueChange={setReasonKey}>
-              <SelectTrigger className="border-gray-200 bg-gray-50 text-sm">
-                <SelectValue placeholder="Select reason" />
-              </SelectTrigger>
-              <SelectContent>
-                {CANCEL_REASONS.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>
-                    {r.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <SelectWithLabel
+            id="cancel-reason"
+            label={
+              <>
+                Reason <span className="text-red-500">*</span>
+              </>
+            }
+            placeholder="Select reason"
+            options={CANCEL_REASONS}
+            value={reasonKey}
+            onValueChange={setReasonKey}
+            triggerClassName="border-gray-200 bg-gray-50"
+          />
 
           {reasonKey === "other" && (
             <div className="space-y-2">
-              <label
-                htmlFor="cancel-custom-reason"
-                className="text-sm font-medium text-gray-700"
-              >
-                Specify reason <span className="text-red-500">*</span>
-              </label>
-              <Textarea
+              <TextAreaWithLabel
                 id="cancel-custom-reason"
+                label={
+                  <>
+                    Specify reason <span className="text-red-500">*</span>
+                  </>
+                }
                 value={customReason}
                 onChange={(e) => setCustomReason(e.target.value)}
                 placeholder="Describe why this ticket is being cancelled..."
                 className="min-h-[100px] resize-none border-gray-200"
-                maxLength={5000}
+                maxLength={SUPPORT_TEXT_MAX_LENGTH}
               />
-              <p className="text-xs text-gray-400">{customReason.length}/5000</p>
+              <p className="text-xs text-gray-400">
+                {customReason.length}/{SUPPORT_TEXT_MAX_LENGTH}
+              </p>
             </div>
           )}
         </div>

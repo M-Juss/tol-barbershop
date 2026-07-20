@@ -437,6 +437,9 @@ export function CustomerDetail({ id }: CustomerDetailProps) {
           <p className="text-sm text-gray-400 mt-3">No appointments yet.</p>
         )}
       </SectionCard>
+      <div className="h-10" />
     </div>
+    
   );
+  
 }

@@ -58,7 +58,7 @@ class StaffRequest extends FormRequest
         }
 
         return [
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp,heic,heif|max:3072',
+            'image' => ['prohibited'],
             'fullname' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z\s]+$/'],
             'email' => $emailRules,
             'contact_number' => ['required', 'string', 'max:11', 'regex:/^09\d{9}$/'],
@@ -82,6 +82,7 @@ class StaffRequest extends FormRequest
                 : 'Password must be at least 8 characters long.',
             'password.max' => 'Password must not exceed 255 characters.',
             'is_active.required' => 'Status is required',
+            'image.prohibited' => 'Staff image uploads are disabled.',
         ];
     }
 }

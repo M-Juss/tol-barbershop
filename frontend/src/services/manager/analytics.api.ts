@@ -93,3 +93,18 @@ export const getAnalyticsPeakHours = async (period: Period): Promise<PeakHourSta
 export const getAnalyticsDayOfWeek = async (period: Period): Promise<DayOfWeekStat[]> => {
   return authFetch(`${API}/analytics/day-of-week?period=${period}`);
 };
+
+export interface ConsolidatedReports {
+  kpi: AnalyticsKPI;
+  revenue: TimeSeriesPoint[];
+  appointments: AppointmentVolumePoint[];
+  services: ServiceStat[];
+  barbers: BarberStat[];
+  ratings: RatingStat[];
+  peak_hours: PeakHourStat[];
+  day_of_week: DayOfWeekStat[];
+}
+
+export const getConsolidatedReports = async (period: Period): Promise<ConsolidatedReports> => {
+  return authFetch(`${API}/analytics/reports?period=${period}`);
+};

@@ -37,7 +37,10 @@ export interface FeedbackFilters {
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
-export const getFeedbackList = async (filters: FeedbackFilters = {}): Promise<FeedbackResponse> => {
+export const getFeedbackList = async (
+  filters: FeedbackFilters = {},
+  signal?: AbortSignal,
+): Promise<FeedbackResponse> => {
   const params = new URLSearchParams();
   if (filters.search) params.set("search", filters.search);
   if (filters.rating) params.set("rating", filters.rating);
@@ -48,7 +51,9 @@ export const getFeedbackList = async (filters: FeedbackFilters = {}): Promise<Fe
   if (filters.per_page) params.set("per_page", String(filters.per_page));
 
   const qs = params.toString();
-  const response = await authFetch(`${API}/feedback${qs ? `?${qs}` : ""}`);
+  const response = await authFetch(`${API}/feedback${qs ? `?${qs}` : ""}`, {
+    signal,
+  });
   return response.data as FeedbackResponse;
 };
 

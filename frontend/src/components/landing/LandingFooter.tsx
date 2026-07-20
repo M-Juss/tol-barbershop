@@ -1,0 +1,126 @@
+import Image from "next/image";
+import Link from "next/link";
+import { Mail, MapPin } from "lucide-react";
+
+export function LandingFooter() {
+  return (
+    <footer
+      id="contact"
+      className="flex flex-col border-y border-white/10 bg-primary text-white "
+    >
+      <div className="grid md:grid-cols-3 grid-cols-1 px-6 sm:px-8 lg:px-10 xl:px-32 py-12 gap-8 sm:gap-12">
+        <div className="flex flex-col">
+          <div className="flex items-center gap-3 mb-5 ">
+            <Image
+              src="/Tol-Logo-White-Bg.png"
+              alt="Logo"
+              height={35}
+              width={35}
+              className="rounded-lg"
+            />
+            <p className="text-xl font-semibold ">TOL Barbershop</p>
+          </div>
+          <p className="text-sm">
+            Where traditional barbering meets modern style. May barbero kana,
+            may Ka-TOL ka pa!
+          </p>
+          <div className="mt-5 flex items-center gap-3">
+            <a
+              href="https://www.facebook.com/profile.php?id=61550652631553"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="TOL Barbershop on Facebook"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white hover:border-accent hover:text-accent transition-colors"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="h-5 w-5"
+                aria-hidden="true"
+              >
+                <path d="M22 12.06C22 6.48 17.52 2 11.94 2S2 6.48 2 12.06c0 5.02 3.66 9.19 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.23.2 2.23.2v2.46h-1.25c-1.24 0-1.62.77-1.62 1.56v1.89h2.76l-.44 2.91h-2.32V22C18.34 21.25 22 17.08 22 12.06Z" />
+              </svg>
+            </a>
+            <a
+              href="https://www.instagram.com/tolbarbershop/?hl=en"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="TOL Barbershop on Instagram"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white hover:border-accent hover:text-accent transition-colors"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5"
+                aria-hidden="true"
+              >
+                <rect width="18" height="18" x="3" y="3" rx="5" />
+                <circle cx="12" cy="12" r="4" />
+                <circle
+                  cx="17.5"
+                  cy="6.5"
+                  r="1"
+                  fill="currentColor"
+                  stroke="none"
+                />
+              </svg>
+            </a>
+          </div>
+        </div>
+
+        <div className="flex flex-col space-y-5 ">
+          <p className="text-xl font-semibold mb-5">Contact Us</p>
+          <div className="flex items-center space-x-3">
+            <Mail />
+            <a
+              href="mailto:tolbarbershop23@gmail.com"
+              className="text-sm hover:text-accent transition-colors"
+            >
+              tolbarbershop23@gmail.com
+            </a>
+          </div>
+
+          <div className="flex items-start space-x-3">
+            <MapPin size={50} />
+            <p className="text-sm">
+              2nd floor, Osrem Building, Gen Trias Drive, Tejero, Gen Trias
+              City, Cavite (in front of Petron crossing)
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col">
+          <p className="text-xl font-semibold mb-5">Opening Hours</p>
+
+          <div className="flex  pb-4 justify-between items-center">
+            <p className="text-sm">Monday - Saturday </p>
+            <p className="text-sm">9:00 AM - 7:00 PM</p>
+          </div>
+
+          <div className="flex border-t border-white/10 pb-4 justify-between items-center">
+            <p className="text-sm pt-4">Sunday</p>
+            <p className="text-sm pt-4">Closed</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-3 px-6 sm:px-8 py-4 border-t border-white/10 bg-black/10 text-center">
+        <p className="text-sm text-neutral">
+          &copy; 2026 TOL Barbershop. All rights reserved.
+        </p>
+        <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1 sm:text-sm text-xs">
+          <Link href="/privacy-policy" className="text-neutral hover:text-white">
+            Privacy Policy
+          </Link>
+          <Link href="/terms-of-use" className="text-neutral hover:text-white">
+            Terms of Use
+          </Link>
+        </div>
+      </div>
+    </footer>
+  );
+}

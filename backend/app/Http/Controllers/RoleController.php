@@ -5,11 +5,15 @@ namespace App\Http\Controllers;
 use App\Http\Requests\RoleRequest;
 use App\Http\Resources\RoleResource;
 use App\Models\Role;
+use App\Services\SupportTicketAssignmentService;
 use App\Traits\ApiResponseTrait;
+use Illuminate\Support\Facades\DB;
 
 class RoleController extends Controller
 {
     use ApiResponseTrait;
+
+    public function __construct(private readonly SupportTicketAssignmentService $supportTickets) {}
 
     public function index()
     {
@@ -36,8 +40,18 @@ class RoleController extends Controller
 
     public function update(RoleRequest $request, Role $role)
     {
-        $role->update($request->safe()->only('name'));
-        $role->modules()->sync($request->input('module_ids', []));
+        DB::transaction(function () use ($request, $role): void {
+            $role->update($request->safe()->only('name'));
+            $role->modules()->sync($request->input('module_ids', []));
+
+            if (! $role->modules()->where('key', 'customer-service')->exists()) {
+                $role->users()
+                    ->where('role', 'admin')
+                    ->pluck('users.id')
+                    ->each(fn (int $adminId) => $this->supportTickets->requeueAssignedTickets($adminId));
+            }
+        }, 3);
+
         $role->load('modules');
 
         return $this->success('Role updated successfully.', new RoleResource($role));
@@ -58,8 +72,14 @@ class RoleController extends Controller
             );
         }
 
-        $role->users()->where('role', 'admin')->update(['role_id' => null]);
-        $role->delete();
+        DB::transaction(function () use ($role): void {
+            $role->users()
+                ->where('role', 'admin')
+                ->pluck('users.id')
+                ->each(fn (int $adminId) => $this->supportTickets->requeueAssignedTickets($adminId));
+            $role->users()->where('role', 'admin')->update(['role_id' => null]);
+            $role->delete();
+        }, 3);
 
         return $this->noData('Role deleted successfully.');
     }

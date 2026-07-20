@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +11,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
+import { SUPPORT_TEXT_MAX_LENGTH } from "@/lib/support";
 
 type ResolveTicketDialogProps = {
   open: boolean;
@@ -48,22 +49,17 @@ export function ResolveTicketDialog({
 
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <label
-              htmlFor="resolve-notes"
-              className="text-sm font-medium text-gray-700"
-            >
-              Resolution Notes (optional)
-            </label>
-            <Textarea
+            <TextAreaWithLabel
               id="resolve-notes"
+              label="Resolution Notes (optional)"
               value={resolutionNotes}
               onChange={(e) => setResolutionNotes(e.target.value)}
               placeholder="Any additional notes about how the issue was resolved..."
               className="min-h-[100px] resize-none border-gray-200"
-              maxLength={5000}
+              maxLength={SUPPORT_TEXT_MAX_LENGTH}
             />
             <p className="text-xs text-gray-400">
-              {resolutionNotes.length}/5000
+              {resolutionNotes.length}/{SUPPORT_TEXT_MAX_LENGTH}
             </p>
           </div>
         </div>

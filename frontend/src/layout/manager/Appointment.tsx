@@ -25,11 +25,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { GroupPendingCard } from "@/components/common/GroupPendingCard";
-import { PendingAppointmentDetailDialog } from "@/components/common/PendingAppointmentDetailDialog";
+import dynamic from "next/dynamic";
+const PendingAppointmentDetailDialog = dynamic(
+  () =>
+    import("@/components/common/PendingAppointmentDetailDialog").then(
+      (mod) => mod.PendingAppointmentDetailDialog
+    ),
+  { ssr: false }
+);
 import { SectionCard } from "@/components/common/SectionCard";
+import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getAppointments,
+  updateBatchAppointmentStatus,
   updateAppointment,
   type Appointment,
 } from "@/services/customer/appointment.api";
@@ -105,6 +114,37 @@ function normalizeToHHmm(time: string): string {
 }
 
 const todayDate = new Date().toISOString().split("T")[0];
+
+type PendingUnit =
+  | { kind: "group"; batchId: string; appointments: Appointment[]; sortKey: string; overdue: boolean }
+  | { kind: "individual"; appointment: Appointment; sortKey: string; overdue: boolean };
+
+function toManilaTimestamp(date: string, time: string): number {
+  const hhmm = normalizeToHHmm(time);
+  return new Date(`${date}T${hhmm}:00+08:00`).getTime();
+}
+
+function isUnitOverdue(appts: Appointment[], nowMs: number): boolean {
+  const earliest = appts.reduce(
+    (min, a) => Math.min(min, toManilaTimestamp(a.appointment_date, a.appointment_time)),
+    Infinity,
+  );
+  return earliest < nowMs;
+}
+
+function sortPendingUnits(units: PendingUnit[]): PendingUnit[] {
+  const upcoming: PendingUnit[] = [];
+  const overdue: PendingUnit[] = [];
+
+  for (const unit of units) {
+    (unit.overdue ? overdue : upcoming).push(unit);
+  }
+
+  upcoming.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  overdue.sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+
+  return [...upcoming, ...overdue];
+}
 
 function ActionMenu({
   onSelect,
@@ -251,17 +291,24 @@ function AppointmentRow({
 
 function PendingCard({
   req,
+  overdue = false,
   onApprove,
   onCancel,
   disabled = false,
 }: {
   req: Appointment;
+  overdue?: boolean;
   onApprove: (appt: Appointment) => void;
   onCancel: (appt: Appointment) => void;
   disabled?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+    <div className="relative rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+      {overdue && (
+        <span className="absolute top-2 right-2 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+          Overdue
+        </span>
+      )}
       <div className="flex items-center gap-1.5 mb-1">
         <User className="w-4 h-4 text-gray-400" />
         <span className="font-semibold text-gray-900 text-sm">
@@ -305,8 +352,14 @@ function PendingCard({
         <div className="grid grid-cols-2 gap-2">
           <Button
             onClick={() => onApprove(req)}
-            disabled={disabled}
-            className="bg-green-600 hover:bg-green-700 text-white gap-1.5 text-sm h-9"
+            disabled={disabled || overdue}
+            title={overdue ? "Cannot approve an overdue appointment" : undefined}
+            className={cn(
+              "gap-1.5 text-sm h-9",
+              overdue
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700 text-white",
+            )}
           >
             <Check className="w-4 h-4" /> Approve
           </Button>
@@ -381,12 +434,14 @@ export function Appointment() {
   const [rescheduleAppointment, setRescheduleAppointment] =
     useState<Appointment | null>(null);
   const [updatingBatchIds, setUpdatingBatchIds] = useState<string[]>([]);
+  const [approveTarget, setApproveTarget] = useState<Appointment[] | null>(null);
   const [batchRejectDialogOpen, setBatchRejectDialogOpen] = useState(false);
   const [batchRejectTarget, setBatchRejectTarget] = useState<Appointment[] | null>(null);
   const [batchRejectReason, setBatchRejectReason] = useState("");
   const [pendingDetailAppointments, setPendingDetailAppointments] = useState<
     Appointment[] | null
   >(null);
+  const [now, setNow] = useState(() => Date.now());
 
   const loadAppointments = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -401,6 +456,11 @@ export function Appointment() {
     }
   }, []);
 
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   useRealtimeEvent("appointments", loadAppointments);
 
   const pending = useMemo(
@@ -409,7 +469,7 @@ export function Appointment() {
   );
   const showPendingRequests = appointmentLoading || pending.length > 0;
 
-  const pendingGroups = useMemo(() => {
+  const sortedPending = useMemo(() => {
     const grouped = new Map<string, Appointment[]>();
     const individuals: Appointment[] = [];
 
@@ -426,26 +486,33 @@ export function Appointment() {
       }
     }
 
-    const groups = Array.from(grouped.values()).sort((a, b) => {
-      const aTime = a.reduce(
-        (earliest, s) =>
-          s.appointment_time < earliest ? s.appointment_time : earliest,
-        a[0]?.appointment_time ?? "",
-      );
-      const bTime = b.reduce(
-        (earliest, s) =>
-          s.appointment_time < earliest ? s.appointment_time : earliest,
-        b[0]?.appointment_time ?? "",
-      );
-      return aTime.localeCompare(bTime);
-    });
+    const units: PendingUnit[] = [];
 
-    individuals.sort((a, b) =>
-      a.appointment_time.localeCompare(b.appointment_time),
-    );
+    for (const appts of grouped.values()) {
+      const sortKey = appts
+        .map((a) => `${a.appointment_date}T${normalizeToHHmm(a.appointment_time)}`)
+        .sort()[0];
+      units.push({
+        kind: "group",
+        batchId: appts[0].batch_id ?? "",
+        appointments: appts,
+        sortKey,
+        overdue: isUnitOverdue(appts, now),
+      });
+    }
 
-    return { groups, individuals };
-  }, [pending]);
+    for (const appt of individuals) {
+      const sortKey = `${appt.appointment_date}T${normalizeToHHmm(appt.appointment_time)}`;
+      units.push({
+        kind: "individual",
+        appointment: appt,
+        sortKey,
+        overdue: toManilaTimestamp(appt.appointment_date, appt.appointment_time) < now,
+      });
+    }
+
+    return sortPendingUnits(units);
+  }, [pending, now]);
 
   const approvedAppointments = useMemo(
     () => appointments.filter((a) => a.status === "approved"),
@@ -514,7 +581,7 @@ export function Appointment() {
 
       const validation = updateAppointmentSchema.safeParse(payload);
       if (!validation.success) {
-        toast.error("Failed to update appointment");
+        toast.error("Please check the appointment details and try again.");
         return false;
       }
 
@@ -533,7 +600,7 @@ export function Appointment() {
       return true;
     } catch (error) {
       console.error("Failed to update appointment:", error);
-      toast.error("Failed to update appointment");
+      toast.error(error instanceof Error ? error.message : "Could not update appointment. Please try again.");
       return false;
     } finally {
       setUpdatingIds((prev) => prev.filter((id) => id !== appt.id));
@@ -542,43 +609,21 @@ export function Appointment() {
 
   const handleBatchApprove = async (appts: Appointment[]) => {
     const batchId = appts[0]?.batch_id;
-    if (!batchId) return;
+    if (!batchId || updatingBatchIds.includes(batchId)) return;
 
     try {
       setUpdatingBatchIds((prev) => [...prev, batchId]);
 
-      const results = await Promise.allSettled(
-        appts.map((appt) => {
-          const payload = {
-            user_id: appt.customer.id!,
-            service_id: appt.service.id!,
-            barber_user_id: appt.barber.id!,
-            appointment_date: appt.appointment_date,
-            appointment_time: normalizeToHHmm(appt.appointment_time),
-            duration_minutes: appt.duration_minutes,
-            price: Number(appt.price),
-            notes: appt.notes,
-            status: "approved" as const,
-          };
-          return updateAppointment(appt.id, payload);
-        }),
+      await updateBatchAppointmentStatus(batchId, "approved");
+      toast.success(
+        `${appts.length} appointment${appts.length > 1 ? "s" : ""} approved`,
       );
-
-      const succeeded = results.filter((r) => r.status === "fulfilled").length;
-      const failed = results.filter((r) => r.status === "rejected").length;
-
-      if (succeeded > 0) {
-        toast.success(`${succeeded} appointment${succeeded > 1 ? "s" : ""} approved`);
-      }
-      if (failed > 0) {
-        toast.error(`${failed} appointment${failed > 1 ? "s" : ""} failed to approve`);
-      }
 
       await loadAppointments();
       window.dispatchEvent(new CustomEvent("appointments:updated"));
     } catch (error) {
       console.error("Failed to batch approve:", error);
-      toast.error("Failed to approve group");
+      toast.error(error instanceof Error ? error.message : "Could not approve appointments. Please try again.");
     } finally {
       setUpdatingBatchIds((prev) => prev.filter((id) => id !== batchId));
     }
@@ -595,39 +640,27 @@ export function Appointment() {
     if (!appts || appts.length === 0) return;
 
     const batchId = appts[0]?.batch_id;
+    if (!batchId || updatingBatchIds.includes(batchId)) return;
+
+    if (!batchRejectReason.trim()) {
+      toast.error("Please provide a reason for rejection.");
+      return;
+    }
+
+    if (batchRejectReason.trim().length > 500) {
+      toast.error("Rejection reason must not exceed 500 characters");
+      return;
+    }
 
     try {
-      setUpdatingBatchIds((prev) => [...prev, batchId ?? ""]);
+      setUpdatingBatchIds((prev) => [...prev, batchId]);
 
       const reason = batchRejectReason.trim() || null;
 
-      const results = await Promise.allSettled(
-        appts.map((appt) => {
-          const payload = {
-            user_id: appt.customer.id!,
-            service_id: appt.service.id!,
-            barber_user_id: appt.barber.id!,
-            appointment_date: appt.appointment_date,
-            appointment_time: normalizeToHHmm(appt.appointment_time),
-            duration_minutes: appt.duration_minutes,
-            price: Number(appt.price),
-            notes: appt.notes,
-            cancellation_reason: reason,
-            status: "rejected" as const,
-          };
-          return updateAppointment(appt.id, payload);
-        }),
+      await updateBatchAppointmentStatus(batchId, "rejected", reason);
+      toast.success(
+        `${appts.length} appointment${appts.length > 1 ? "s" : ""} rejected`,
       );
-
-      const succeeded = results.filter((r) => r.status === "fulfilled").length;
-      const failed = results.filter((r) => r.status === "rejected").length;
-
-      if (succeeded > 0) {
-        toast.success(`${succeeded} appointment${succeeded > 1 ? "s" : ""} rejected`);
-      }
-      if (failed > 0) {
-        toast.error(`${failed} appointment${failed > 1 ? "s" : ""} failed to reject`);
-      }
 
       setBatchRejectDialogOpen(false);
       setBatchRejectTarget(null);
@@ -636,7 +669,7 @@ export function Appointment() {
       window.dispatchEvent(new CustomEvent("appointments:updated"));
     } catch (error) {
       console.error("Failed to batch reject:", error);
-      toast.error("Failed to reject group");
+      toast.error(error instanceof Error ? error.message : "Could not reject appointments. Please try again.");
     } finally {
       setUpdatingBatchIds((prev) => prev.filter((id) => id !== batchId));
     }
@@ -647,18 +680,12 @@ export function Appointment() {
     setCancellationDialogOpen(true);
   };
 
-  const handlePendingDetailApprove = async () => {
+  const handlePendingDetailApprove = () => {
     const targets = pendingDetailAppointments;
     if (!targets?.length) return;
 
     setPendingDetailAppointments(null);
-
-    if (targets[0].batch_id) {
-      await handleBatchApprove(targets);
-      return;
-    }
-
-    await runUpdate(targets[0], "approved");
+    setApproveTarget(targets);
   };
 
   const handlePendingDetailReject = () => {
@@ -702,6 +729,20 @@ export function Appointment() {
     }
   };
 
+  const handleApproveConfirm = async () => {
+    const targets = approveTarget;
+    if (!targets?.length) return;
+
+    if (targets[0].batch_id) {
+      await handleBatchApprove(targets);
+      setApproveTarget(null);
+      return;
+    }
+
+    const success = await runUpdate(targets[0], "approved");
+    if (success) setApproveTarget(null);
+  };
+
   const handleRescheduleClick = (appt: Appointment) => {
     setRescheduleAppointment(appt);
     setRescheduleDialogOpen(true);
@@ -727,7 +768,7 @@ export function Appointment() {
 
       const validation = updateAppointmentSchema.safeParse(payload);
       if (!validation.success) {
-        toast.error("Invalid reschedule data");
+        toast.error("Please check the reschedule details and try again.");
         return;
       }
 
@@ -740,11 +781,25 @@ export function Appointment() {
       window.dispatchEvent(new CustomEvent("appointments:updated"));
     } catch (error) {
       console.error("Failed to reschedule appointment:", error);
-      toast.error("Failed to reschedule appointment");
+      toast.error(error instanceof Error ? error.message : "Could not reschedule appointment. Please try again.");
     } finally {
       setUpdatingIds((prev) => prev.filter((id) => id !== rescheduleAppointment.id));
     }
   };
+
+  const approveTargetBatchId = approveTarget?.[0]?.batch_id;
+  const isApproving =
+    approveTarget?.some((appointment) => updatingIds.includes(appointment.id)) ||
+    (approveTargetBatchId
+      ? updatingBatchIds.includes(approveTargetBatchId)
+      : false);
+  const isConfirmingAction = confirmActionTarget
+    ? updatingIds.includes(confirmActionTarget.appt.id)
+    : false;
+  const batchRejectTargetId = batchRejectTarget?.[0]?.batch_id;
+  const isRejectingBatch = batchRejectTargetId
+    ? updatingBatchIds.includes(batchRejectTargetId)
+    : false;
 
   return (
     <div className="w-full bg-slate-100 p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
@@ -776,37 +831,41 @@ export function Appointment() {
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                {pendingGroups.groups.map((group) => {
-                  const batchId = group[0]?.batch_id ?? "";
-                  const isUpdating = updatingBatchIds.includes(batchId);
+                {sortedPending.map((unit) => {
+                  if (unit.kind === "group") {
+                    const isUpdating = updatingBatchIds.includes(unit.batchId);
+                    return (
+                      <div
+                        key={unit.batchId}
+                        className={isUpdating ? "opacity-60" : ""}
+                      >
+                        <GroupPendingCard
+                          appointments={unit.appointments}
+                          overdue={unit.overdue}
+                          onViewDetails={setPendingDetailAppointments}
+                          onApproveAll={setApproveTarget}
+                          onRejectAll={handleBatchRejectClick}
+                          disabled={isUpdating}
+                        />
+                      </div>
+                    );
+                  }
+
                   return (
                     <div
-                      key={batchId}
-                      className={isUpdating ? "opacity-60" : ""}
+                      key={unit.appointment.id}
+                      className={updatingIds.includes(unit.appointment.id) ? "opacity-60" : ""}
                     >
-                      <GroupPendingCard
-                        appointments={group}
-                        onViewDetails={setPendingDetailAppointments}
-                        onApproveAll={handleBatchApprove}
-                        onRejectAll={handleBatchRejectClick}
-                        disabled={isUpdating}
+                      <PendingCard
+                        req={unit.appointment}
+                        overdue={unit.overdue}
+                        onApprove={(appt) => setApproveTarget([appt])}
+                        onCancel={handleCancelClick}
+                        disabled={updatingIds.includes(unit.appointment.id)}
                       />
                     </div>
                   );
                 })}
-                {pendingGroups.individuals.map((req) => (
-                  <div
-                    key={req.id}
-                    className={updatingIds.includes(req.id) ? "opacity-60" : ""}
-                  >
-                    <PendingCard
-                      req={req}
-                      onApprove={(appt) => runUpdate(appt, "approved")}
-                      onCancel={handleCancelClick}
-                      disabled={updatingIds.includes(req.id)}
-                    />
-                  </div>
-                ))}
               </div>
             )}
           </SectionCard>
@@ -1045,8 +1104,53 @@ export function Appointment() {
       />
 
       <Dialog
+        open={approveTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !isApproving) setApproveTarget(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {approveTarget && approveTarget.length > 1
+                ? "Approve Group Booking"
+                : "Approve Appointment"}
+            </DialogTitle>
+            <DialogDescription>
+              Confirm approval for {approveTarget?.length ?? 0} appointment
+              {(approveTarget?.length ?? 0) === 1 ? "" : "s"}. This reserves the
+              selected time {approveTarget && approveTarget.length > 1 ? "slots" : "slot"}.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setApproveTarget(null)}
+              disabled={Boolean(isApproving)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleApproveConfirm}
+              disabled={Boolean(isApproving)}
+              className="bg-green-600 text-white hover:bg-green-700"
+            >
+              {isApproving
+                ? "Approving..."
+                : approveTarget && approveTarget.length > 1
+                  ? "Approve All"
+                  : "Approve"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
         open={confirmActionOpen}
         onOpenChange={(open) => {
+          if (isConfirmingAction) return;
           if (!open) {
             setConfirmActionOpen(false);
             setConfirmActionTarget(null);
@@ -1095,6 +1199,7 @@ export function Appointment() {
                 setConfirmActionOpen(false);
                 setConfirmActionTarget(null);
               }}
+              disabled={isConfirmingAction}
             >
               Cancel
             </Button>
@@ -1105,11 +1210,15 @@ export function Appointment() {
                   : "bg-red-500 hover:bg-red-600"
               }
               onClick={handleConfirmAction}
+              disabled={isConfirmingAction}
             >
-              Yes,{" "}
-              {confirmActionTarget?.status === "completed"
-                ? "Complete"
-                : "Mark No-show"}
+              {isConfirmingAction
+                ? "Updating..."
+                : `Yes, ${
+                    confirmActionTarget?.status === "completed"
+                      ? "Complete"
+                      : "Mark No-show"
+                  }`}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1118,6 +1227,7 @@ export function Appointment() {
       <Dialog
         open={batchRejectDialogOpen}
         onOpenChange={(open) => {
+          if (isRejectingBatch) return;
           if (!open) {
             setBatchRejectDialogOpen(false);
             setBatchRejectTarget(null);
@@ -1145,15 +1255,14 @@ export function Appointment() {
             </div>
           )}
           <div className="space-y-2">
-            <label htmlFor="batch-reject-reason" className="text-sm font-medium text-gray-700">
-              Reason (optional)
-            </label>
-            <textarea
+            <TextAreaWithLabel
               id="batch-reject-reason"
+              label="Reason"
               rows={3}
               value={batchRejectReason}
               onChange={(e) => setBatchRejectReason(e.target.value)}
-              placeholder="Reason for rejection..."
+              placeholder="Enter the reason for rejection..."
+              maxLength={500}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100"
             />
           </div>
@@ -1165,14 +1274,16 @@ export function Appointment() {
                 setBatchRejectTarget(null);
                 setBatchRejectReason("");
               }}
+              disabled={isRejectingBatch}
             >
               Cancel
             </Button>
             <Button
               className="bg-red-500 hover:bg-red-600"
               onClick={handleBatchRejectSubmit}
+              disabled={isRejectingBatch}
             >
-              Reject All
+              {isRejectingBatch ? "Rejecting..." : "Reject All"}
             </Button>
           </DialogFooter>
         </DialogContent>

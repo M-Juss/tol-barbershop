@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   getFeedbackList,
   toggleFeature,
   type FeedbackItem,
   type FeedbackMeta,
 } from "@/services/manager/feedback.api";
+import { TablePagination } from "@/components/common/TablePagination";
 import { Input } from "@/components/ui/input";
 import { SectionCard } from "@/components/common/SectionCard";
 import {
@@ -16,15 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import {
   Table,
   TableBody,
@@ -40,6 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { buildTableUrl, parsePage } from "@/lib/table-query";
 import { Star, MessageSquareText, Calendar, Clock } from "lucide-react";
 import { toast } from "sonner";
 
@@ -76,53 +70,143 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export function FeedbackList() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const committedSearch = (searchParams.get("search") ?? "").slice(0, 100);
+  const rawRating = searchParams.get("rating");
+  const ratingFilter = ["1", "2", "3", "4", "5"].includes(rawRating ?? "")
+    ? (rawRating as string)
+    : "all";
+  const rawFeatured = searchParams.get("featured");
+  const featuredFilter =
+    rawFeatured === "featured" || rawFeatured === "not_featured"
+      ? rawFeatured
+      : "all";
+  const page = parsePage(searchParams.get("page"));
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [meta, setMeta] = useState<FeedbackMeta | null>(null);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [ratingFilter, setRatingFilter] = useState("all");
-  const [featuredFilter, setFeaturedFilter] = useState("all");
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState(committedSearch);
+  const [error, setError] = useState<string | null>(null);
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
   const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
-    setPage(1);
-  }, [search, ratingFilter, featuredFilter]);
+    setSearch(committedSearch);
+  }, [committedSearch]);
 
-  const fetchFeedback = useCallback(async () => {
+  useEffect(() => {
+    const normalizedSearch = search.trim().slice(0, 100);
+    if (normalizedSearch === committedSearch) return;
+
+    const timer = window.setTimeout(() => {
+      router.replace(
+        buildTableUrl(pathname, searchParams, {
+          search: normalizedSearch || null,
+          page: null,
+        }),
+        { scroll: false },
+      );
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [committedSearch, pathname, router, search, searchParams]);
+
+  const setPage = useCallback(
+    (nextPage: number) => {
+      router.push(
+        buildTableUrl(pathname, searchParams, {
+          page: nextPage === 1 ? null : nextPage,
+        }),
+        { scroll: false },
+      );
+    },
+    [pathname, router, searchParams],
+  );
+
+  const fetchFeedback = useCallback(async (signal?: AbortSignal) => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
+    setError(null);
     try {
-      const data = await getFeedbackList({
-        search: search.trim() || undefined,
-        rating: ratingFilter !== "all" ? ratingFilter : undefined,
-        featured: featuredFilter !== "all" ? featuredFilter : undefined,
-        page,
-        per_page: 10,
-        sort: "created_at",
-        dir: "desc",
-      });
+      const data = await getFeedbackList(
+        {
+          search: committedSearch || undefined,
+          rating: ratingFilter !== "all" ? ratingFilter : undefined,
+          featured: featuredFilter !== "all" ? featuredFilter : undefined,
+          page,
+          per_page: 10,
+          sort: "created_at",
+          dir: "desc",
+        },
+        signal,
+      );
+
+      if (requestId !== requestIdRef.current) return;
+
+      if (
+        data.feedback.length === 0 &&
+        page > data.meta.last_page &&
+        data.meta.last_page > 0
+      ) {
+        setPage(data.meta.last_page);
+        return;
+      }
+
       setFeedback(data.feedback);
       setMeta(data.meta);
-    } catch (error) {
-      console.error("Failed to load feedback:", error);
+    } catch (fetchError) {
+      if (signal?.aborted || requestId !== requestIdRef.current) return;
+      console.error("Failed to load feedback:", fetchError);
+      setError("Could not load feedback. Please try again.");
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [featuredFilter, page, ratingFilter, search]);
+  }, [committedSearch, featuredFilter, page, ratingFilter, setPage]);
 
   useEffect(() => {
-    const debounce = setTimeout(fetchFeedback, search ? 300 : 0);
-    return () => clearTimeout(debounce);
-  }, [fetchFeedback, search]);
+    const controller = new AbortController();
+    fetchFeedback(controller.signal);
+    return () => controller.abort();
+  }, [fetchFeedback]);
+
+  const setRatingFilter = (value: string) => {
+    router.push(
+      buildTableUrl(pathname, searchParams, {
+        rating: value === "all" ? null : value,
+        page: null,
+      }),
+      { scroll: false },
+    );
+  };
+
+  const setFeaturedFilter = (value: string) => {
+    router.push(
+      buildTableUrl(pathname, searchParams, {
+        featured: value === "all" ? null : value,
+        page: null,
+      }),
+      { scroll: false },
+    );
+  };
+
+  const getPageHref = (nextPage: number) =>
+    buildTableUrl(pathname, searchParams, {
+      page: nextPage === 1 ? null : nextPage,
+    });
 
   const handleToggleFeature = async (id: number) => {
     setTogglingIds((prev) => new Set(prev).add(id));
     try {
       const updated = await toggleFeature(id);
-      setFeedback((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, is_featured: updated.is_featured } : item)),
+      setSelectedFeedback((current) =>
+        current?.id === id
+          ? { ...current, is_featured: updated.is_featured }
+          : current,
       );
+      await fetchFeedback();
     } catch (err: unknown) {
       const msg =
         err && typeof err === "object" && "message" in err
@@ -156,6 +240,7 @@ export function FeedbackList() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by customer, service, or comment"
             className="w-full sm:flex-1"
+            maxLength={100}
           />
           <Select
             value={ratingFilter}
@@ -190,6 +275,11 @@ export function FeedbackList() {
       </SectionCard>
 
       <div className="space-y-3">
+        {error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+            {error}
+          </div>
+        ) : null}
         <div className="block md:hidden space-y-3">
           {loading ? (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center text-gray-400 text-sm">
@@ -342,67 +432,17 @@ export function FeedbackList() {
           </Table>
         </div>
 
-        {meta && meta.last_page > 1 ? (
-          <Pagination className="overflow-hidden px-1">
-            <PaginationContent className="flex-nowrap gap-0.5">
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  className="h-8 w-8 sm:h-9 sm:w-auto"
-                  text=""
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setPage((p) => Math.max(1, p - 1));
-                  }}
-                />
-              </PaginationItem>
-              {(() => {
-                const pages: (number | "...")[] = [];
-                const total = meta.last_page;
-                const current = page;
-                pages.push(1);
-                if (current > 3) pages.push("...");
-                const start = Math.max(2, current - 1);
-                const end = Math.min(total - 1, current + 1);
-                for (let i = start; i <= end; i++) pages.push(i);
-                if (current < total - 2) pages.push("...");
-                if (total > 1) pages.push(total);
-                return pages.map((pageNo, idx) =>
-                  pageNo === "..." ? (
-                    <PaginationItem key={`ellipsis-${idx}`}>
-                      <PaginationEllipsis className="size-7 sm:size-8" />
-                    </PaginationItem>
-                  ) : (
-                    <PaginationItem key={pageNo}>
-                      <PaginationLink
-                        href="#"
-                        isActive={pageNo === current}
-                        className="h-7 w-7 sm:h-8 sm:w-8 text-xs sm:text-sm font-medium rounded-lg"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setPage(pageNo);
-                        }}
-                      >
-                        {pageNo}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ),
-                );
-              })()}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  className="h-8 w-8 sm:h-9 sm:w-auto"
-                  text=""
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setPage((p) => Math.min(meta.last_page, p + 1));
-                  }}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+        {meta ? (
+          <TablePagination
+            currentPage={meta.current_page}
+            lastPage={meta.last_page}
+            getPageHref={getPageHref}
+            onPageChange={setPage}
+            disabled={loading}
+          />
         ) : null}
+
+        <div className="h-5" />
       </div>
 
       <Dialog

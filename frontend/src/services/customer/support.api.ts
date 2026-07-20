@@ -55,14 +55,27 @@ export interface SupportTicket {
 
 export type SupportTicketState = Pick<SupportTicket, "id" | "status">;
 
+export type SupportTicketPage = {
+  tickets: SupportTicket[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+};
+
 export interface CreateTicketData {
   category: string;
   message: string;
 }
 
-export const getMyTickets = async (): Promise<SupportTicket[]> => {
+export const getMyTickets = async (
+  page = 1,
+  perPage = 20,
+): Promise<SupportTicketPage> => {
   const response = await authFetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/support/tickets`,
+    `${process.env.NEXT_PUBLIC_API_URL}/support/tickets?page=${page}&per_page=${perPage}`,
   );
   return response.data;
 };

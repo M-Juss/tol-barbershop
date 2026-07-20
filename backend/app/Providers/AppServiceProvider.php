@@ -28,11 +28,30 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $clientKey = function (Request $request): string {
+            $forwardedFor = trim(explode(',', (string) $request->header('x-vercel-forwarded-for'))[0]);
+
+            if ($request->headers->has('x-vercel-id') && filter_var($forwardedFor, FILTER_VALIDATE_IP)) {
+                return $forwardedFor;
+            }
+
+            return (string) $request->ip();
+        };
         $emailKey = fn (Request $request, string $field): string => hash(
             'sha256',
             $request->ip().'|'.Str::lower(trim((string) $request->input($field))),
         );
 
+        RateLimiter::for('login', fn (Request $request): array => [
+            Limit::perMinute(10)->by('login-email:'.hash('sha256', Str::lower(trim((string) $request->input('email'))))),
+            Limit::perMinute(120)->by('login-client:'.hash('sha256', $clientKey($request))),
+        ]);
+        RateLimiter::for('register', fn (Request $request): array => [
+            Limit::perMinute(5)->by('register-email:'.hash('sha256', Str::lower(trim((string) $request->input('email'))))),
+            Limit::perMinute(30)->by('register-client:'.hash('sha256', $clientKey($request))),
+        ]);
+        RateLimiter::for('public-read', fn (Request $request): Limit => Limit::perMinute(300)
+            ->by('public-read:'.hash('sha256', $clientKey($request))));
         RateLimiter::for('verification-link', fn (Request $request): Limit => Limit::perMinute(6)
             ->by(hash('sha256', $request->ip().'|'.$request->route('id'))));
         RateLimiter::for('verification-resend', fn (Request $request): Limit => Limit::perMinute(6)
@@ -57,7 +76,9 @@ class AppServiceProvider extends ServiceProvider
                 absolute: false,
             );
 
-            return rtrim((string) config('app.frontend_url'), '/').$signedPath;
+            return rtrim((string) config('app.frontend_url'), '/')
+                .'/verify-email?'.http_build_query(['email' => $user->getEmailForVerification()])
+                .'#'.http_build_query(['verification' => $signedPath]);
         });
 
         $emailViews = [
@@ -86,7 +107,7 @@ class AppServiceProvider extends ServiceProvider
                 'token' => $token,
             ]);
 
-            return rtrim((string) config('app.frontend_url'), '/').'/reset-password?'.$query;
+            return rtrim((string) config('app.frontend_url'), '/').'/reset-password#'.$query;
         };
 
         ResetPassword::createUrlUsing($resetPasswordUrl);

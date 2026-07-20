@@ -1,5 +1,10 @@
 <?php
 
+$allowedOrigins = array_values(array_filter([
+    env('FRONTEND_URL', 'http://localhost:3000'),
+    env('NGROK_URL'),
+], fn ($origin): bool => is_string($origin) && $origin !== ''));
+
 return [
 
     /*
@@ -16,10 +21,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-        env('FRONTEND_URL', 'http://localhost:3000'),
-        env('NGROK_URL'),
-    ],
+    'allowed_origins' => $allowedOrigins,
 
     'allowed_origins_patterns' => [],
 

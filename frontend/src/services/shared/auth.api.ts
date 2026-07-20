@@ -22,7 +22,9 @@ export type LoginResponse = {
 export type RegisterResponse = {
   success: boolean;
   message?: string;
-  data: AuthUser;
+  data: {
+    email: string;
+  };
 };
 
 export type RegisterPayload = {
@@ -54,6 +56,14 @@ type ValidateResetPasswordTokenResponse = {
   message?: string;
   data: {
     valid: boolean;
+  };
+};
+
+type VerifyEmailResponse = {
+  success: boolean;
+  message?: string;
+  data: {
+    status: "verified" | "already_verified";
   };
 };
 
@@ -89,7 +99,7 @@ export const logoutRequest = async () => {
 };
 
 export const getCurrentUserRequest = async (): Promise<CurrentUserResponse> => {
-  return authFetch(`${process.env.NEXT_PUBLIC_API_URL}/user`);
+  return publicFetch(`${process.env.NEXT_PUBLIC_API_URL}/user`);
 };
 
 export const forgotPasswordRequest = async (data: {
@@ -110,6 +120,41 @@ export const resendEmailVerificationRequest = async (data: {
       method: "POST",
       body: JSON.stringify(data),
     },
+  );
+};
+
+export const confirmEmailVerificationRequest = async (
+  signedPath: string,
+): Promise<VerifyEmailResponse> => {
+  const parsed = new URL(signedPath, "https://same-origin.invalid");
+
+  if (
+    parsed.origin !== "https://same-origin.invalid" ||
+    !/^\/api\/v1\/email\/verify\/\d+\/[a-f0-9]{40}$/i.test(parsed.pathname) ||
+    parsed.hash
+  ) {
+    throw new Error("Invalid email verification link.");
+  }
+
+  return publicFetch(`${parsed.pathname}${parsed.search}`, {
+    method: "POST",
+  });
+};
+
+type CheckVerificationStatusResponse = {
+  success: boolean;
+  message?: string;
+  data: {
+    verified: boolean;
+  };
+};
+
+export const checkEmailVerificationStatus = async (
+  email: string,
+): Promise<CheckVerificationStatusResponse> => {
+  const params = new URLSearchParams({ email });
+  return publicFetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/email/verify/status?${params.toString()}`,
   );
 };
 
@@ -141,6 +186,8 @@ export const validateResetPasswordTokenRequest = async (
       method: "POST",
       body: JSON.stringify(data),
       signal,
+      cache: "no-store",
+      referrerPolicy: "no-referrer",
     },
   );
 };
@@ -154,5 +201,7 @@ export const resetPasswordRequest = async (data: {
   return publicFetch(`${process.env.NEXT_PUBLIC_API_URL}/reset-password`, {
     method: "POST",
     body: JSON.stringify(data),
+    cache: "no-store",
+    referrerPolicy: "no-referrer",
   });
 };

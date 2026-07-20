@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   getCustomerList,
   type CustomerItem,
   type CustomerMeta,
   type CustomerStats,
 } from "@/services/manager/customers.api";
+import { TablePagination } from "@/components/common/TablePagination";
 import { Input } from "@/components/ui/input";
 import { SectionCard } from "@/components/common/SectionCard";
 import { StatCard } from "@/components/common/StatCard";
@@ -19,15 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
   Table,
   TableBody,
   TableCell,
@@ -36,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { buildTableUrl, parsePage } from "@/lib/table-query";
 import {
   Users,
   UserPlus,
@@ -85,54 +78,142 @@ function StatusBadge({ active }: { active: boolean }) {
 }
 
 export function CustomerDirectory() {
+  const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const committedSearch = (searchParams.get("search") ?? "").slice(0, 100);
+  const rawStatus = searchParams.get("status");
+  const statusFilter =
+    rawStatus === "active" || rawStatus === "inactive" ? rawStatus : "all";
+  const rawSort = searchParams.get("sort");
+  const sort = [
+    "fullname",
+    "total_visits",
+    "lifetime_value",
+    "last_visit_date",
+    "average_rating",
+  ].includes(rawSort ?? "")
+    ? (rawSort as string)
+    : "fullname";
+  const dir = searchParams.get("dir") === "desc" ? "desc" : "asc";
+  const page = parsePage(searchParams.get("page"));
   const [customers, setCustomers] = useState<CustomerItem[]>([]);
   const [meta, setMeta] = useState<CustomerMeta | null>(null);
   const [stats, setStats] = useState<CustomerStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [page, setPage] = useState(1);
-  const [sort, setSort] = useState("fullname");
-  const [dir, setDir] = useState("asc");
+  const [search, setSearch] = useState(committedSearch);
+  const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
-    setPage(1);
-  }, [search, statusFilter]);
+    setSearch(committedSearch);
+  }, [committedSearch]);
 
   useEffect(() => {
+    const normalizedSearch = search.trim().slice(0, 100);
+    if (normalizedSearch === committedSearch) return;
+
+    const timer = window.setTimeout(() => {
+      router.replace(
+        buildTableUrl(pathname, searchParams, {
+          search: normalizedSearch || null,
+          page: null,
+        }),
+        { scroll: false },
+      );
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [committedSearch, pathname, router, search, searchParams]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const requestId = ++requestIdRef.current;
+
     const fetchCustomers = async () => {
       setLoading(true);
+      setError(null);
       try {
-        const data = await getCustomerList({
-          search: search.trim() || undefined,
-          status: statusFilter !== "all" ? statusFilter : undefined,
-          sort,
-          dir,
-          page,
-          per_page: 10,
-        });
+        const data = await getCustomerList(
+          {
+            search: committedSearch || undefined,
+            status: statusFilter !== "all" ? statusFilter : undefined,
+            sort,
+            dir,
+            page,
+            per_page: 10,
+          },
+          controller.signal,
+        );
+
+        if (requestId !== requestIdRef.current) return;
+
+        if (
+          data.customers.length === 0 &&
+          page > data.meta.last_page &&
+          data.meta.last_page > 0
+        ) {
+          router.replace(
+            buildTableUrl(pathname, searchParams, {
+              page: data.meta.last_page === 1 ? null : data.meta.last_page,
+            }),
+            { scroll: false },
+          );
+          return;
+        }
+
         setCustomers(data.customers);
         setMeta(data.meta);
         setStats(data.stats);
-      } catch (error) {
-        console.error("Failed to load customers:", error);
+      } catch (fetchError) {
+        if (controller.signal.aborted || requestId !== requestIdRef.current) {
+          return;
+        }
+        console.error("Failed to load customers:", fetchError);
+        setError("Could not load customers. Please try again.");
       } finally {
-        setLoading(false);
+        if (requestId === requestIdRef.current) setLoading(false);
       }
     };
 
-    const debounce = setTimeout(fetchCustomers, search ? 300 : 0);
-    return () => clearTimeout(debounce);
-  }, [search, statusFilter, sort, dir, page]);
+    fetchCustomers();
+    return () => controller.abort();
+  }, [committedSearch, dir, page, pathname, router, searchParams, sort, statusFilter]);
+
+  const setStatusFilter = (value: string) => {
+    router.push(
+      buildTableUrl(pathname, searchParams, {
+        status: value === "all" ? null : value,
+        page: null,
+      }),
+      { scroll: false },
+    );
+  };
+
+  const setPage = (nextPage: number) => {
+    router.push(
+      buildTableUrl(pathname, searchParams, {
+        page: nextPage === 1 ? null : nextPage,
+      }),
+      { scroll: false },
+    );
+  };
+
+  const getPageHref = (nextPage: number) =>
+    buildTableUrl(pathname, searchParams, {
+      page: nextPage === 1 ? null : nextPage,
+    });
 
   const toggleSort = (field: string) => {
-    if (sort === field) {
-      setDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSort(field);
-      setDir("desc");
-    }
+    const nextDir = sort === field && dir === "desc" ? "asc" : "desc";
+    router.push(
+      buildTableUrl(pathname, searchParams, {
+        sort: field === "fullname" ? null : field,
+        dir: nextDir === "asc" ? null : nextDir,
+        page: null,
+      }),
+      { scroll: false },
+    );
   };
 
   const SortableHeader = ({
@@ -208,6 +289,7 @@ export function CustomerDirectory() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, email, or contact number"
               className="pl-9"
+              maxLength={100}
             />
           </div>
           <Select
@@ -227,6 +309,11 @@ export function CustomerDirectory() {
       </SectionCard>
 
       <div className="space-y-3">
+        {error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+            {error}
+          </div>
+        ) : null}
         <div className="block md:hidden space-y-3">
           {loading ? (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center text-gray-400 text-sm">
@@ -240,7 +327,7 @@ export function CustomerDirectory() {
             customers.map((customer) => (
               <div
                 key={customer.id}
-                onClick={() => router.push(`/manager/customers/${customer.id}`)}
+                onClick={() => router.push(`${pathname}/${customer.id}`)}
                 className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-2 cursor-pointer active:bg-gray-50 transition"
               >
                 <div className="flex items-center justify-between">
@@ -317,7 +404,7 @@ export function CustomerDirectory() {
                 customers.map((customer) => (
                   <TableRow
                     key={customer.id}
-                    onClick={() => router.push(`/manager/customers/${customer.id}`)}
+                    onClick={() => router.push(`${pathname}/${customer.id}`)}
                     className="cursor-pointer"
                   >
                     <TableCell>
@@ -358,67 +445,16 @@ export function CustomerDirectory() {
           </Table>
         </div>
 
-        {meta && meta.last_page > 1 ? (
-          <Pagination className="overflow-hidden px-1">
-            <PaginationContent className="flex-nowrap gap-0.5">
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  className="h-8 w-8 sm:h-9 sm:w-auto"
-                  text=""
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setPage((p) => Math.max(1, p - 1));
-                  }}
-                />
-              </PaginationItem>
-              {(() => {
-                const pages: (number | "...")[] = [];
-                const total = meta.last_page;
-                const current = page;
-                pages.push(1);
-                if (current > 3) pages.push("...");
-                const start = Math.max(2, current - 1);
-                const end = Math.min(total - 1, current + 1);
-                for (let i = start; i <= end; i++) pages.push(i);
-                if (current < total - 2) pages.push("...");
-                if (total > 1) pages.push(total);
-                return pages.map((pageNo, idx) =>
-                  pageNo === "..." ? (
-                    <PaginationItem key={`ellipsis-${idx}`}>
-                      <PaginationEllipsis className="size-7 sm:size-8" />
-                    </PaginationItem>
-                  ) : (
-                    <PaginationItem key={pageNo}>
-                      <PaginationLink
-                        href="#"
-                        isActive={pageNo === current}
-                        className="h-7 w-7 sm:h-8 sm:w-8 text-xs sm:text-sm font-medium rounded-lg"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setPage(pageNo);
-                        }}
-                      >
-                        {pageNo}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ),
-                );
-              })()}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  className="h-8 w-8 sm:h-9 sm:w-auto"
-                  text=""
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setPage((p) => Math.min(meta.last_page, p + 1));
-                  }}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+        {meta ? (
+          <TablePagination
+            currentPage={meta.current_page}
+            lastPage={meta.last_page}
+            getPageHref={getPageHref}
+            onPageChange={setPage}
+            disabled={loading}
+          />
         ) : null}
+        <div className="h-10" />
       </div>
     </div>
   );

@@ -79,6 +79,7 @@ export function DatePickerWithLabel({
   }, []);
 
   function handleDateSelect(nextDate: Date | undefined) {
+    if (!nextDate) return;
     if (date === undefined) {
       setInternalDate(nextDate);
     }

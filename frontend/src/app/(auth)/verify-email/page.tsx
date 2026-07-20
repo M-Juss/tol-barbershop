@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 
 import { RedirectIfAuthenticated } from "@/components/common/RedirectIfAuthenticated";
@@ -10,6 +11,13 @@ type VerifyEmailPageProps = {
     status?: string | string[];
   }>;
 };
+
+export const metadata: Metadata = {
+  referrer: "no-referrer",
+  robots: { index: false, follow: false },
+};
+
+export const revalidate = 0;
 
 export default async function VerifyEmailPage({
   searchParams,
@@ -41,7 +49,7 @@ export default async function VerifyEmailPage({
           </h2>
           <p className="mb-6 mt-2 text-center text-sm text-gray-600 sm:text-base">
             {email
-              ? "Check your inbox for the verification link, including your spam or junk folder."
+              ? "Verify your email address to continue."
               : "Your registration email is missing. Return to login and enter your credentials again to continue."}
           </p>
 
@@ -66,17 +74,6 @@ export default async function VerifyEmailPage({
               available.
             </div>
           )}
-
-          <div className="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm">
-            <a href="/login" className="text-accent hover:underline">
-              Back to Login
-            </a>
-            {email && (
-              <a href="/register" className="text-accent hover:underline">
-                Create another account
-              </a>
-            )}
-          </div>
         </div>
       </div>
     </RedirectIfAuthenticated>

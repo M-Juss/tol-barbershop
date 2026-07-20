@@ -86,6 +86,7 @@ const API = process.env.NEXT_PUBLIC_API_URL;
 
 export const getCustomerList = async (
   filters: CustomerFilters = {},
+  signal?: AbortSignal,
 ): Promise<CustomerListResponse> => {
   const params = new URLSearchParams();
   if (filters.search) params.set("search", filters.search);
@@ -98,6 +99,7 @@ export const getCustomerList = async (
   const qs = params.toString();
   const response = await authFetch(
     `${API}/customers${qs ? `?${qs}` : ""}`,
+    { signal },
   );
   return response.data as CustomerListResponse;
 };

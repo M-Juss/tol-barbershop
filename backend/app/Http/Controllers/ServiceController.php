@@ -8,6 +8,7 @@ use App\Models\Service;
 use App\Support\EntityChange;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
+use Throwable;
 
 class ServiceController extends Controller
 {
@@ -23,7 +24,9 @@ class ServiceController extends Controller
             ];
 
             return $this->success('Public services retrieved successfully', $data);
-        } catch (\Exception $e) {
+        } catch (Throwable $exception) {
+            report($exception);
+
             return $this->error('Could not fetch public services', [], 500);
         }
     }
@@ -33,7 +36,7 @@ class ServiceController extends Controller
         try {
             $query = Service::query();
 
-            if ($request->user()?->role !== 'manager') {
+            if (! $request->user()?->canAccessModule('management')) {
                 $query->where('is_active', true);
             }
 
@@ -45,7 +48,9 @@ class ServiceController extends Controller
 
             return $this->success('Services retrieved successfully', $data);
 
-        } catch (\Exception $e) {
+        } catch (Throwable $exception) {
+            report($exception);
+
             return $this->error('Could not fetch services', [], 500);
         }
     }
@@ -60,13 +65,10 @@ class ServiceController extends Controller
 
             return $this->created('Service created successfully');
 
-        } catch (\Exception $e) {
+        } catch (Throwable $exception) {
+            report($exception);
 
-            return $this->error(
-                'Something went wrong',
-                [],
-                500
-            );
+            return $this->error('Could not create service', [], 500);
         }
     }
 
@@ -75,7 +77,13 @@ class ServiceController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $service = Service::find($id);
+
+        if (! $service) {
+            return $this->error('Service not found', [], 404);
+        }
+
+        return $this->success('Service retrieved successfully', new ServiceResource($service));
     }
 
     /**
@@ -95,13 +103,10 @@ class ServiceController extends Controller
 
             return $this->created('Service updated successfully');
 
-        } catch (\Exception $e) {
+        } catch (Throwable $exception) {
+            report($exception);
 
-            return $this->error(
-                $e->getMessage(),
-                [],
-                500
-            );
+            return $this->error('Could not update service', [], 500);
         }
     }
 
@@ -117,18 +122,15 @@ class ServiceController extends Controller
                 return $this->error('Service not found', [], 404);
             }
 
-            $service->delete();
+            $service->update(['is_active' => false]);
             EntityChange::dispatch('services');
 
-            return $this->success('Service deleted successfully');
+            return $this->success('Service archived successfully');
 
-        } catch (\Exception $e) {
+        } catch (Throwable $exception) {
+            report($exception);
 
-            return $this->error(
-                $e->getMessage(),
-                [],
-                500
-            );
+            return $this->error('Could not archive service', [], 500);
         }
     }
 }

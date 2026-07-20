@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Http\Requests\Concerns\SanitizesInput;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class ClosedDatesRequest extends FormRequest
 {
@@ -30,10 +31,16 @@ class ClosedDatesRequest extends FormRequest
      */
     public function rules(): array
     {
+        $closedDateId = $this->route('closed_date') ?? $this->route('id');
+
         return [
-            'date_closed' => 'required|date',
-            'reason' => 'required|string|max:500',
-            'is_removed' => 'boolean',
+            'date_closed' => [
+                'required',
+                'date_format:Y-m-d',
+                Rule::unique('closed_dates', 'date_closed')->ignore($closedDateId),
+            ],
+            'reason' => ['required', 'string', 'max:255'],
+            'is_removed' => ['sometimes', 'boolean'],
         ];
     }
 

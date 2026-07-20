@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\AppointmentFeedbackRequest;
+use App\Http\Requests\FeedbackListRequest;
 use App\Http\Resources\AppointmentFeedbackResource;
 use App\Models\Appointment;
 use App\Models\AppointmentFeedback;
 use App\Support\EntityChange;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AppointmentFeedbackController extends Controller
 {
@@ -19,32 +21,47 @@ class AppointmentFeedbackController extends Controller
         $authUser = $request->user();
         $validated = $request->validated();
 
-        $appointment = Appointment::with(['service', 'user'])
-            ->where('id', $validated['appointment_id'])
-            ->where('user_id', $authUser->id)
-            ->first();
-
-        if (! $appointment) {
-            return $this->error('Appointment not found.', [], 404);
-        }
-
-        if ($appointment->status !== 'completed') {
-            return $this->error('Feedback can only be submitted for completed appointments.', [], 422);
-        }
-
         $comment = $validated['comment'] ?? null;
+        $result = DB::transaction(function () use ($validated, $authUser, $comment): array {
+            $appointment = Appointment::with(['service', 'user'])
+                ->where('id', $validated['appointment_id'])
+                ->where('user_id', $authUser->id)
+                ->lockForUpdate()
+                ->first();
 
-        $feedback = AppointmentFeedback::updateOrCreate(
-            ['appointment_id' => $appointment->id],
-            [
-                'user_id' => $authUser->id,
-                'rating' => $validated['rating'],
-                'comment' => is_string($comment) && trim($comment) !== ''
-                    ? trim($comment)
-                    : null,
-                'customer_name_snapshot' => $authUser->fullname,
-            ],
-        );
+            if (! $appointment) {
+                return ['error' => 'Appointment not found.', 'status' => 404];
+            }
+
+            if ($appointment->status !== 'completed') {
+                return [
+                    'error' => 'Feedback can only be submitted for completed appointments.',
+                    'status' => 422,
+                ];
+            }
+
+            $feedback = AppointmentFeedback::updateOrCreate(
+                ['appointment_id' => $appointment->id],
+                [
+                    'user_id' => $authUser->id,
+                    'rating' => $validated['rating'],
+                    'comment' => is_string($comment) && trim($comment) !== ''
+                        ? trim($comment)
+                        : null,
+                    'is_featured' => false,
+                    'customer_name_snapshot' => $authUser->fullname,
+                ],
+            );
+
+            return ['feedback' => $feedback];
+        }, 3);
+
+        if (isset($result['error'])) {
+            return $this->error($result['error'], [], $result['status']);
+        }
+
+        /** @var AppointmentFeedback $feedback */
+        $feedback = $result['feedback'];
 
         $feedback->load(['user', 'appointment.service', 'appointment.barber']);
         EntityChange::dispatch('feedback');
@@ -57,30 +74,50 @@ class AppointmentFeedbackController extends Controller
 
     public function toggleFeature(Request $request, $id)
     {
-        $feedback = AppointmentFeedback::findOrFail($id);
+        $result = DB::transaction(function () use ($id): array {
+            $featuredIds = AppointmentFeedback::where('is_featured', true)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->pluck('id');
+            $feedback = AppointmentFeedback::whereKey($id)
+                ->lockForUpdate()
+                ->first();
 
-        if ($feedback->is_featured) {
-            $featuredCount = AppointmentFeedback::where('is_featured', true)->count();
-            if ($featuredCount <= 1) {
-                return $this->error('At least 1 feedback must remain featured.', [], 422);
+            if (! $feedback) {
+                abort(404);
             }
-            $feedback->update(['is_featured' => false]);
-            $feedback->load(['user', 'appointment.service', 'appointment.barber']);
 
-            return $this->success('Feedback removed from featured.', new AppointmentFeedbackResource($feedback));
+            $featuredCount = $featuredIds->count();
+
+            if ($feedback->is_featured && $featuredCount <= 1) {
+                return ['error' => 'At least 1 feedback must remain featured.'];
+            }
+
+            if (! $feedback->is_featured && $featuredCount >= 5) {
+                return ['error' => 'You can feature up to 5 items. Unfeature one first.'];
+            }
+
+            $feedback->update(['is_featured' => ! $feedback->is_featured]);
+
+            return [
+                'feedback' => $feedback,
+                'message' => $feedback->is_featured
+                    ? 'Feedback featured successfully.'
+                    : 'Feedback removed from featured.',
+            ];
+        }, 3);
+
+        if (isset($result['error'])) {
+            return $this->error($result['error'], [], 422);
         }
 
-        $featuredCount = AppointmentFeedback::where('is_featured', true)->count();
-
-        if ($featuredCount >= 5) {
-            return $this->error('Maximum of 5 featured feedback reached. Unfeature another item first.', [], 422);
-        }
-
-        $feedback->update(['is_featured' => true]);
+        /** @var AppointmentFeedback $feedback */
+        $feedback = $result['feedback'];
 
         $feedback->load(['user', 'appointment.service', 'appointment.barber']);
+        EntityChange::dispatch('feedback');
 
-        return $this->success('Feedback featured successfully.', new AppointmentFeedbackResource($feedback));
+        return $this->success($result['message'], new AppointmentFeedbackResource($feedback));
     }
 
     public function publicIndex(Request $request)
@@ -130,23 +167,20 @@ class AppointmentFeedbackController extends Controller
         ]);
     }
 
-    public function index(Request $request)
+    public function index(FeedbackListRequest $request)
     {
-        $validated = $request->validate([
-            'search' => ['nullable', 'string', 'max:100'],
-            'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
-            'featured' => ['nullable', 'string', 'in:all,featured,not_featured'],
-        ]);
+        $validated = $request->validated();
 
         $query = AppointmentFeedback::with(['user:id,fullname', 'appointment.service:id,name', 'appointment.barber:id,fullname']);
 
         if (! empty($validated['search'])) {
             $search = $validated['search'];
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('user', fn ($uq) => $uq->where('fullname', 'like', "%{$search}%"))
-                    ->orWhereHas('appointment.barber', fn ($bq) => $bq->where('fullname', 'like', "%{$search}%"))
-                    ->orWhereHas('appointment.service', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
-                    ->orWhere('comment', 'like', "%{$search}%");
+            $like = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search).'%';
+            $query->where(function ($q) use ($like) {
+                $q->whereHas('user', fn ($uq) => $uq->whereRaw("fullname LIKE ? ESCAPE '!'", [$like]))
+                    ->orWhereHas('appointment.barber', fn ($bq) => $bq->whereRaw("fullname LIKE ? ESCAPE '!'", [$like]))
+                    ->orWhereHas('appointment.service', fn ($sq) => $sq->whereRaw("name LIKE ? ESCAPE '!'", [$like]))
+                    ->orWhereRaw("comment LIKE ? ESCAPE '!'", [$like]);
             });
         }
 
@@ -162,15 +196,13 @@ class AppointmentFeedbackController extends Controller
             }
         }
 
-        $sortField = $request->input('sort', 'created_at');
-        $sortDir = $request->input('dir', 'desc');
-        $allowedSorts = ['created_at', 'rating'];
-        if (in_array($sortField, $allowedSorts)) {
-            $query->orderBy($sortField, $sortDir === 'asc' ? 'asc' : 'desc');
-        }
-
-        $perPage = min((int) $request->input('per_page', 15), 50);
-        $feedback = $query->paginate($perPage);
+        $sortField = $validated['sort'] ?? 'created_at';
+        $sortDir = $validated['dir'] ?? 'desc';
+        $perPage = $validated['per_page'] ?? 15;
+        $feedback = $query
+            ->orderBy($sortField, $sortDir)
+            ->orderBy('id', $sortDir)
+            ->paginate($perPage, ['*'], 'page', $validated['page'] ?? 1);
 
         return $this->success('Feedback retrieved successfully.', [
             'feedback' => AppointmentFeedbackResource::collection($feedback),

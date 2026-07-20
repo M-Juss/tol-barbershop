@@ -5,9 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Appointment extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'user_id',
         'service_id',
@@ -17,6 +20,7 @@ class Appointment extends Model
         'duration_minutes',
         'price',
         'status',
+        'active_slot_key',
         'is_walkin',
         'walkin_customer_name',
         'walkin_customer_contact_number',
@@ -31,6 +35,7 @@ class Appointment extends Model
         'customer_name_snapshot',
         'service_name_snapshot',
         'barber_name_snapshot',
+        'archived_by_user_id',
     ];
 
     protected $casts = [

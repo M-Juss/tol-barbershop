@@ -55,8 +55,7 @@
                                 style="color: #0f171f; font-size: 24px; font-weight: 600; line-height: 1.3; margin: 0 0 20px; text-align: center;">
                                 {{ $heading }}</h1>
 
-                            <p style="color: #0f171f; font-size: 15px; line-height: 1.6; margin: 0 0 12px;">Hi
-                                {{ $customerName }},</p>
+                            <p style="color: #0f171f; font-size: 15px; line-height: 1.6; margin: 0 0 12px;">Hi {{ $customerName }},</p>
                             <p style="color: #5b646f; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">{{ $intro }}
                             </p>
 

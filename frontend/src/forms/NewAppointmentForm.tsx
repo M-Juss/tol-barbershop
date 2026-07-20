@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { DatePickerWithLabel } from "@/components/common/DatePickerWithLabel";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/SelectWithLabel";
+import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
 import {
   getActiveBarbers,
   getActiveServices,
@@ -15,6 +16,7 @@ import {
   type Barber,
   type Service,
   type BookingSettings,
+  type OccupiedAppointmentSlot,
 } from "@/services/customer/appointment.api";
 import {
   createAppointmentSchema,
@@ -25,7 +27,7 @@ import { useRateLimit } from "@/hooks/useRateLimit";
 import { sanitizeText } from "@/lib/sanitizer";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { generateTimeOptions } from "@/lib/time-slots";
+import { generateTimeOptions, isTimeSlotUnavailable } from "@/lib/time-slots";
 
 type BarberWithFallbackId = Barber & {
   user_id?: number | string | null;
@@ -67,7 +69,17 @@ function isPastTime(time12hr: string, selectedDate: Date | undefined): boolean {
   const minutes = Number(match[2]);
   const slotTotalMinutes = hours * 60 + minutes;
   const nowTotalMinutes = today.getHours() * 60 + today.getMinutes();
-  return slotTotalMinutes <= nowTotalMinutes;
+  return slotTotalMinutes + 15 <= nowTotalMinutes;
+}
+
+function isUnavailableForService(
+  time: string,
+  serviceId: string,
+  services: Service[],
+  occupiedSlots: OccupiedAppointmentSlot[],
+): boolean {
+  const service = services.find((item) => item.id.toString() === serviceId);
+  return isTimeSlotUnavailable(time, Number(service?.duration ?? 60), occupiedSlots);
 }
 
 export function NewAppointmentForm() {
@@ -92,7 +104,7 @@ export function NewAppointmentForm() {
 
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState("");
-  const [unavailableTimes, setUnavailableTimes] = useState<string[]>([]);
+  const [occupiedSlots, setOccupiedSlots] = useState<OccupiedAppointmentSlot[]>([]);
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
 
   const rateLimit = useRateLimit({
@@ -176,25 +188,19 @@ export function NewAppointmentForm() {
   useEffect(() => {
     const fetchUnavailableTimes = async () => {
       if (!selectedBarber || !selectedDate) {
-        setUnavailableTimes([]);
+        setOccupiedSlots([]);
         return;
       }
       try {
         setIsCheckingAvailability(true);
         const targetDate = formatDateForApi(selectedDate);
         const targetBarberId = Number(selectedBarber);
-        const times = await getUnavailableSlots(targetBarberId, targetDate);
-        const blocked = times.map((time: string) => {
-          const [h, m] = time.split(":").map(Number);
-          const period = h >= 12 ? "PM" : "AM";
-          const displayH = h % 12 || 12;
-          return `${displayH}:${String(m).padStart(2, "0")} ${period}`;
-        });
-        setUnavailableTimes(blocked);
+        const slots = await getUnavailableSlots(targetBarberId, targetDate);
+        setOccupiedSlots(slots);
       } catch (error) {
         console.error("Failed to check appointment availability:", error);
         toast.error("Failed to check availability");
-        setUnavailableTimes([]);
+        setOccupiedSlots([]);
       } finally {
         setIsCheckingAvailability(false);
       }
@@ -203,10 +209,10 @@ export function NewAppointmentForm() {
   }, [selectedBarber, selectedDate]);
 
   useEffect(() => {
-    if (selectedTime && (unavailableTimes.includes(selectedTime) || isPastTime(selectedTime, selectedDate))) {
+    if (selectedTime && (isUnavailableForService(selectedTime, selectedService, services, occupiedSlots) || isPastTime(selectedTime, selectedDate))) {
       setSelectedTime("");
     }
-  }, [selectedTime, unavailableTimes, selectedDate]);
+  }, [selectedTime, selectedService, occupiedSlots, selectedDate, services]);
 
   const isSingleFormValid =
     selectedBarber && selectedService && selectedDate && selectedTime;
@@ -218,7 +224,7 @@ export function NewAppointmentForm() {
       if (i > 0 && !slotNames[i]?.trim()) return false;
       if (!slotServices[i]) return false;
       if (!slotTimes[i]) return false;
-      if (unavailableTimes.includes(slotTimes[i]) || isPastTime(slotTimes[i], selectedDate)) return false;
+      if (isUnavailableForService(slotTimes[i], slotServices[i], services, occupiedSlots) || isPastTime(slotTimes[i], selectedDate)) return false;
     }
     const usedTimes = slotTimes.filter(Boolean);
     if (new Set(usedTimes).size !== usedTimes.length) return false;
@@ -402,6 +408,13 @@ export function NewAppointmentForm() {
     });
   };
 
+  const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (loading) return;
+
+    void (mode === "single" ? submitSingle() : submitGroup());
+  };
+
   return (
     <div className="w-full bg-slate-100 font-sans">
       <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
@@ -422,7 +435,12 @@ export function NewAppointmentForm() {
           </button>
         </div>
 
-        <form className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+        <form
+          id="appointment-booking-form"
+          method="post"
+          onSubmit={handleFormSubmit}
+          className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5"
+        >
           <div className="col-span-1 md:col-span-2">
             <InputWithLabel
               id="full-name"
@@ -524,7 +542,7 @@ export function NewAppointmentForm() {
                   placeholder="Select time"
                   options={timeOptions.map((time) => ({
                     ...time,
-                    disabled: unavailableTimes.includes(time.value) || isPastTime(time.value, selectedDate),
+                    disabled: isUnavailableForService(time.value, selectedService, services, occupiedSlots) || isPastTime(time.value, selectedDate),
                   }))}
                   value={selectedTime}
                   onValueChange={(value) => setSelectedTime(value)}
@@ -539,21 +557,24 @@ export function NewAppointmentForm() {
               <p className="text-sm font-medium text-gray-700">Per Person</p>
               {Array.from({ length: slotCount }).map((_, index) => (
                 <div key={index} className="grid grid-cols-1 sm:grid-cols-[3fr_1fr_1fr] gap-3 items-end p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-500">
-                      {index === 0 ? "You" : `Person ${index + 1}`}
-                    </label>
-                    <input
-                      type="text"
-                      value={slotNames[index] ?? (index === 0 ? authUser?.fullname ?? "" : "")}
-                      onChange={(e) => {
-                        if (index > 0) handleSlotNameChange(index, e.target.value);
-                      }}
-                      disabled={index === 0}
-                      placeholder="Full name"
-                      className={cn("w-full rounded-lg border px-3 py-2 text-sm", index === 0 ? "border-gray-200 bg-gray-100 text-gray-500" : "border-gray-200 bg-white text-gray-900", "placeholder:text-gray-400 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100")}
-                    />
-                  </div>
+                  <InputWithLabel
+                    id={`slot-name-${index}`}
+                    label={index === 0 ? "You" : `Person ${index + 1}`}
+                    value={slotNames[index] ?? (index === 0 ? authUser?.fullname ?? "" : "")}
+                    onChange={(e) => {
+                      if (index > 0) handleSlotNameChange(index, e.target.value);
+                    }}
+                    disabled={index === 0}
+                    placeholder="Full name"
+                    maxLength={255}
+                    className={cn(
+                      "h-10 border-gray-200",
+                      index === 0
+                        ? "bg-gray-100 text-gray-500"
+                        : "bg-white text-gray-900",
+                      "focus-visible:border-red-400 focus-visible:ring-red-100",
+                    )}
+                  />
                   <SelectWithLabel
                     id={`slot-service-${index}`}
                     label="Service"
@@ -572,7 +593,7 @@ export function NewAppointmentForm() {
                     placeholder="Select"
                     options={timeOptions.map((time) => ({
                       ...time,
-                      disabled: unavailableTimes.includes(time.value) || isPastTime(time.value, selectedDate),
+                      disabled: isUnavailableForService(time.value, slotServices[index], services, occupiedSlots) || isPastTime(time.value, selectedDate),
                     }))}
                     value={slotTimes[index] ?? ""}
                     onValueChange={(value) => handleSlotTimeChange(index, value)}
@@ -584,32 +605,58 @@ export function NewAppointmentForm() {
           )}
 
           <div className="col-span-1 md:col-span-2">
-            <label
-              htmlFor="notes"
-              className="mb-1.5 block text-sm font-medium text-gray-700"
-            >
-              Notes
-            </label>
-            <textarea
+            <TextAreaWithLabel
               id="notes"
+              label="Notes"
               placeholder="Add notes for your barber (optional)"
               rows={4}
+              maxLength={500}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100"
+              className="border-gray-200 text-gray-900 focus-visible:border-red-400 focus-visible:ring-red-100"
             />
           </div>
 
-          <div className="col-span-1 md:col-span-2 border-t border-gray-200 pt-4">
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between">
-              <span className="text-base font-semibold text-gray-800">
-                Total
-              </span>
-              <span className="text-2xl font-extrabold text-amber-600">
-                {mode === "single" ? formatCurrency(singleSubtotal) : formatCurrency(groupTotal)}
-              </span>
+          <div className="col-span-1 md:col-span-2 border-t border-gray-200 pt-4 space-y-3">
+            {mode === "single" && selectedServiceData && (
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900">{selectedServiceData.name}</p>
+                  {selectedServiceData.description && (
+                    <p className="text-sm text-muted-foreground truncate">{selectedServiceData.description}</p>
+                  )}
+                </div>
+                <p className="shrink-0 font-medium text-gray-900">{formatCurrency(singleSubtotal)}</p>
+              </div>
+            )}
+
+            {mode === "group" && (
+              <div className="space-y-3">
+                {Array.from({ length: slotCount }).map((_, index) => {
+                  const svc = services.find((s) => s.id.toString() === slotServices[index]);
+                  const slotName = slotNames[index] || (index === 0 ? "You" : `Person ${index + 1}`);
+                  const slotPrice = Number.isFinite(Number(svc?.price)) ? Number(svc!.price) : 0;
+                  return (
+                    <div key={index} className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900">{slotName}</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {svc ? `${svc.name}${svc.description ? ` · ${svc.description}` : ""}` : "No service selected"}
+                        </p>
+                      </div>
+                      <p className="shrink-0 font-medium text-gray-900">{formatCurrency(slotPrice)}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between border-t border-gray-200 pt-3">
+              <p className="font-semibold text-gray-900">Total</p>
+              <p className="font-semibold text-gray-900">{formatCurrency(mode === "single" ? singleSubtotal : groupTotal)}</p>
             </div>
           </div>
+
         </form>
 
         <div className="flex items-center gap-3 mt-8">
@@ -620,11 +667,11 @@ export function NewAppointmentForm() {
 
         <div className="flex items-center gap-3 mt-2">
           <button
-            type="button"
+            type="submit"
+            form="appointment-booking-form"
             disabled={
               (mode === "single" ? !isSingleFormValid : !isGroupFormValid) || loading
             }
-            onClick={mode === "single" ? submitSingle : submitGroup}
             className="flex-1 bg-red-500 hover:bg-red-600 transition-colors text-white font-semibold rounded-xl py-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading
@@ -634,6 +681,7 @@ export function NewAppointmentForm() {
                 : "Book Group Appointment"}
           </button>
         </div>
+
       </div>
     </div>
   );

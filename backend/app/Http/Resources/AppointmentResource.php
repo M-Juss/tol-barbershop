@@ -12,6 +12,16 @@ class AppointmentResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $barber = [
+            'id' => $this->barber?->id,
+            'fullname' => $this->barber_name_snapshot ?? $this->barber?->fullname,
+        ];
+
+        if (in_array($request->user()?->role, ['admin', 'manager'], true)) {
+            $barber['email'] = $this->barber?->email;
+            $barber['contact_number'] = $this->barber?->contact_number;
+        }
+
         return [
             'id' => $this->id,
 
@@ -24,12 +34,7 @@ class AppointmentResource extends JsonResource
                     : $this->user?->contact_number,
             ],
 
-            'barber' => [
-                'id' => $this->barber?->id,
-                'fullname' => $this->barber_name_snapshot ?? $this->barber?->fullname,
-                'email' => $this->barber?->email,
-                'contact_number' => $this->barber?->contact_number,
-            ],
+            'barber' => $barber,
 
             'service' => [
                 'id' => $this->service?->id,
@@ -43,7 +48,7 @@ class AppointmentResource extends JsonResource
                 'submitted_at' => $this->feedback?->created_at,
             ]),
 
-            'appointment_date' => $this->appointment_date,
+            'appointment_date' => $this->appointment_date->format('Y-m-d'),
             'appointment_time' => $this->appointment_time,
             'duration_minutes' => $this->duration_minutes,
 

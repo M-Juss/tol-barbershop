@@ -12,28 +12,42 @@ class PushEndpointValidator
             return false;
         }
 
-        if ($parsed['scheme'] !== 'https') {
+        if ($parsed['scheme'] !== 'https'
+            || isset($parsed['user'])
+            || isset($parsed['pass'])
+            || (isset($parsed['port']) && (int) $parsed['port'] !== 443)) {
             return false;
         }
 
-        $host = $parsed['host'];
+        $host = strtolower(rtrim($parsed['host'], '.'));
 
-        if ($host === 'localhost' || filter_var($host, FILTER_VALIDATE_IP)) {
+        if (filter_var($host, FILTER_VALIDATE_IP)
+            || preg_match('/^[a-z0-9.-]+$/', $host) !== 1) {
             return false;
         }
 
-        $ips = gethostbynamel($host);
+        $allowedHosts = config('services.webpush.allowed_endpoint_hosts', []);
 
-        if ($ips === false || $ips === []) {
-            return false;
-        }
+        foreach ($allowedHosts as $allowedHost) {
+            $allowedHost = strtolower(trim((string) $allowedHost));
 
-        foreach ($ips as $ip) {
-            if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                return false;
+            if ($allowedHost === '') {
+                continue;
+            }
+
+            if ($allowedHost[0] === '.') {
+                if (str_ends_with($host, $allowedHost) && $host !== substr($allowedHost, 1)) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if (hash_equals($allowedHost, $host)) {
+                return true;
             }
         }
 
-        return true;
+        return false;
     }
 }

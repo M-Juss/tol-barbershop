@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 
 import { ResetPasswordForm } from "@/forms/ResetPasswordForm";
 
@@ -9,6 +11,13 @@ type ResetPasswordPageProps = {
   }>;
 };
 
+export const metadata: Metadata = {
+  referrer: "no-referrer",
+  robots: { index: false, follow: false },
+};
+
+export const revalidate = 0;
+
 export default async function ResetPasswordPage({
   searchParams,
 }: ResetPasswordPageProps) {
@@ -18,7 +27,7 @@ export default async function ResetPasswordPage({
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-primary p-4 pb-8">
-      <div className="flex w-full max-w-md flex-col items-center px-6 sm:px-12 py-8 bg-white rounded-lg shadow-md">
+      <div className="flex w-full max-w-md flex-col items-center px-6 sm:px-12 py-8 bg-white rounded-lg shadow-md animate-auth-card">
         <div className="flex space-x-2 items-center">
           <Image
             src="/Tol-Logo-White-Bg.png"
@@ -43,9 +52,9 @@ export default async function ResetPasswordPage({
         />
         <p>
           Back to{" "}
-          <a href="/login" className="text-accent hover:underline">
+          <Link href="/login" className="text-accent hover:underline">
             Login
-          </a>
+          </Link>
         </p>
       </div>
     </div>

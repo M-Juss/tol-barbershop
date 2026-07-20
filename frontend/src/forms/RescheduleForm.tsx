@@ -23,9 +23,10 @@ import {
   getUnavailableSlots,
   getBookingSettings,
   type Appointment,
+  type OccupiedAppointmentSlot,
 } from "@/services/customer/appointment.api";
 import { sanitizeText } from "@/lib/sanitizer";
-import { generateTimeOptions } from "@/lib/time-slots";
+import { generateTimeOptions, isTimeSlotUnavailable } from "@/lib/time-slots";
 import { toast } from "sonner";
 
 const rescheduleSchema = z.object({
@@ -94,7 +95,7 @@ function isPastTime(time12hr: string, selectedDate: Date | undefined): boolean {
   const minutes = Number(match[2]);
   const slotTotalMinutes = hours * 60 + minutes;
   const nowTotalMinutes = today.getHours() * 60 + today.getMinutes();
-  return slotTotalMinutes <= nowTotalMinutes;
+  return slotTotalMinutes + 15 <= nowTotalMinutes;
 }
 
 function formatShortDate(date: string): string {
@@ -124,7 +125,7 @@ export function RescheduleForm({
 }: RescheduleFormProps) {
   const [barbers, setBarbers] = useState<{ value: string; label: string }[]>([]);
   const [loadingData, setLoadingData] = useState(false);
-  const [unavailableTimes, setUnavailableTimes] = useState<string[]>([]);
+  const [occupiedSlots, setOccupiedSlots] = useState<OccupiedAppointmentSlot[]>([]);
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
   const [timeSlots, setTimeSlots] = useState<{ value: string; label: string }[]>([]);
 
@@ -197,7 +198,7 @@ export function RescheduleForm({
   useEffect(() => {
     const fetchUnavailableTimes = async () => {
       if (!selectedBarber || !selectedDate) {
-        setUnavailableTimes([]);
+        setOccupiedSlots([]);
         return;
       }
       try {
@@ -206,17 +207,15 @@ export function RescheduleForm({
           ? selectedDate.split("T")[0]
           : selectedDate;
         const targetBarberId = Number(selectedBarber);
-        const times = await getUnavailableSlots(targetBarberId, targetDate);
-
-        const currentTime12 = convert24HourTo12Hour(appointment.appointment_time);
-        const blocked = times
-          .map((time: string) => convert24HourTo12Hour(time))
-          .filter((time: string) => time !== currentTime12);
-
-        setUnavailableTimes(blocked);
+        const slots = await getUnavailableSlots(
+          targetBarberId,
+          targetDate,
+          appointment.id,
+        );
+        setOccupiedSlots(slots);
       } catch {
         toast.error("Failed to check availability");
-        setUnavailableTimes([]);
+        setOccupiedSlots([]);
       } finally {
         setIsCheckingAvailability(false);
       }
@@ -228,12 +227,16 @@ export function RescheduleForm({
   useEffect(() => {
     if (
       selectedTime &&
-      (unavailableTimes.includes(selectedTime) ||
+      (isTimeSlotUnavailable(
+        selectedTime,
+        Number(appointment.duration_minutes ?? 60),
+        occupiedSlots,
+      ) ||
         (selectedDate && isPastTime(selectedTime, new Date(selectedDate))))
     ) {
       setValue("appointment_time", "");
     }
-  }, [selectedTime, unavailableTimes, selectedDate, setValue]);
+  }, [selectedTime, occupiedSlots, selectedDate, setValue, appointment.duration_minutes]);
 
   const onFormInvalid: SubmitErrorHandler<RescheduleFormValues> = () => {
     toast.error("All fields are required");
@@ -321,6 +324,7 @@ export function RescheduleForm({
         </div>
 
         <form
+          method="post"
           onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
           className="space-y-5"
         >
@@ -375,7 +379,11 @@ export function RescheduleForm({
               options={timeSlots.map((time) => ({
                 ...time,
                 disabled:
-                  unavailableTimes.includes(time.value) ||
+                  isTimeSlotUnavailable(
+                    time.value,
+                    Number(appointment.duration_minutes ?? 60),
+                    occupiedSlots,
+                  ) ||
                   isPastTime(time.value, parsedSelectedDate),
               }))}
               value={selectedTime}
@@ -397,6 +405,7 @@ export function RescheduleForm({
               label="Reason for Rescheduling"
               placeholder="Explain why this appointment is being rescheduled..."
               rows={3}
+              maxLength={500}
               className="border-gray-300 focus:border-gray-400"
               {...register("reason")}
             />

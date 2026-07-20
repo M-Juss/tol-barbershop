@@ -14,7 +14,7 @@ class DeleteAccountRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'password' => ['required', 'string', 'current_password'],
+            'password' => ['required', 'string', 'max:255', 'current_password'],
         ];
     }
 

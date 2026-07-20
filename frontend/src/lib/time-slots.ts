@@ -3,6 +3,44 @@ export type TimeOption = {
   label: string;
 };
 
+type OccupiedTimeSlot = {
+  appointment_time: string;
+  duration_minutes: number;
+};
+
+function timeToMinutes(value: string): number | null {
+  const twelveHour = value.match(/^(\d{1,2}):([0-5]\d)\s(AM|PM)$/i);
+  if (twelveHour) {
+    let hours = Number(twelveHour[1]) % 12;
+    if (twelveHour[3].toUpperCase() === "PM") hours += 12;
+    return hours * 60 + Number(twelveHour[2]);
+  }
+
+  const twentyFourHour = value.match(/^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/);
+  if (!twentyFourHour) return null;
+
+  return Number(twentyFourHour[1]) * 60 + Number(twentyFourHour[2]);
+}
+
+export function isTimeSlotUnavailable(
+  appointmentTime: string,
+  durationMinutes: number,
+  occupiedSlots: OccupiedTimeSlot[],
+): boolean {
+  const start = timeToMinutes(appointmentTime);
+  if (start === null) return true;
+
+  const end = start + Math.max(1, durationMinutes);
+
+  return occupiedSlots.some((slot) => {
+    const occupiedStart = timeToMinutes(slot.appointment_time);
+    if (occupiedStart === null) return true;
+
+    const occupiedEnd = occupiedStart + Math.max(1, slot.duration_minutes);
+    return start < occupiedEnd && end > occupiedStart;
+  });
+}
+
 export function generateTimeOptions(
   openingTime: string,
   closingTime: string,
