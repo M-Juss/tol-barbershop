@@ -3,6 +3,9 @@ import type {
   SupportTicket,
 } from "@/services/customer/support.api";
 
+export const SUPPORT_CATEGORY_MAX_LENGTH = 50;
+export const SUPPORT_TEXT_MAX_LENGTH = 5000;
+
 export function mergeSupportMessages(
   current: SupportMessage[],
   incoming: SupportMessage[],

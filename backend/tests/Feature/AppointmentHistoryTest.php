@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Appointment;
+use App\Models\Module;
+use App\Models\Role;
 use App\Models\Service;
 use App\Models\User;
 use App\Support\DisplayId;
@@ -12,8 +14,15 @@ uses(RefreshDatabase::class);
 
 function createAppointmentHistoryContext(): array
 {
+    $historyModule = Module::create(['key' => 'history', 'name' => 'History']);
+    $historyRole = Role::create(['name' => 'History Admin']);
+    $historyRole->modules()->attach($historyModule);
+
     return [
-        'admin' => User::factory()->create(['role' => 'admin']),
+        'admin' => User::factory()->create([
+            'role' => 'admin',
+            'role_id' => $historyRole->id,
+        ]),
         'manager' => User::factory()->create(['role' => 'manager']),
         'customer' => User::factory()->create([
             'role' => 'customer',

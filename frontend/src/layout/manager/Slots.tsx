@@ -1,3 +1,5 @@
+"use client";
+
 import { useCallback, useState, useEffect } from "react";
 import {
   Plus,
@@ -7,6 +9,7 @@ import {
   Ban,
   Calendar,
   X,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ActivityLog } from "@/components/common/ActivityLog";
@@ -20,6 +23,15 @@ import {
   ClosedDate,
 } from "@/services/manager/close.date.api";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const formatDateToLocal = (date: Date): string => {
   return (
@@ -47,6 +59,9 @@ export function Slots() {
   const [activityCurrentPage, setActivityCurrentPage] = useState(1);
   const [activityTotalPages, setActivityTotalPages] = useState(1);
   const [activityLoading, setActivityLoading] = useState(true);
+  const [closedDateToReopen, setClosedDateToReopen] =
+    useState<ClosedDate | null>(null);
+  const [isReopening, setIsReopening] = useState(false);
 
   const scheduleInfo = [
     {
@@ -183,11 +198,15 @@ export function Slots() {
       toast.success(`Closed date added successfully for ${formattedDate}`);
     } catch (error) {
       console.error("Error creating closed date:", error);
-      toast.error("Failed to add closed date");
+      toast.error(error instanceof Error ? error.message : "Could not add closed date. Please try again.");
     }
   };
 
-  const handleRemoveClosedDate = async (id: number, dateClosed: string) => {
+  const handleRemoveClosedDate = async () => {
+    if (!closedDateToReopen || isReopening) return;
+
+    const { id, date_closed: dateClosed } = closedDateToReopen;
+    setIsReopening(true);
     try {
       await updateClosedDate(id, {
         date_closed: dateClosed,
@@ -203,9 +222,12 @@ export function Slots() {
         day: "numeric",
       });
       toast.success(`${formattedDate} has been reopened successfully`);
+      setClosedDateToReopen(null);
     } catch (error) {
       console.error("Error removing closed date:", error);
-      toast.error("Failed to reopen closed date");
+      toast.error(error instanceof Error ? error.message : "Could not reopen date. Please try again.");
+    } finally {
+      setIsReopening(false);
     }
   };
 
@@ -249,10 +271,11 @@ export function Slots() {
                       <p className="text-sm text-gray-700">{formattedDate}</p>
                     </div>
                     <button
-                      onClick={() =>
-                        handleRemoveClosedDate(date.id, date.date_closed)
-                      }
+                      type="button"
+                      onClick={() => setClosedDateToReopen(date)}
+                      disabled={isReopening}
                       className="text-red-600 hover:text-red-700 hover:bg-red-100 p-1 rounded"
+                      aria-label={`Reopen ${formattedDate}`}
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -379,6 +402,42 @@ export function Slots() {
         onClose={closeClosedDateModal}
         onSubmit={handleClosedDateSubmit}
       />
+
+      <Dialog
+        open={closedDateToReopen !== null}
+        onOpenChange={(open) => {
+          if (!open && !isReopening) setClosedDateToReopen(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-amber-500" />
+              Reopen Closed Date
+            </DialogTitle>
+            <DialogDescription>
+              Reopening this date makes it available for new bookings. Continue?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setClosedDateToReopen(null)}
+              disabled={isReopening}
+            >
+              Keep Closed
+            </Button>
+            <Button
+              type="button"
+              onClick={handleRemoveClosedDate}
+              disabled={isReopening}
+            >
+              {isReopening ? "Reopening..." : "Reopen Date"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

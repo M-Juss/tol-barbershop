@@ -111,7 +111,7 @@ export function Overview() {
       }
     } catch (error) {
       console.error("Failed to submit feedback:", error);
-      toast.error("Failed to submit feedback");
+      toast.error(error instanceof Error ? error.message : "Could not submit feedback. Please try again.");
     } finally {
       setSubmittingFeedback(false);
     }
@@ -398,7 +398,8 @@ export function Overview() {
           </div>
         </DialogContent>
       </Dialog>
-      <div className="my-10" />
+        <div className="h-10" />
     </div>
+
   );
 }

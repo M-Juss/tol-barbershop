@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { SUPPORT_TEXT_MAX_LENGTH } from "@/lib/support";
 
 type ResolveTicketDialogProps = {
   open: boolean;
@@ -55,10 +56,10 @@ export function ResolveTicketDialog({
               onChange={(e) => setResolutionNotes(e.target.value)}
               placeholder="Any additional notes about how the issue was resolved..."
               className="min-h-[100px] resize-none border-gray-200"
-              maxLength={5000}
+              maxLength={SUPPORT_TEXT_MAX_LENGTH}
             />
             <p className="text-xs text-gray-400">
-              {resolutionNotes.length}/5000
+              {resolutionNotes.length}/{SUPPORT_TEXT_MAX_LENGTH}
             </p>
           </div>
         </div>

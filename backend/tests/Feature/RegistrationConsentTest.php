@@ -59,8 +59,8 @@ it('records registration consent without exposing its metadata', function () {
 
     expect($acceptance->user->is($user))->toBeTrue()
         ->and($user->policyAcceptances()->sole()->is($acceptance))->toBeTrue()
-        ->and($acceptance->terms_version)->toBe('2026-07-14')
-        ->and($acceptance->privacy_version)->toBe('2026-07-14');
+        ->and($acceptance->terms_version)->toBe('2026-07-20')
+        ->and($acceptance->privacy_version)->toBe('2026-07-20');
 });
 
 it('uses server-controlled policy versions and acceptance time', function () {

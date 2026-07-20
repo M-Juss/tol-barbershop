@@ -117,7 +117,7 @@ export function Gallery() {
       await loadImages();
       setDeleteConfirmOpen(false);
       setImageToDelete(null);
-      toast.success("Gallery image deleted successfully");
+      toast.success("Gallery image removed");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Could not delete gallery image",
@@ -274,6 +274,7 @@ export function Gallery() {
       <Dialog
         open={deleteConfirmOpen}
         onOpenChange={(open) => {
+          if (deleting) return;
           setDeleteConfirmOpen(open);
           if (!open) setImageToDelete(null);
         }}

@@ -62,7 +62,7 @@ export function LoginForm() {
         return;
       }
 
-      toast.error("Login failed");
+      toast.error(error instanceof ApiError ? error.message : "Login failed. Please try again.");
     }
   };
 
@@ -72,43 +72,44 @@ export function LoginForm() {
 
   return (
     <form
+      method="post"
+      className="w-full space-y-4 px-1 py-1"
       onSubmit={handleSubmit(onSubmit, onFormInvalid)}
-      className="w-full space-y-6"
     >
-      <div className="relative">
+      <div className="relative mb-3">
         <InputWithLabel
           id="email"
           type="email"
           label="Email"
           placeholder="Enter your email"
           maxLength={255}
-          className="h-10 border-gray-300 focus-visible:ring-accent/40"
+          className="h-8 text-sm border-gray-300 focus-visible:ring-accent/40"
           {...formRegister("email")}
         />
         {errors.email && (
-          <p className="absolute left-0 top-full  text-red-500 text-xs">
+          <p className="absolute left-0 top-full text-red-500 text-xs">
             {errors.email.message}
           </p>
         )}
       </div>
 
-      <div className="relative">
+      <div className="relative mb-3">
         <PasswordInputWithLabel
           id="password"
           label="Password"
           placeholder="Enter your password"
           maxLength={255}
           autoComplete="current-password"
-          className="h-10 border-gray-300 focus-visible:ring-accent/40"
+          className="h-8 text-sm border-gray-300 focus-visible:ring-accent/40"
           {...formRegister("password")}
         />
         {errors.password && (
-          <p className="absolute left-0 top-full  text-red-500 text-xs">
+          <p className="absolute left-0 top-full text-red-500 text-xs">
             {errors.password.message}
           </p>
         )}
       </div>
-      <div className="flex justify-end -mt-3">
+      <div className="flex justify-end -mt-1 mb-1">
         <a
           href="/forgot-password"
           className="text-xs text-accent hover:underline"
@@ -120,7 +121,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={isSubmitting || !rateLimit.canAttempt}
-        className="bg-accent hover:bg-accent/90 mb-4 w-full text-white py-2 px-4 rounded-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="bg-accent hover:bg-accent/90 w-full text-white text-sm py-1.5 px-4 mt-2 rounded-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {rateLimit.isCooldown
           ? `Try again in ${rateLimit.formatCooldownTime(rateLimit.cooldownRemaining)}`

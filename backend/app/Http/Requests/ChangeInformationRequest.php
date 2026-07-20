@@ -33,6 +33,9 @@ class ChangeInformationRequest extends FormRequest
      */
     public function rules(): array
     {
+        $emailIsChanging = $this->user()
+            && strcasecmp((string) $this->input('email'), (string) $this->user()->email) !== 0;
+
         return [
             'fullname' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z\s]+$/'],
             'email' => [
@@ -43,6 +46,21 @@ class ChangeInformationRequest extends FormRequest
                 Rule::unique('users', 'email')->ignore($this->user()->id),
             ],
             'contact_number' => ['required', 'string', 'max:11', 'regex:/^09\d{9}$/'],
+            'current_password' => [
+                Rule::requiredIf($emailIsChanging),
+                'nullable',
+                'string',
+                'max:255',
+                'current_password',
+            ],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'current_password.required' => 'Your current password is required to change your email.',
+            'current_password.current_password' => 'Your current password is incorrect.',
         ];
     }
 }

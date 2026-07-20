@@ -35,7 +35,7 @@ it('registers an unverified customer and sends a verification email', function (
     Notification::assertSentTo($user, VerifyEmail::class);
 });
 
-it('verifies a customer using a signed email link', function () {
+it('requires an explicit post before a signed email link verifies a customer', function () {
     Event::fake();
     $user = User::factory()->unverified()->create();
     $url = URL::temporarySignedRoute(
@@ -45,8 +45,18 @@ it('verifies a customer using a signed email link', function () {
         absolute: false,
     );
 
-    $this->get($url)
-        ->assertRedirect(rtrim((string) config('app.frontend_url'), '/').'/login?verified=1');
+    $this->get($url)->assertRedirect(
+        rtrim((string) config('app.frontend_url'), '/')
+            .'/verify-email?'.http_build_query(['email' => $user->email])
+            .'#'.http_build_query(['verification' => $url]),
+    );
+
+    expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
+    Event::assertNotDispatched(Verified::class);
+
+    $this->postJson($url)
+        ->assertOk()
+        ->assertJsonPath('data.status', 'verified');
 
     expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
     Event::assertDispatched(Verified::class);
@@ -62,10 +72,12 @@ it('uses a verification link only once', function () {
         absolute: false,
     );
 
-    $this->get($url)
-        ->assertRedirect(rtrim((string) config('app.frontend_url'), '/').'/login?verified=1');
-    $this->get($url)
-        ->assertRedirect(rtrim((string) config('app.frontend_url'), '/').'/login?verified=already');
+    $this->postJson($url)
+        ->assertOk()
+        ->assertJsonPath('data.status', 'verified');
+    $this->postJson($url)
+        ->assertOk()
+        ->assertJsonPath('data.status', 'already_verified');
     Event::assertDispatchedTimes(Verified::class, 1);
 });
 
@@ -80,6 +92,7 @@ it('rejects an expired verification link', function () {
 
     $this->get($url)
         ->assertRedirect(rtrim((string) config('app.frontend_url'), '/').'/verify-email?status=invalid');
+    $this->postJson($url)->assertUnprocessable();
 
     expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
 });
@@ -92,6 +105,7 @@ it('renders a branded verification email with a fallback link', function () {
     $verificationUrl = $mail->viewData['actionUrl'];
 
     expect($mail->subject)->toBe('Verify your TOL Barbershop email')
+        ->and($verificationUrl)->toContain('/verify-email?email=')->toContain('#verification=')
         ->and($html)
         ->toContain('background-color: #143c62')
         ->toContain('background-color: #de3b3d')
@@ -312,7 +326,7 @@ it('renders a branded password reset email with a fallback link', function () {
     $mail = (new ResetPassword($token))->toMail($user);
     $html = (string) $mail->render();
     $text = view('emails.auth-action-text', $mail->data())->render();
-    $resetUrl = rtrim((string) config('app.frontend_url'), '/').'/reset-password?'.http_build_query([
+    $resetUrl = rtrim((string) config('app.frontend_url'), '/').'/reset-password#'.http_build_query([
         'email' => $user->email,
         'token' => $token,
     ]);

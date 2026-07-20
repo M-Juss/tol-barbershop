@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SupportTicketActionRequest;
 use App\Models\Notification;
 use App\Models\SupportMessage;
 use App\Models\SupportTicket;
@@ -25,6 +26,8 @@ class SupportTicketController extends Controller
         if ($user->role === 'customer') {
             $validated = $request->validate([
                 'view' => ['nullable', 'in:state'],
+                'page' => ['nullable', 'integer', 'min:1'],
+                'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             ]);
 
             if (($validated['view'] ?? null) === 'state') {
@@ -38,15 +41,27 @@ class SupportTicketController extends Controller
             }
 
             $tickets = SupportTicket::with([
-                'customer:id,fullname,email,image',
+                'customer:id,fullname,email',
                 'assignedTo:id,fullname',
-                'messagesAsc.sender:id,fullname,role,image',
             ])
                 ->where('customer_id', $user->id)
                 ->latest()
-                ->get();
+                ->paginate(
+                    (int) ($validated['per_page'] ?? 20),
+                    ['*'],
+                    'page',
+                    (int) ($validated['page'] ?? 1),
+                );
 
-            return $this->success('Tickets retrieved successfully', $tickets);
+            return $this->success('Tickets retrieved successfully', [
+                'tickets' => $tickets->items(),
+                'meta' => [
+                    'current_page' => $tickets->currentPage(),
+                    'last_page' => $tickets->lastPage(),
+                    'per_page' => $tickets->perPage(),
+                    'total' => $tickets->total(),
+                ],
+            ]);
         }
 
         if (! in_array($user->role, ['admin', 'manager'], true)) {
@@ -54,7 +69,7 @@ class SupportTicketController extends Controller
         }
 
         $tickets = SupportTicket::with([
-            'customer:id,fullname,email,image',
+            'customer:id,fullname,email',
             'assignedTo:id,fullname',
         ])
             ->latest()
@@ -68,9 +83,9 @@ class SupportTicketController extends Controller
         $user = $request->user();
 
         $ticket = SupportTicket::with([
-            'customer:id,fullname,email,image',
+            'customer:id,fullname,email',
             'assignedTo:id,fullname',
-            'messagesAsc.sender:id,fullname,role,image',
+            'messagesAsc.sender:id,fullname,role',
         ])->findOrFail($id);
 
         if ($user->role === 'customer' && (int) $ticket->customer_id !== (int) $user->id) {
@@ -84,7 +99,7 @@ class SupportTicketController extends Controller
         return $this->success('Ticket retrieved successfully', $ticket);
     }
 
-    public function store(Request $request)
+    public function store(SupportTicketActionRequest $request)
     {
         $user = $request->user();
 
@@ -92,49 +107,48 @@ class SupportTicketController extends Controller
             abort(403, 'Forbidden.');
         }
 
-        $validated = $request->validate([
-            'category' => ['required', 'string', 'max:50'],
-            'message' => ['required', 'string', 'max:5000'],
-        ]);
-
-        $hasActiveOrWaiting = SupportTicket::where('customer_id', $user->id)
-            ->whereIn('status', ['active', 'waiting'])
-            ->exists();
-
-        if ($hasActiveOrWaiting) {
-            return $this->error('You already have an active or waiting ticket.', [], 422);
-        }
-
-        $status = 'waiting';
-
-        DB::beginTransaction();
+        $validated = $request->validated();
 
         try {
-            $ticket = SupportTicket::create([
-                'customer_id' => $user->id,
-                'status' => $status,
-                'category' => $validated['category'],
-                'queued_at' => Carbon::now(),
-                'customer_name_snapshot' => $user->fullname,
-            ]);
+            $ticket = DB::transaction(function () use ($user, $validated): ?SupportTicket {
+                User::whereKey($user->id)->lockForUpdate()->firstOrFail();
 
-            SupportMessage::create([
-                'support_ticket_id' => $ticket->id,
-                'sender_id' => $user->id,
-                'sender_name_snapshot' => $user->fullname,
-                'message' => $validated['message'],
-            ]);
+                $hasActiveOrWaiting = SupportTicket::where('customer_id', $user->id)
+                    ->whereIn('status', ['active', 'waiting'])
+                    ->exists();
 
-            $ticket->update(['last_message_at' => Carbon::now()]);
+                if ($hasActiveOrWaiting) {
+                    return null;
+                }
 
-            DB::commit();
+                $now = Carbon::now();
+                $ticket = SupportTicket::create([
+                    'customer_id' => $user->id,
+                    'status' => 'waiting',
+                    'category' => $validated['category'],
+                    'queued_at' => $now,
+                    'last_message_at' => $now,
+                    'customer_name_snapshot' => $user->fullname,
+                ]);
+
+                SupportMessage::create([
+                    'support_ticket_id' => $ticket->id,
+                    'sender_id' => $user->id,
+                    'sender_name_snapshot' => $user->fullname,
+                    'message' => $validated['message'],
+                ]);
+
+                return $ticket;
+            }, 3);
         } catch (\Exception $e) {
-            DB::rollBack();
-
             return $this->error('Failed to create ticket. Please try again.', [], 500);
         }
 
-        $adminUsers = User::whereIn('role', ['admin', 'manager'])->get();
+        if (! $ticket) {
+            return $this->error('You already have an active or waiting ticket.', [], 422);
+        }
+
+        $adminUsers = User::activeStaffForModule('customer-service')->get();
         $ticketId = DisplayId::ticket($ticket->id);
 
         foreach ($adminUsers as $admin) {
@@ -183,49 +197,63 @@ class SupportTicketController extends Controller
         EntityChange::dispatch('notifications');
 
         $ticket->load([
-            'customer:id,fullname,email,image',
+            'customer:id,fullname,email',
             'assignedTo:id,fullname',
-            'messagesAsc.sender:id,fullname,role,image',
+            'messagesAsc.sender:id,fullname,role',
         ]);
 
         return $this->created('Ticket created successfully', $ticket);
     }
 
-    public function cancel(Request $request, string $id)
+    public function cancel(SupportTicketActionRequest $request, string $id)
     {
         $user = $request->user();
+        $validated = $request->validated();
 
-        $ticket = SupportTicket::findOrFail($id);
-        $ticketId = DisplayId::ticket($ticket->id);
+        if (! in_array($user->role, ['customer', 'admin', 'manager'], true)) {
+            abort(403, 'Forbidden.');
+        }
 
-        if ($user->role === 'customer') {
-            if ((int) $ticket->customer_id !== (int) $user->id) {
-                abort(403, 'Forbidden.');
+        $result = DB::transaction(function () use ($id, $user, $validated): array {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $ticket = SupportTicket::whereKey($id)->lockForUpdate()->firstOrFail();
+            $ticketId = DisplayId::ticket($ticket->id);
+
+            if ($user->role === 'customer') {
+                if ((int) $ticket->customer_id !== (int) $user->id) {
+                    abort(403, 'Forbidden.');
+                }
+
+                $updated = SupportTicket::whereKey($ticket->id)
+                    ->where('status', 'waiting')
+                    ->update([
+                        'status' => 'cancelled',
+                        'resolved_at' => Carbon::now(),
+                        'updated_at' => Carbon::now(),
+                    ]);
+
+                return $updated === 1
+                    ? ['cancelled' => true]
+                    : ['error' => 'Only waiting tickets can be cancelled.', 'status' => 422];
             }
 
-            if ($ticket->status !== 'waiting') {
-                return $this->error('Only waiting tickets can be cancelled.', [], 422);
-            }
-
-            $ticket->update(['status' => 'cancelled']);
-        } elseif (in_array($user->role, ['admin', 'manager'], true)) {
             if ((int) $ticket->assigned_to_id !== (int) $user->id) {
-                return $this->error('This ticket is not assigned to you.', [], 403);
+                return ['error' => 'This ticket is not assigned to you.', 'status' => 403];
             }
 
-            if ($ticket->status !== 'active') {
-                return $this->error('Only active tickets can be cancelled.', [], 422);
+            $updated = SupportTicket::whereKey($ticket->id)
+                ->where('status', 'active')
+                ->where('assigned_to_id', $user->id)
+                ->update([
+                    'status' => 'cancelled',
+                    'cancel_reason' => $validated['cancel_reason'],
+                    'resolved_at' => Carbon::now(),
+                    'updated_at' => Carbon::now(),
+                ]);
+
+            if ($updated !== 1) {
+                return ['error' => 'Only active tickets can be cancelled.', 'status' => 422];
             }
-
-            $validated = $request->validate([
-                'cancel_reason' => ['required', 'string', 'max:5000'],
-            ]);
-
-            $ticket->update([
-                'status' => 'cancelled',
-                'cancel_reason' => $validated['cancel_reason'],
-                'resolved_at' => Carbon::now(),
-            ]);
 
             Notification::create([
                 'user_id' => $ticket->customer_id,
@@ -239,8 +267,12 @@ class SupportTicketController extends Controller
                 ],
                 'created_by_user_id' => $user->id,
             ]);
-        } else {
-            abort(403, 'Forbidden.');
+
+            return ['cancelled' => true];
+        }, 3);
+
+        if (isset($result['error'])) {
+            return $this->error($result['error'], [], $result['status']);
         }
 
         EntityChange::dispatch('support_tickets');
@@ -256,53 +288,73 @@ class SupportTicketController extends Controller
             abort(403, 'Forbidden.');
         }
 
-        $ticket = SupportTicket::findOrFail($id);
+        $result = DB::transaction(function () use ($id, $user): array {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $ticket = SupportTicket::whereKey($id)->lockForUpdate()->firstOrFail();
 
-        if ($ticket->status !== 'waiting') {
-            return $this->error('Only waiting tickets can be accepted.', [], 422);
+            if ($ticket->status !== 'waiting') {
+                return ['error' => 'Only waiting tickets can be accepted.'];
+            }
+
+            $hasActiveTicket = SupportTicket::where('assigned_to_id', $user->id)
+                ->where('status', 'active')
+                ->exists();
+
+            if ($hasActiveTicket) {
+                return ['error' => 'You already have an active ticket. Resolve it first.'];
+            }
+
+            $ticketId = DisplayId::ticket($ticket->id);
+            $now = Carbon::now();
+            $claimed = SupportTicket::whereKey($ticket->id)
+                ->where('status', 'waiting')
+                ->update([
+                    'assigned_to_id' => $user->id,
+                    'assigned_staff_name_snapshot' => $user->fullname,
+                    'status' => 'active',
+                    'claimed_at' => $now,
+                    'last_message_at' => $now,
+                    'updated_at' => $now,
+                ]);
+
+            if ($claimed !== 1) {
+                return ['error' => 'Only waiting tickets can be accepted.'];
+            }
+
+            SupportMessage::create([
+                'support_ticket_id' => $ticket->id,
+                'sender_id' => $user->id,
+                'sender_name_snapshot' => $user->fullname,
+                'message' => "Ticket {$ticketId} has been accepted. A representative is now here to assist you.",
+            ]);
+
+            Notification::create([
+                'user_id' => $ticket->customer_id,
+                'type' => 'ticket_promoted',
+                'title' => 'Your Turn!',
+                'message' => "Your ticket {$ticketId} has been accepted. A representative has joined the conversation.",
+                'payload' => [
+                    'ticket_id' => $ticket->id,
+                    'ticket_display_id' => $ticketId,
+                ],
+                'created_by_user_id' => $user->id,
+            ]);
+
+            $ticket->refresh();
+
+            return [
+                'ticket' => $ticket,
+                'ticket_id' => $ticketId,
+            ];
+        }, 3);
+
+        if (isset($result['error'])) {
+            return $this->error($result['error'], [], 422);
         }
 
-        $hasActiveTicket = SupportTicket::where('assigned_to_id', $user->id)
-            ->where('status', 'active')
-            ->exists();
-
-        if ($hasActiveTicket) {
-            return $this->error('You already have an active ticket. Resolve it first.', [], 422);
-        }
-
-        $queuePosition = SupportTicket::where('status', 'waiting')
-            ->where('created_at', '<', $ticket->created_at)
-            ->count() + 1;
-
-        $ticket->update([
-            'assigned_to_id' => $user->id,
-            'assigned_staff_name_snapshot' => $user->fullname,
-            'status' => 'active',
-            'claimed_at' => Carbon::now(),
-        ]);
-
-        $ticketId = DisplayId::ticket($ticket->id);
-
-        SupportMessage::create([
-            'support_ticket_id' => $ticket->id,
-            'sender_id' => $user->id,
-            'sender_name_snapshot' => $user->fullname,
-            'message' => "Ticket {$ticketId} has been accepted. A representative is now here to assist you.",
-        ]);
-
-        $ticket->update(['last_message_at' => Carbon::now()]);
-
-        Notification::create([
-            'user_id' => $ticket->customer_id,
-            'type' => 'ticket_promoted',
-            'title' => 'Your Turn!',
-            'message' => "Your ticket {$ticketId} has been accepted. A representative has joined the conversation.",
-            'payload' => [
-                'ticket_id' => $ticket->id,
-                'ticket_display_id' => $ticketId,
-            ],
-            'created_by_user_id' => $user->id,
-        ]);
+        /** @var SupportTicket $ticket */
+        $ticket = $result['ticket'];
+        $ticketId = $result['ticket_id'];
 
         try {
             $pushService = new PushNotificationService;
@@ -323,15 +375,15 @@ class SupportTicketController extends Controller
         EntityChange::dispatch('support_tickets');
 
         $ticket->load([
-            'customer:id,fullname,email,image',
+            'customer:id,fullname,email',
             'assignedTo:id,fullname',
-            'messagesAsc.sender:id,fullname,role,image',
+            'messagesAsc.sender:id,fullname,role',
         ]);
 
         return $this->success('Ticket accepted successfully', $ticket);
     }
 
-    public function resolve(Request $request, string $id)
+    public function resolve(SupportTicketActionRequest $request, string $id)
     {
         $user = $request->user();
 
@@ -339,38 +391,48 @@ class SupportTicketController extends Controller
             abort(403, 'Forbidden.');
         }
 
-        $ticket = SupportTicket::with('customer')->findOrFail($id);
-        $ticketId = DisplayId::ticket($ticket->id);
+        $validated = $request->validated();
+        $result = DB::transaction(function () use ($id, $user, $validated): array {
+            User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $ticket = SupportTicket::with('customer')->whereKey($id)->lockForUpdate()->firstOrFail();
 
-        if ((int) $ticket->assigned_to_id !== (int) $user->id) {
-            return $this->error('This ticket is not assigned to you.', [], 403);
+            if ((int) $ticket->assigned_to_id !== (int) $user->id) {
+                return ['error' => 'This ticket is not assigned to you.', 'status' => 403];
+            }
+
+            if ($ticket->status !== 'active') {
+                return ['error' => 'Only active tickets can be resolved.', 'status' => 422];
+            }
+
+            $ticketId = DisplayId::ticket($ticket->id);
+            $ticket->update([
+                'status' => 'resolved',
+                'resolution_notes' => $validated['resolution_notes'] ?? null,
+                'resolved_at' => Carbon::now(),
+            ]);
+
+            Notification::create([
+                'user_id' => $ticket->customer_id,
+                'type' => 'ticket_resolved',
+                'title' => 'Ticket Resolved',
+                'message' => "Your support ticket {$ticketId} has been resolved.",
+                'payload' => [
+                    'ticket_id' => $ticket->id,
+                    'ticket_display_id' => $ticketId,
+                ],
+                'created_by_user_id' => $user->id,
+            ]);
+
+            return ['ticket' => $ticket, 'ticket_id' => $ticketId];
+        }, 3);
+
+        if (isset($result['error'])) {
+            return $this->error($result['error'], [], $result['status']);
         }
 
-        if ($ticket->status !== 'active') {
-            return $this->error('Only active tickets can be resolved.', [], 422);
-        }
-
-        $validated = $request->validate([
-            'resolution_notes' => ['nullable', 'string', 'max:5000'],
-        ]);
-
-        $ticket->update([
-            'status' => 'resolved',
-            'resolution_notes' => $validated['resolution_notes'] ?? null,
-            'resolved_at' => Carbon::now(),
-        ]);
-
-        Notification::create([
-            'user_id' => $ticket->customer_id,
-            'type' => 'ticket_resolved',
-            'title' => 'Ticket Resolved',
-            'message' => "Your support ticket {$ticketId} has been resolved.",
-            'payload' => [
-                'ticket_id' => $ticket->id,
-                'ticket_display_id' => $ticketId,
-            ],
-            'created_by_user_id' => $user->id,
-        ]);
+        /** @var SupportTicket $ticket */
+        $ticket = $result['ticket'];
+        $ticketId = $result['ticket_id'];
 
         try {
             $pushService = new PushNotificationService;
@@ -393,42 +455,50 @@ class SupportTicketController extends Controller
         return $this->success('Ticket resolved successfully', $ticket);
     }
 
-    public function sendMessage(Request $request, string $id)
+    public function sendMessage(SupportTicketActionRequest $request, string $id)
     {
         $user = $request->user();
+        $validated = $request->validated();
 
-        $ticket = SupportTicket::findOrFail($id);
+        $result = DB::transaction(function () use ($id, $user, $validated): array {
+            $ticket = SupportTicket::whereKey($id)->lockForUpdate()->firstOrFail();
 
-        if ($ticket->status !== 'active') {
-            return $this->error('Cannot send messages to a non-active ticket.', [], 422);
-        }
+            if ($ticket->status !== 'active') {
+                return ['error' => 'Cannot send messages to a non-active ticket.', 'status' => 422];
+            }
 
-        if ($user->role === 'customer') {
-            if ((int) $ticket->customer_id !== (int) $user->id) {
+            if ($user->role === 'customer') {
+                if ((int) $ticket->customer_id !== (int) $user->id) {
+                    abort(403, 'Forbidden.');
+                }
+            } elseif (in_array($user->role, ['admin', 'manager'], true)) {
+                if ((int) $ticket->assigned_to_id !== (int) $user->id) {
+                    return ['error' => 'This ticket is not assigned to you.', 'status' => 403];
+                }
+            } else {
                 abort(403, 'Forbidden.');
             }
-        } elseif (in_array($user->role, ['admin', 'manager'], true)) {
-            if ((int) $ticket->assigned_to_id !== (int) $user->id) {
-                return $this->error('This ticket is not assigned to you.', [], 403);
-            }
-        } else {
-            abort(403, 'Forbidden.');
+
+            $message = SupportMessage::create([
+                'support_ticket_id' => $ticket->id,
+                'sender_id' => $user->id,
+                'sender_name_snapshot' => $user->fullname,
+                'message' => $validated['message'],
+            ]);
+
+            $ticket->update(['last_message_at' => Carbon::now()]);
+
+            return ['message' => $message];
+        }, 3);
+
+        if (isset($result['error'])) {
+            return $this->error($result['error'], [], $result['status']);
         }
 
-        $validated = $request->validate([
-            'message' => ['required', 'string', 'max:5000'],
-        ]);
+        /** @var SupportMessage $message */
+        $message = $result['message'];
 
-        $message = SupportMessage::create([
-            'support_ticket_id' => $ticket->id,
-            'sender_id' => $user->id,
-            'sender_name_snapshot' => $user->fullname,
-            'message' => $validated['message'],
-        ]);
-
-        $ticket->update(['last_message_at' => Carbon::now()]);
-
-        $message->load('sender:id,fullname,role,image');
+        $message->load('sender:id,fullname,role');
 
         EntityChange::dispatch('support_tickets');
 
@@ -453,13 +523,14 @@ class SupportTicketController extends Controller
             'after_id' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        $messages = SupportMessage::with('sender:id,fullname,role,image')
+        $messages = SupportMessage::with('sender:id,fullname,role')
             ->where('support_ticket_id', $ticket->id)
             ->when(
                 isset($validated['after_id']),
                 fn ($query) => $query->where('id', '>', $validated['after_id'])
             )
             ->oldest('id')
+            ->limit(200)
             ->get();
 
         return $this->success('Messages retrieved successfully', $messages);
@@ -476,8 +547,13 @@ class SupportTicketController extends Controller
         $validated = $request->validate([
             'view' => ['nullable', 'in:live,history'],
             'updated_after' => ['nullable', 'date'],
+            'history_page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
         $view = $validated['view'] ?? null;
+        $historyPage = (int) ($validated['history_page'] ?? 1);
+        $perPage = (int) ($validated['per_page'] ?? 100);
+        $historyOffset = ($historyPage - 1) * $perPage;
         $historyCheckedAt = Carbon::now();
         $historyUpdatedAfter = isset($validated['updated_after'])
             ? Carbon::parse($validated['updated_after'])->subSecond()
@@ -488,6 +564,7 @@ class SupportTicketController extends Controller
             : SupportTicket::with(['customer:id,fullname'])
                 ->where('status', 'waiting')
                 ->oldest('created_at')
+                ->limit(100)
                 ->get();
 
         $active = $view === 'history'
@@ -498,9 +575,10 @@ class SupportTicketController extends Controller
             ])
                 ->where('status', 'active')
                 ->oldest('claimed_at')
+                ->limit(100)
                 ->get();
 
-        $resolved = $view === 'live'
+        $resolvedRows = $view === 'live'
             ? collect()
             : SupportTicket::with([
                 'customer:id,fullname',
@@ -512,9 +590,12 @@ class SupportTicketController extends Controller
                     fn ($query) => $query->where('updated_at', '>=', $historyUpdatedAfter)
                 )
                 ->latest('resolved_at')
+                ->latest('id')
+                ->offset($historyOffset)
+                ->limit($perPage + 1)
                 ->get();
 
-        $cancelled = $view === 'live'
+        $cancelledRows = $view === 'live'
             ? collect()
             : SupportTicket::with([
                 'customer:id,fullname',
@@ -526,7 +607,13 @@ class SupportTicketController extends Controller
                     fn ($query) => $query->where('updated_at', '>=', $historyUpdatedAfter)
                 )
                 ->latest('resolved_at')
+                ->latest('id')
+                ->offset($historyOffset)
+                ->limit($perPage + 1)
                 ->get();
+        $historyHasMore = $resolvedRows->count() > $perPage || $cancelledRows->count() > $perPage;
+        $resolved = $resolvedRows->take($perPage)->values();
+        $cancelled = $cancelledRows->take($perPage)->values();
 
         return $this->success('Queue retrieved successfully', [
             'waiting' => $waiting,
@@ -534,6 +621,8 @@ class SupportTicketController extends Controller
             'resolved' => $resolved,
             'cancelled' => $cancelled,
             'checked_at' => $historyCheckedAt->toIso8601String(),
+            'history_page' => $historyPage,
+            'history_has_more' => $view !== 'live' && $historyHasMore,
         ]);
     }
 
@@ -563,14 +652,30 @@ class SupportTicketController extends Controller
             abort(403, 'Forbidden.');
         }
 
+        $validated = $request->validate([
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
         $tickets = SupportTicket::with([
             'assignedTo:id,fullname',
-            'messagesAsc.sender:id,fullname,role,image',
         ])
             ->where('customer_id', $customerId)
             ->latest()
-            ->get();
+            ->paginate(
+                (int) ($validated['per_page'] ?? 20),
+                ['*'],
+                'page',
+                (int) ($validated['page'] ?? 1),
+            );
 
-        return $this->success('Customer tickets retrieved successfully', $tickets);
+        return $this->success('Customer tickets retrieved successfully', [
+            'tickets' => $tickets->items(),
+            'meta' => [
+                'current_page' => $tickets->currentPage(),
+                'last_page' => $tickets->lastPage(),
+                'per_page' => $tickets->perPage(),
+                'total' => $tickets->total(),
+            ],
+        ]);
     }
 }

@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import { Menu, X, LogOut } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -36,10 +37,10 @@ type ResponsiveSidebarProps = {
 export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
   const pathname = usePathname();
   const { logout } = useAuth();
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -105,10 +106,15 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
   };
 
   const handleLogout = async () => {
-    setShowLogoutDialog(false);
-    setIsOpen(false);
-    await logout();
-    router.push("/");
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } catch {
+      setIsLoggingOut(false);
+      toast.error("Logout failed. Please try again.");
+    }
   };
 
   return (
@@ -215,7 +221,12 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
         </div>
       </aside>
 
-      <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+      <Dialog
+        open={showLogoutDialog}
+        onOpenChange={(open) => {
+          if (!isLoggingOut) setShowLogoutDialog(open);
+        }}
+      >
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
             <DialogTitle>Confirm Logout</DialogTitle>
@@ -228,11 +239,16 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
               type="button"
               variant="outline"
               onClick={() => setShowLogoutDialog(false)}
+              disabled={isLoggingOut}
             >
               Cancel
             </Button>
-            <Button type="button" onClick={handleLogout}>
-              Logout
+            <Button
+              type="button"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+            >
+              {isLoggingOut ? "Logging out..." : "Logout"}
             </Button>
           </DialogFooter>
         </DialogContent>

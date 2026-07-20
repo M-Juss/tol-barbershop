@@ -12,6 +12,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Laravel\Sanctum\PersonalAccessToken;
+use Throwable;
 
 class EditUserController extends Controller
 {
@@ -32,10 +35,32 @@ class EditUserController extends Controller
     {
         $user = $request->user();
         $validated = $request->validated();
+        $currentAccessToken = $user->currentAccessToken();
+        $currentSessionId = $request->hasSession() ? $request->session()->getId() : null;
 
-        $user->update([
-            'password' => $validated['password'],
-        ]);
+        DB::transaction(function () use ($currentAccessToken, $currentSessionId, $user, $validated): void {
+            $user->forceFill([
+                'password' => $validated['password'],
+                'remember_token' => Str::random(60),
+            ])->save();
+
+            $tokens = $user->tokens();
+            if ($currentAccessToken instanceof PersonalAccessToken) {
+                $tokens->whereKeyNot($currentAccessToken->getKey());
+            }
+            $tokens->delete();
+
+            if (config('session.driver') === 'database') {
+                $sessions = DB::table((string) config('session.table', 'sessions'))
+                    ->where('user_id', $user->id);
+
+                if ($currentSessionId) {
+                    $sessions->where('id', '!=', $currentSessionId);
+                }
+
+                $sessions->delete();
+            }
+        });
 
         return response()->json([
             'success' => true,
@@ -76,17 +101,34 @@ class EditUserController extends Controller
     {
         $user = $request->user();
         $validated = $request->validated();
+        $emailChanged = strcasecmp((string) $user->email, $validated['email']) !== 0;
 
-        $user->update([
+        $updates = [
             'fullname' => $validated['fullname'],
             'email' => $validated['email'],
             'contact_number' => $validated['contact_number'],
-        ]);
+        ];
+
+        if ($emailChanged && $user->role === 'customer') {
+            $updates['email_verified_at'] = null;
+        }
+
+        $user->forceFill($updates)->save();
+
+        if ($emailChanged && $user->role === 'customer') {
+            defer(function () use ($user): void {
+                try {
+                    $user->sendEmailVerificationNotification();
+                } catch (Throwable $exception) {
+                    report($exception);
+                }
+            });
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Information updated successfully.',
-            'data' => $user,
+            'data' => new UserResource($user),
         ]);
     }
 }

@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { StatCard } from "@/components/common/StatCard";
@@ -394,7 +396,7 @@ export function Overview() {
             <Calendar
               mode="single"
               selected={selectedDate}
-              onSelect={setSelectedDate}
+              onSelect={(date) => { if (date) setSelectedDate(date); }}
               disabled={(day) => {
                 const isSunday = day.getDay() === 0;
                 const isClosedDate = closedDates.includes(formatDateToLocal(day));

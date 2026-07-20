@@ -8,7 +8,7 @@ use App\Models\User;
 use App\Support\EntityChange;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class BarberController extends Controller
 {
@@ -22,7 +22,7 @@ class BarberController extends Controller
         try {
             $query = User::where('role', 'barber');
 
-            if ($request->user()?->role !== 'manager') {
+            if (! $request->user()?->canAccessModule('management')) {
                 $query->where('is_active', true);
             }
 
@@ -31,7 +31,9 @@ class BarberController extends Controller
 
             return $this->success('Barber fetched successfully', $data);
 
-        } catch (\Exception $e) {
+        } catch (Throwable $exception) {
+            report($exception);
+
             return $this->error('Could not fetch barber', [], 500);
         }
     }
@@ -44,12 +46,6 @@ class BarberController extends Controller
         try {
             $validated = $request->validated();
 
-            // Handle image upload using Storage::store()
-            $imagePath = null;
-            if ($request->hasFile('image')) {
-                $imagePath = $request->file('image')->store('staff-images', 'public');
-            }
-
             $staffData = [
                 'fullname' => $validated['fullname'],
                 'email' => $validated['email'],
@@ -57,7 +53,6 @@ class BarberController extends Controller
                 'password' => bcrypt($validated['password'] ?? 'Staff123!'),
                 'role' => 'barber',
                 'is_active' => $validated['is_active'] ?? true,
-                'image' => $imagePath ? Storage::url($imagePath) : null,
             ];
 
             User::create($staffData);
@@ -65,17 +60,37 @@ class BarberController extends Controller
 
             return $this->created('Barber created successfully');
 
-        } catch (\Exception $e) {
-            return $this->error('Could not create barber: '.$e->getMessage(), [], 500);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return $this->error('Could not create barber', [], 500);
         }
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
-        //
+        try {
+            $query = User::where('role', 'barber');
+
+            if (! $request->user()?->canAccessModule('management')) {
+                $query->where('is_active', true);
+            }
+
+            $barber = $query->find($id);
+
+            if (! $barber) {
+                return $this->error('Barber not found', [], 404);
+            }
+
+            return $this->success('Barber fetched successfully', new StaffResource($barber));
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return $this->error('Could not fetch barber', [], 500);
+        }
     }
 
     /**
@@ -84,7 +99,7 @@ class BarberController extends Controller
     public function update(StaffRequest $request, string $id)
     {
         try {
-            $barber = User::find($id);
+            $barber = User::where('role', 'barber')->find($id);
 
             if (! $barber) {
                 return $this->error('Barber not found', [], 404);
@@ -92,35 +107,20 @@ class BarberController extends Controller
 
             $validated = $request->validated();
 
-            // Handle image upload using Storage::store()
-            if ($request->hasFile('image')) {
-                // Delete old image if exists
-                if ($barber->image) {
-                    $oldImagePath = str_replace('/storage/', '', $barber->image);
-                    if (Storage::disk('public')->exists($oldImagePath)) {
-                        Storage::disk('public')->delete($oldImagePath);
-                    }
-                }
-
-                $imagePath = $request->file('image')->store('staff-images', 'public');
-                $validated['image'] = Storage::url($imagePath);
-            } else {
-                $validated['image'] = $barber->image;
-            }
-
             $barber->update([
                 'fullname' => $validated['fullname'],
                 'email' => $validated['email'],
                 'contact_number' => $validated['contact_number'],
                 'is_active' => $validated['is_active'] ?? $barber->is_active,
-                'image' => $validated['image'],
             ]);
 
             EntityChange::dispatch('barbers');
 
             return $this->success('Barber updated successfully');
 
-        } catch (\Exception $e) {
+        } catch (Throwable $exception) {
+            report($exception);
+
             return $this->error('Could not update barber', [], 500);
         }
     }
@@ -131,7 +131,7 @@ class BarberController extends Controller
     public function destroy(string $id)
     {
         try {
-            $barber = User::find($id);
+            $barber = User::where('role', 'barber')->find($id);
 
             if (! $barber) {
                 return $this->error('Barber not found', [], 404);
@@ -142,7 +142,9 @@ class BarberController extends Controller
 
             return $this->success('Barber deleted successfully');
 
-        } catch (\Exception $e) {
+        } catch (Throwable $exception) {
+            report($exception);
+
             return $this->error('Could not delete barber', [], 500);
         }
     }

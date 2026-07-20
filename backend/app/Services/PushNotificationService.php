@@ -16,13 +16,21 @@ class PushNotificationService
     {
         $auth = [
             'VAPID' => [
-                'subject' => env('VAPID_SUBJECT', 'mailto:admin@tolbarbershop.com'),
-                'publicKey' => env('VAPID_PUBLIC_KEY'),
-                'privateKey' => env('VAPID_PRIVATE_KEY'),
+                'subject' => config('services.webpush.subject'),
+                'publicKey' => config('services.webpush.public_key'),
+                'privateKey' => config('services.webpush.private_key'),
             ],
         ];
 
-        $this->webPush = new WebPush($auth);
+        $this->webPush = new WebPush(
+            $auth,
+            [],
+            10,
+            [
+                'allow_redirects' => false,
+                'connect_timeout' => 5,
+            ],
+        );
     }
 
     public function send(User $user, array $payload): void

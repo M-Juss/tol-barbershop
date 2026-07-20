@@ -10,6 +10,7 @@ use App\Models\AppointmentFeedback;
 use App\Support\EntityChange;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AppointmentFeedbackController extends Controller
 {
@@ -20,32 +21,47 @@ class AppointmentFeedbackController extends Controller
         $authUser = $request->user();
         $validated = $request->validated();
 
-        $appointment = Appointment::with(['service', 'user'])
-            ->where('id', $validated['appointment_id'])
-            ->where('user_id', $authUser->id)
-            ->first();
-
-        if (! $appointment) {
-            return $this->error('Appointment not found.', [], 404);
-        }
-
-        if ($appointment->status !== 'completed') {
-            return $this->error('Feedback can only be submitted for completed appointments.', [], 422);
-        }
-
         $comment = $validated['comment'] ?? null;
+        $result = DB::transaction(function () use ($validated, $authUser, $comment): array {
+            $appointment = Appointment::with(['service', 'user'])
+                ->where('id', $validated['appointment_id'])
+                ->where('user_id', $authUser->id)
+                ->lockForUpdate()
+                ->first();
 
-        $feedback = AppointmentFeedback::updateOrCreate(
-            ['appointment_id' => $appointment->id],
-            [
-                'user_id' => $authUser->id,
-                'rating' => $validated['rating'],
-                'comment' => is_string($comment) && trim($comment) !== ''
-                    ? trim($comment)
-                    : null,
-                'customer_name_snapshot' => $authUser->fullname,
-            ],
-        );
+            if (! $appointment) {
+                return ['error' => 'Appointment not found.', 'status' => 404];
+            }
+
+            if ($appointment->status !== 'completed') {
+                return [
+                    'error' => 'Feedback can only be submitted for completed appointments.',
+                    'status' => 422,
+                ];
+            }
+
+            $feedback = AppointmentFeedback::updateOrCreate(
+                ['appointment_id' => $appointment->id],
+                [
+                    'user_id' => $authUser->id,
+                    'rating' => $validated['rating'],
+                    'comment' => is_string($comment) && trim($comment) !== ''
+                        ? trim($comment)
+                        : null,
+                    'is_featured' => false,
+                    'customer_name_snapshot' => $authUser->fullname,
+                ],
+            );
+
+            return ['feedback' => $feedback];
+        }, 3);
+
+        if (isset($result['error'])) {
+            return $this->error($result['error'], [], $result['status']);
+        }
+
+        /** @var AppointmentFeedback $feedback */
+        $feedback = $result['feedback'];
 
         $feedback->load(['user', 'appointment.service', 'appointment.barber']);
         EntityChange::dispatch('feedback');
@@ -58,30 +74,50 @@ class AppointmentFeedbackController extends Controller
 
     public function toggleFeature(Request $request, $id)
     {
-        $feedback = AppointmentFeedback::findOrFail($id);
+        $result = DB::transaction(function () use ($id): array {
+            $featuredIds = AppointmentFeedback::where('is_featured', true)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->pluck('id');
+            $feedback = AppointmentFeedback::whereKey($id)
+                ->lockForUpdate()
+                ->first();
 
-        if ($feedback->is_featured) {
-            $featuredCount = AppointmentFeedback::where('is_featured', true)->count();
-            if ($featuredCount <= 1) {
-                return $this->error('At least 1 feedback must remain featured.', [], 422);
+            if (! $feedback) {
+                abort(404);
             }
-            $feedback->update(['is_featured' => false]);
-            $feedback->load(['user', 'appointment.service', 'appointment.barber']);
 
-            return $this->success('Feedback removed from featured.', new AppointmentFeedbackResource($feedback));
+            $featuredCount = $featuredIds->count();
+
+            if ($feedback->is_featured && $featuredCount <= 1) {
+                return ['error' => 'At least 1 feedback must remain featured.'];
+            }
+
+            if (! $feedback->is_featured && $featuredCount >= 5) {
+                return ['error' => 'You can feature up to 5 items. Unfeature one first.'];
+            }
+
+            $feedback->update(['is_featured' => ! $feedback->is_featured]);
+
+            return [
+                'feedback' => $feedback,
+                'message' => $feedback->is_featured
+                    ? 'Feedback featured successfully.'
+                    : 'Feedback removed from featured.',
+            ];
+        }, 3);
+
+        if (isset($result['error'])) {
+            return $this->error($result['error'], [], 422);
         }
 
-        $featuredCount = AppointmentFeedback::where('is_featured', true)->count();
-
-        if ($featuredCount >= 5) {
-            return $this->error('Maximum of 5 featured feedback reached. Unfeature another item first.', [], 422);
-        }
-
-        $feedback->update(['is_featured' => true]);
+        /** @var AppointmentFeedback $feedback */
+        $feedback = $result['feedback'];
 
         $feedback->load(['user', 'appointment.service', 'appointment.barber']);
+        EntityChange::dispatch('feedback');
 
-        return $this->success('Feedback featured successfully.', new AppointmentFeedbackResource($feedback));
+        return $this->success($result['message'], new AppointmentFeedbackResource($feedback));
     }
 
     public function publicIndex(Request $request)

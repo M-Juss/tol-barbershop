@@ -64,8 +64,15 @@ export function usePushNotifications() {
 
     loadStatus();
 
+    const handleSubscriptionChange = () => {
+      loadStatus();
+    };
+
+    window.addEventListener("push-subscription-changed", handleSubscriptionChange);
+
     return () => {
       cancelled = true;
+      window.removeEventListener("push-subscription-changed", handleSubscriptionChange);
     };
   }, []);
 

@@ -17,11 +17,9 @@ class SecurityHeaders
     {
         $response = $next($request);
 
-        // Prevent XSS attacks
-        $response->headers->set('X-XSS-Protection', '1; mode=block');
+        $response->headers->set('X-XSS-Protection', '0');
 
-        // Prevent clickjacking
-        $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
+        $response->headers->set('X-Frame-Options', 'DENY');
 
         // Prevent MIME type sniffing
         $response->headers->set('X-Content-Type-Options', 'nosniff');
@@ -31,16 +29,20 @@ class SecurityHeaders
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
 
-        // Content Security Policy - relaxed for development
-        if (app()->environment('production')) {
-            $response->headers->set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self';");
-        }
+        $response->headers->set(
+            'Content-Security-Policy',
+            "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        );
 
         // Referrer Policy
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
         // Permissions Policy
         $response->headers->set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+
+        if ($request->user()) {
+            $response->headers->set('Cache-Control', 'no-store, private');
+        }
 
         return $response;
     }

@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { Plus, AlertTriangle } from "lucide-react";
 import { ServiceForm } from "@/forms/ServiceForm";
@@ -38,6 +40,7 @@ export function Service() {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadServices();
@@ -77,13 +80,13 @@ export function Service() {
         toast.success("Service updated successfully");
       } else {
         await createService(data);
-        toast.success("Service created successfully");
+        toast.success("Service added successfully");
       }
       await loadServices();
       closeModal();
     } catch (error) {
       console.error("Failed to save service:", error);
-      toast.error("Failed to save service");
+      toast.error(error instanceof Error ? error.message : "Could not save service. Please try again.");
     }
   };
 
@@ -93,16 +96,19 @@ export function Service() {
   };
 
   const confirmDelete = async () => {
-    if (!serviceToDelete) return;
+    if (!serviceToDelete || isDeleting) return;
+    setIsDeleting(true);
     try {
       await deleteService(serviceToDelete);
       await loadServices();
       setDeleteConfirmOpen(false);
       setServiceToDelete(null);
-      toast.success("Service deleted successfully");
+      toast.success("Service archived");
     } catch (error) {
       console.error("Failed to delete service:", error);
-      toast.error("Failed to delete service");
+      toast.error(error instanceof Error ? error.message : "Could not archive service. Please try again.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -159,30 +165,39 @@ export function Service() {
         title={editingService ? "Edit Service" : "Add New Service"}
       />
 
-      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <Dialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) setDeleteConfirmOpen(open);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-red-500" />
-              Delete Service
+              Archive Service
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this service? This action cannot
-              be undone.
+              Archive this service? Existing appointment and reporting history
+              will be retained, and customers can no longer book it.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
+              type="button"
               variant="outline"
               onClick={() => setDeleteConfirmOpen(false)}
+              disabled={isDeleting}
             >
               Cancel
             </Button>
             <Button
+              type="button"
               onClick={confirmDelete}
+              disabled={isDeleting}
               className="bg-red-500 hover:bg-red-600 text-white"
             >
-              Delete
+              {isDeleting ? "Archiving..." : "Archive"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -50,7 +50,7 @@ test('marking an appointment completed creates a feedback request notification',
         'user_id' => $customer->id,
         'service_id' => $service->id,
         'barber_user_id' => $barber->id,
-        'appointment_date' => now()->addDay()->toDateString(),
+        'appointment_date' => now()->subDay()->toDateString(),
         'appointment_time' => '10:00',
         'duration_minutes' => 45,
         'price' => 250,
@@ -355,4 +355,72 @@ test('authenticated feedback list rejects invalid list parameters', function () 
     $this->getJson('/api/v1/feedback?'.$query)
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['rating', 'featured', 'sort', 'dir', 'page', 'per_page']);
+});
+
+test('editing feedback always clears its featured status', function () {
+    $customer = createFeedbackTestUser('customer', 'edit-featured-feedback-customer@example.test');
+    $barber = createFeedbackTestUser('barber', 'edit-featured-feedback-barber@example.test');
+    $service = createFeedbackTestService();
+    $appointment = Appointment::create([
+        'user_id' => $customer->id,
+        'service_id' => $service->id,
+        'barber_user_id' => $barber->id,
+        'appointment_date' => now()->subDay()->toDateString(),
+        'appointment_time' => '10:00',
+        'duration_minutes' => 45,
+        'price' => 250,
+        'status' => 'completed',
+        'completed_at' => now()->subDay(),
+    ]);
+    $feedback = AppointmentFeedback::create([
+        'appointment_id' => $appointment->id,
+        'user_id' => $customer->id,
+        'rating' => 5,
+        'comment' => 'Original featured comment',
+        'is_featured' => true,
+        'customer_name_snapshot' => $customer->fullname,
+    ]);
+    Sanctum::actingAs($customer);
+
+    $this->postJson('/api/v1/appointment-feedback', [
+        'appointment_id' => $appointment->id,
+        'rating' => 4,
+        'comment' => 'Updated customer comment',
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.is_featured', false);
+
+    expect($feedback->fresh()->is_featured)->toBeFalse();
+    expect($feedback->fresh()->comment)->toBe('Updated customer comment');
+});
+
+test('featured feedback minimum and maximum are enforced without partial toggles', function () {
+    $customer = createFeedbackTestUser('customer', 'featured-boundary-customer@example.test');
+    $barber = createFeedbackTestUser('barber', 'featured-boundary-barber@example.test');
+    $manager = createFeedbackTestUser('manager', 'featured-boundary-manager@example.test');
+    $service = createFeedbackTestService();
+    $feedback = collect(range(1, 6))->map(fn (int $index) => createFeedbackListRecord(
+        $customer,
+        $barber,
+        $service,
+        5,
+        $index <= 5,
+        "Featured boundary {$index}",
+        "2026-07-15 1{$index}:00:00",
+    ));
+    Sanctum::actingAs($manager);
+
+    $this->putJson("/api/v1/feedback/{$feedback[5]->id}/toggle-feature")
+        ->assertUnprocessable()
+        ->assertJsonPath('message', 'You can feature up to 5 items. Unfeature one first.');
+
+    expect(AppointmentFeedback::where('is_featured', true)->count())->toBe(5);
+    expect($feedback[5]->fresh()->is_featured)->toBeFalse();
+
+    AppointmentFeedback::whereKeyNot($feedback[0]->id)->update(['is_featured' => false]);
+    $this->putJson("/api/v1/feedback/{$feedback[0]->id}/toggle-feature")
+        ->assertUnprocessable()
+        ->assertJsonPath('message', 'At least 1 feedback must remain featured.');
+
+    expect($feedback[0]->fresh()->is_featured)->toBeTrue();
 });

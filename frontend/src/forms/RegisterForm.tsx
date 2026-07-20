@@ -4,7 +4,6 @@ import { Circle, CircleCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Controller,
   type SubmitErrorHandler,
   useForm,
   useWatch,
@@ -16,7 +15,6 @@ import { CheckboxWithLabel } from "@/components/common/CheckboxWithLabel";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { PasswordInputWithLabel } from "@/components/common/PasswordInputWithLabel";
 import { useRateLimit } from "@/hooks/useRateLimit";
-import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
   normalizeEmail,
@@ -48,6 +46,7 @@ export function RegisterForm() {
     register: formRegister,
     handleSubmit,
     control,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<RegisterSchemaFormValues>({
     resolver: zodResolver(registerSchema),
@@ -56,6 +55,7 @@ export function RegisterForm() {
       privacy_acknowledged: false,
     },
   });
+  const termsAccepted = useWatch({ control, name: "terms_accepted", defaultValue: false });
   const password = useWatch({ control, name: "password", defaultValue: "" });
   const passwordConfirmation = useWatch({
     control,
@@ -79,7 +79,7 @@ export function RegisterForm() {
       const response = await registerCustomerRequest(sanitizedData);
 
       if (response.success === true) {
-        toast.success("Account created. Check your inbox to verify your email.");
+        toast.success("Check your inbox if email verification is required.");
         rateLimit.reset();
         router.push(
           `/verify-email?email=${encodeURIComponent(sanitizedData.email)}`,
@@ -88,32 +88,7 @@ export function RegisterForm() {
         toast.error("Registration failed");
       }
     } catch (error) {
-      const emailErrors =
-        error instanceof ApiError &&
-        error.errors &&
-        typeof error.errors === "object"
-          ? (error.errors as Record<string, unknown>).email
-          : null;
-      const emailMessages = Array.isArray(emailErrors)
-        ? emailErrors
-        : [emailErrors];
-      const emailExists = emailMessages.some(
-        (message) =>
-          typeof message === "string" &&
-          /already|taken|exists/i.test(message),
-      );
-
-      if (emailExists) {
-        router.push(
-          `/verify-email?email=${encodeURIComponent(normalizeEmail(data.email))}`,
-        );
-        toast.info(
-          "This email is already registered. Resend verification below or log in.",
-        );
-        return;
-      }
-
-      toast.error("Registration failed");
+      toast.error(error instanceof Error ? error.message : "Registration failed. Please try again.");
     }
   };
 
@@ -123,35 +98,35 @@ export function RegisterForm() {
 
   return (
     <form
-      action=""
-      className="w-full space-y-6"
+      method="post"
+      className="w-full space-y-3 px-1 py-1"
       onSubmit={handleSubmit(onSubmit, onFormInvalid)}
     >
-      <div className="relative ">
+      <div className="relative mb-5">
         <InputWithLabel
           id="fullname"
           type="text"
           label="Full Name"
           placeholder="Enter your full name"
           maxLength={255}
-          className="h-10 border-gray-300 focus-visible:ring-accent/40"
+          className="h-8 text-sm border-gray-300 focus-visible:ring-accent/40"
           {...formRegister("fullname")}
         />
         {errors.fullname && (
-          <p className="absolute left-0 top-full  text-red-500 text-xs">
+          <p className="absolute left-0 top-full text-red-500 text-xs">
             {errors.fullname.message}
           </p>
         )}
       </div>
 
-      <div className="relative ">
+      <div className="relative mb-5">
         <InputWithLabel
           id="contact_number"
           type="tel"
           inputMode="numeric"
           label="Contact Number"
           placeholder="Enter your contact number"
-          className="h-10 border-gray-300 focus-visible:ring-accent/40"
+          className="h-8 text-sm border-gray-300 focus-visible:ring-accent/40"
           maxLength={11}
           {...formRegister("contact_number")}
           onInput={(e: React.FormEvent<HTMLInputElement>) => {
@@ -159,45 +134,45 @@ export function RegisterForm() {
           }}
         />
         {errors.contact_number && (
-          <p className="absolute left-0 top-full  text-red-500 text-xs">
+          <p className="absolute left-0 top-full text-red-500 text-xs">
             {errors.contact_number.message}
           </p>
         )}
       </div>
 
-      <div className="relative ">
+      <div className="relative mb-5">
         <InputWithLabel
           id="email"
           type="email"
           label="Email"
           placeholder="Enter your email"
           maxLength={255}
-          className="h-10 border-gray-300 focus-visible:ring-accent/40"
+          className="h-8 text-sm border-gray-300 focus-visible:ring-accent/40"
           {...formRegister("email")}
         />
         {errors.email && (
-          <p className="absolute left-0 top-full  text-red-500 text-xs">
+          <p className="absolute left-0 top-full text-red-500 text-xs">
             {errors.email.message}
           </p>
         )}
       </div>
 
-      <div className="space-y-2">
+      <div className="relative mb-5 space-y-0.5">
         <PasswordInputWithLabel
           id="password"
           label="Password"
           placeholder="Enter your password"
           maxLength={255}
           autoComplete="new-password"
-          className="h-10 border-gray-300 focus-visible:ring-accent/40"
+          className="h-8 text-sm border-gray-300 focus-visible:ring-accent/40"
           {...formRegister("password")}
         />
         {errors.password && (
-          <p className="text-xs text-red-500">
+          <p className="absolute left-0 top-full text-red-500 text-xs">
             {errors.password.message}
           </p>
         )}
-        <ul className="grid gap-1.5 sm:grid-cols-2" aria-live="polite">
+        <ul className="grid gap-0.5 sm:grid-cols-2" aria-live="polite">
           {passwordRequirements.map((requirement) => {
             const isMet = requirement.test(password);
             const RequirementIcon = isMet ? CircleCheck : Circle;
@@ -206,12 +181,12 @@ export function RegisterForm() {
               <li
                 key={requirement.label}
                 className={cn(
-                  "flex items-center gap-1.5 text-xs transition-colors",
+                  "flex items-center gap-1 text-[11px] transition-colors",
                   isMet ? "font-medium text-green-600" : "text-gray-500",
                 )}
               >
                 <RequirementIcon
-                  className="size-3.5 shrink-0"
+                  className="size-3 shrink-0"
                   aria-hidden="true"
                 />
                 {requirement.label}
@@ -221,99 +196,67 @@ export function RegisterForm() {
         </ul>
       </div>
 
-      <div className="space-y-2">
+      <div className="relative mb-2 space-y-0.5">
         <PasswordInputWithLabel
           id="password_confirmation"
           label="Confirm Password"
           placeholder="Confirm your password"
           maxLength={255}
           autoComplete="new-password"
-          className="h-10 border-gray-300 focus-visible:ring-accent/40"
+          className="h-8 text-sm border-gray-300 focus-visible:ring-accent/40"
           {...formRegister("password_confirmation")}
         />
         {errors.password_confirmation && (
-          <p className="text-xs text-red-500">
+          <p className="absolute left-0 top-full text-red-500 text-xs">
             {errors.password_confirmation.message}
           </p>
         )}
         <p
           className={cn(
-            "flex items-center gap-1.5 text-xs transition-colors",
+            "flex items-center gap-1 text-[11px] transition-colors",
             passwordsMatch ? "font-medium text-green-600" : "text-gray-500",
           )}
           aria-live="polite"
         >
           {passwordsMatch ? (
-            <CircleCheck className="size-3.5" aria-hidden="true" />
+            <CircleCheck className="size-3" aria-hidden="true" />
           ) : (
-            <Circle className="size-3.5" aria-hidden="true" />
+            <Circle className="size-3" aria-hidden="true" />
           )}
           {passwordsMatch ? "Passwords match" : "Passwords must match"}
         </p>
       </div>
 
-      <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
-        <Controller
-          name="terms_accepted"
-          control={control}
-          render={({ field }) => (
-            <CheckboxWithLabel
-              id="terms_accepted"
-              checked={field.value}
-              onCheckedChange={field.onChange}
-              onBlur={field.onBlur}
-              ref={field.ref}
-              error={errors.terms_accepted?.message}
-              label={
-                <span>
-                  I have read and agree to the{" "}
-                  <Link
-                    href="/terms-of-use"
-                    target="_blank"
-                    className="font-medium text-accent hover:underline"
-                  >
-                    Terms of Use
-                  </Link>
-                  .
-                </span>
-              }
-            />
-          )}
-        />
-
-        <Controller
-          name="privacy_acknowledged"
-          control={control}
-          render={({ field }) => (
-            <CheckboxWithLabel
-              id="privacy_acknowledged"
-              checked={field.value}
-              onCheckedChange={field.onChange}
-              onBlur={field.onBlur}
-              ref={field.ref}
-              error={errors.privacy_acknowledged?.message}
-              label={
-                <span>
-                  I acknowledge that I have read the{" "}
-                  <Link
-                    href="/privacy-policy"
-                    target="_blank"
-                    className="font-medium text-accent hover:underline"
-                  >
-                    Privacy Policy
-                  </Link>
-                  .
-                </span>
-              }
-            />
-          )}
+      <div className="rounded-lg border border-gray-200 bg-gray-50 mt-5 p-2.5">
+        <CheckboxWithLabel
+          id="terms_accepted"
+          checked={termsAccepted}
+          onCheckedChange={(checked) => {
+            const value = Boolean(checked);
+            setValue("terms_accepted", value, { shouldValidate: true });
+            setValue("privacy_acknowledged", value, { shouldValidate: true });
+          }}
+          error={errors.terms_accepted?.message ?? errors.privacy_acknowledged?.message}
+          label={
+            <span className="text-xs">
+              I agree to the{" "}
+              <Link href="/terms-of-use" target="_blank" className="font-medium text-accent hover:underline">
+                Terms of Use
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy-policy" target="_blank" className="font-medium text-accent hover:underline">
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          }
         />
       </div>
 
       <button
         type="submit"
         disabled={isSubmitting || !rateLimit.canAttempt}
-        className="bg-accent hover:bg-accent/90 mb-4 w-full text-white py-2 px-4 rounded-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="bg-accent hover:bg-accent/90 w-full text-white text-sm py-1.5 px-4 rounded-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {rateLimit.isCooldown
           ? `Try again in ${rateLimit.formatCooldownTime(rateLimit.cooldownRemaining)}`

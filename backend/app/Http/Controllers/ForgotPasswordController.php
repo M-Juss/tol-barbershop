@@ -65,6 +65,8 @@ class ForgotPasswordController extends Controller
                             ->delete();
                     }
 
+                    $user->tokens()->delete();
+
                     event(new PasswordReset($user));
                 }
             );

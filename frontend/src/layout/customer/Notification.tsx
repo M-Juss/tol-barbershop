@@ -151,7 +151,7 @@ export function Notification() {
       setTotalPages(notificationData.pagination.last_page);
     } catch (error) {
       console.error("Failed to load notifications:", error);
-      toast.error("Failed to load notifications");
+      toast.error("Could not load notifications. Please refresh the page.");
     } finally {
       setLoading(false);
     }
@@ -202,7 +202,7 @@ export function Notification() {
       );
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
-      toast.error("Failed to mark notification as read");
+      toast.error("Could not mark notification as read.");
     }
   };
 
@@ -215,7 +215,7 @@ export function Notification() {
       toast.success("All notifications marked as read");
     } catch (error) {
       console.error("Failed to mark all as read:", error);
-      toast.error("Failed to mark all notifications as read");
+      toast.error("Could not mark all notifications as read.");
     }
   };
 
@@ -345,7 +345,9 @@ export function Notification() {
             </Button>
           </div>
         )}
+
       </div>
+      <div className="h-25" />
 
       <Dialog
         open={Boolean(selectedNotification)}

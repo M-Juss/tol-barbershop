@@ -19,7 +19,7 @@ export const registerSchema = z.object({
     .string()
     .trim()
     .nonempty("Contact Number is required.")
-    .regex(/^09\d{9}$/, "Contact number must be a valid PH mobile number (09XXXXXXXXX)")
+    .regex(/^09\d{9}$/, "Contact number must be  (09XXXXXXXXX) format")
     .max(11, "Contact number must not exceed 11 digits"),
 
     password: z

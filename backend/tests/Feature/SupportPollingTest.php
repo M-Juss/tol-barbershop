@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Notification;
 use App\Models\SupportMessage;
 use App\Models\SupportTicket;
 use App\Models\User;
@@ -197,4 +198,70 @@ test('customer cannot use the message cursor on another customer ticket', functi
 
     $this->getJson("/api/v1/support/tickets/{$ticket->id}/messages?after_id=0")
         ->assertForbidden();
+});
+
+test('customer cannot create a second open support ticket', function () {
+    $customer = User::factory()->create(['role' => 'customer']);
+    Sanctum::actingAs($customer);
+
+    $payload = [
+        'category' => 'appointment_rescheduling',
+        'message' => 'I need help with my appointment.',
+    ];
+
+    $this->postJson('/api/v1/support/tickets', $payload)->assertCreated();
+    $this->postJson('/api/v1/support/tickets', $payload)
+        ->assertUnprocessable()
+        ->assertJsonPath('message', 'You already have an active or waiting ticket.');
+
+    expect(SupportTicket::where('customer_id', $customer->id)->count())->toBe(1);
+    expect(SupportMessage::count())->toBe(1);
+});
+
+test('only one staff member can claim a waiting ticket', function () {
+    $customer = User::factory()->create(['role' => 'customer']);
+    $firstManager = User::factory()->create(['role' => 'manager']);
+    $secondManager = User::factory()->create(['role' => 'manager']);
+    $ticket = SupportTicket::create([
+        'customer_id' => $customer->id,
+        'status' => 'waiting',
+        'queued_at' => now(),
+    ]);
+
+    Sanctum::actingAs($firstManager);
+    $this->postJson("/api/v1/support/tickets/{$ticket->id}/accept")->assertOk();
+
+    Sanctum::actingAs($secondManager);
+    $this->postJson("/api/v1/support/tickets/{$ticket->id}/accept")
+        ->assertUnprocessable()
+        ->assertJsonPath('message', 'Only waiting tickets can be accepted.');
+
+    $ticket->refresh();
+    expect($ticket->status)->toBe('active');
+    expect($ticket->assigned_to_id)->toBe($firstManager->id);
+    expect(SupportMessage::where('support_ticket_id', $ticket->id)->count())->toBe(1);
+    expect(Notification::where('type', 'ticket_promoted')->where('user_id', $customer->id)->count())->toBe(1);
+});
+
+test('staff with an active ticket cannot claim another waiting ticket', function () {
+    $firstCustomer = User::factory()->create(['role' => 'customer']);
+    $secondCustomer = User::factory()->create(['role' => 'customer']);
+    $manager = User::factory()->create(['role' => 'manager']);
+    $firstTicket = SupportTicket::create([
+        'customer_id' => $firstCustomer->id,
+        'status' => 'waiting',
+    ]);
+    $secondTicket = SupportTicket::create([
+        'customer_id' => $secondCustomer->id,
+        'status' => 'waiting',
+    ]);
+    Sanctum::actingAs($manager);
+
+    $this->postJson("/api/v1/support/tickets/{$firstTicket->id}/accept")->assertOk();
+    $this->postJson("/api/v1/support/tickets/{$secondTicket->id}/accept")
+        ->assertUnprocessable()
+        ->assertJsonPath('message', 'You already have an active ticket. Resolve it first.');
+
+    expect($secondTicket->fresh()->status)->toBe('waiting');
+    expect($secondTicket->fresh()->assigned_to_id)->toBeNull();
 });

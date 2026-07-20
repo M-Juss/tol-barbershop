@@ -12,6 +12,7 @@ export interface ChangeInformationPayload {
   fullname: string;
   email: string;
   contact_number: string;
+  current_password?: string;
 }
 
 export interface ChangePasswordPayload {

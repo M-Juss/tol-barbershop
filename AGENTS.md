@@ -4,8 +4,11 @@
 
 **Stack:** Laravel 13 API (backend/) + Next.js 16 App Router SPA (frontend/)
 **Auth:** Sanctum SPA cookie auth, 3 roles: `customer`, `admin`, `manager`
-**Database:** SQLite/MySQL via Eloquent ORM
-**Realtime:** SSE (Server-Sent Events) via `EntityChange` dispatch
+**Database:** MySQL 8+ via Eloquent ORM
+**Realtime:** Version-based polling via `EntityChange` (no SSE, no WebSockets)
+**Production Backend:** Hostinger Premium Shared Hosting (1 CPU, 2 GB RAM, 40 PHP workers, 50 MySQL connections)
+**Production Frontend:** Netlify Free (custom domain, commercial use allowed)
+**Dev Tunnel:** ngrok only — never optimize production for ngrok/localhost
 
 ---
 
@@ -20,6 +23,8 @@ Browser → Next.js Middleware (proxy.ts) ← auth_role cookie
         → auth:sanctum middleware → EnsureRole middleware → Controller
 ```
 
+> On production, Next.js rewrites are served through Netlify's Edge Functions (OpenNext adapter). The browser never calls the backend hostname directly.
+
 ### Key Files
 
 | File | Purpose |
@@ -27,7 +32,7 @@ Browser → Next.js Middleware (proxy.ts) ← auth_role cookie
 | `frontend/src/lib/api.ts` | `publicFetch()` / `authFetch()` HTTP client |
 | `frontend/src/proxy.ts` | Middleware: role-based route protection |
 | `frontend/src/contexts/AuthContext.tsx` | Auth state management |
-| `frontend/src/contexts/RealtimeContext.tsx` | SSE subscription |
+| `frontend/src/contexts/RealtimeContext.tsx` | Polling subscription via EntityChange |
 | `frontend/next.config.ts` | API rewrites config |
 
 ### Route Structure
@@ -536,6 +541,24 @@ Do NOT ask when:
 
 **Never commit, amend, push, or create PRs unless explicitly asked.**
 
-## 10. Toke Saving Rule
+## 10. Production Constraints
+
+**Shared hosting (Hostinger Premium):** 1 CPU, 2 GB RAM, 40 PHP workers, 50 MySQL connections. Redis is unavailable. No persistent queue workers. No long-running processes (SSE/WebSocket).
+
+**Frontend (Netlify):** Free plan supports commercial use with custom domains. No Node.js runtime — runs as static + Edge Functions via OpenNext adapter.
+
+**Hard rules:**
+- Never assume Redis, Supervisor, Docker, or persistent workers on shared hosting
+- Never optimize production for ngrok or localhost — these are dev-only
+- Never use `next dev` timings to judge production performance
+- Minimize API fan-out: each page should make as few initial requests as possible
+- Consolidate multiple analytics/list endpoints into fewer backend calls
+- Keep `QUEUE_CONNECTION=sync` unless a supervised worker is confirmed
+- Use `php artisan optimize` (route + config caching) on every deploy
+- Session/cache/drivers must work with database on shared hosting
+- Push notifications must be dispatched inline (no queue workers) or gracefully degraded
+- Heavy client modules (PDF, charts, dialogs) must be dynamically imported
+
+## 11. Toke Saving Rule
 
 **Make sure to answer only waht is asked, dont repeat yourself. Save token reponse in every short concise and clear manner**

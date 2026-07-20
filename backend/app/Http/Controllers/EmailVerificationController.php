@@ -20,10 +20,55 @@ class EmailVerificationController extends Controller
 {
     use ApiResponseTrait;
 
-    public function verify(Request $request): RedirectResponse
+    public function checkStatus(Request $request): JsonResponse
+    {
+        $email = $request->query('email');
+
+        if (! $email || ! is_string($email)) {
+            return $this->error('Email is required.', [], 422);
+        }
+
+        $user = User::query()
+            ->where('email', $email)
+            ->where('role', 'customer')
+            ->first();
+
+        if (! $user) {
+            return $this->success('If an account exists for that email, it is not yet verified.', [
+                'verified' => false,
+            ]);
+        }
+
+        return $this->success('Verification status retrieved.', [
+            'verified' => $user->hasVerifiedEmail(),
+        ]);
+    }
+
+    public function show(Request $request): RedirectResponse
     {
         if (! $request->hasValidSignature(absolute: false)) {
             return $this->invalidVerificationRedirect();
+        }
+
+        $user = User::query()->find($request->route('id'));
+
+        if (! $user
+            || $user->role !== 'customer'
+            || ! hash_equals((string) $request->route('hash'), sha1($user->getEmailForVerification()))) {
+            return $this->invalidVerificationRedirect();
+        }
+
+        $frontendUrl = rtrim((string) config('app.frontend_url'), '/')
+            .'/verify-email?'.http_build_query(['email' => $user->email])
+            .'#'.http_build_query(['verification' => $request->getRequestUri()]);
+
+        return redirect()->away($frontendUrl);
+    }
+
+    public function verify(Request $request): JsonResponse
+    {
+        if (! $request->hasValidSignature(absolute: false)) {
+            return $this->error('This verification link is invalid or expired.', [], 422);
         }
 
         $result = DB::transaction(function () use ($request): array {
@@ -50,16 +95,20 @@ class EmailVerificationController extends Controller
         });
 
         if ($result['status'] === 'invalid') {
-            return $this->invalidVerificationRedirect();
+            return $this->error('This verification link is invalid or expired.', [], 422);
         }
 
         if ($result['status'] === 'already_verified') {
-            return redirect()->away(rtrim((string) config('app.frontend_url'), '/').'/login?verified=already');
+            return $this->success('This email address is already verified.', [
+                'status' => 'already_verified',
+            ]);
         }
 
         event(new Verified($result['user']));
 
-        return redirect()->away(rtrim((string) config('app.frontend_url'), '/').'/login?verified=1');
+        return $this->success('Email address verified successfully.', [
+            'status' => 'verified',
+        ]);
     }
 
     public function resend(ResendEmailVerificationRequest $request): JsonResponse

@@ -132,7 +132,11 @@ export function GalleryImageForm({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(submit)} className="space-y-5">
+        <form
+          method="post"
+          onSubmit={handleSubmit(submit)}
+          className="space-y-5"
+        >
           <div className="space-y-2">
             <InputWithLabel
               key={`${initialData?.id ?? "new"}-${open}`}

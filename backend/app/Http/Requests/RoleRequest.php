@@ -31,8 +31,8 @@ class RoleRequest extends FormRequest
                 'max:255',
                 Rule::unique('roles', 'name')->ignore($roleId),
             ],
-            'module_ids' => 'required|array|min:1',
-            'module_ids.*' => 'exists:modules,id',
+            'module_ids' => ['required', 'array', 'min:1', 'max:50'],
+            'module_ids.*' => ['integer', 'distinct', 'exists:modules,id'],
         ];
     }
 

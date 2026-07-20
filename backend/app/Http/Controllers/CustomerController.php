@@ -30,20 +30,20 @@ class CustomerController extends Controller
         // Active/Inactive based on 60-day rule
         $activeQuery = (clone $baseQuery)
             ->where(function ($q) {
-                $q->whereDoesntHave('appointments', fn ($aq) => $aq->where('status', 'completed'))
-                    ->orWhereHas('appointments', fn ($aq) => $aq->where('status', 'completed')->where('appointment_date', '>=', now()->subDays(60)));
+                $q->whereDoesntHave('appointments', fn ($aq) => $aq->withTrashed()->where('status', 'completed'))
+                    ->orWhereHas('appointments', fn ($aq) => $aq->withTrashed()->where('status', 'completed')->where('appointment_date', '>=', now()->subDays(60)));
             });
         $activeCount = (clone $activeQuery)->count();
         $inactiveCount = $totalCustomers - $activeCount;
 
         $query = User::where('role', 'customer')
-            ->withCount(['appointments as total_visits' => fn ($q) => $q->where('status', 'completed')])
-            ->withCount(['appointments as no_show_count' => fn ($q) => $q->where('status', 'no_show')])
-            ->withCount(['appointments as cancelled_count' => fn ($q) => $q->where('status', 'cancelled')])
-            ->withSum(['appointments as lifetime_value' => fn ($q) => $q->whereIn('status', ['completed'])->whereNotNull('user_id')], 'price')
+            ->withCount(['appointments as total_visits' => fn ($q) => $q->withTrashed()->where('status', 'completed')])
+            ->withCount(['appointments as no_show_count' => fn ($q) => $q->withTrashed()->where('status', 'no_show')])
+            ->withCount(['appointments as cancelled_count' => fn ($q) => $q->withTrashed()->where('status', 'cancelled')])
+            ->withSum(['appointments as lifetime_value' => fn ($q) => $q->withTrashed()->whereIn('status', ['completed'])->whereNotNull('user_id')], 'price')
             ->withAvg('appointmentFeedback as average_rating', 'rating')
             ->addSelect([
-                'last_visit_date' => Appointment::select('appointment_date')
+                'last_visit_date' => Appointment::withTrashed()->select('appointment_date')
                     ->whereColumn('user_id', 'users.id')
                     ->where('status', 'completed')
                     ->latest('appointment_date')
@@ -63,12 +63,12 @@ class CustomerController extends Controller
         if (! empty($validated['status'])) {
             if ($validated['status'] === 'active') {
                 $query->where(function ($q) {
-                    $q->whereDoesntHave('appointments', fn ($aq) => $aq->where('status', 'completed'))
-                        ->orWhereHas('appointments', fn ($aq) => $aq->where('status', 'completed')->where('appointment_date', '>=', now()->subDays(60)));
+                    $q->whereDoesntHave('appointments', fn ($aq) => $aq->withTrashed()->where('status', 'completed'))
+                        ->orWhereHas('appointments', fn ($aq) => $aq->withTrashed()->where('status', 'completed')->where('appointment_date', '>=', now()->subDays(60)));
                 });
             } else {
-                $query->whereHas('appointments', fn ($q) => $q->where('status', 'completed'))
-                    ->whereDoesntHave('appointments', fn ($q) => $q->where('status', 'completed')->where('appointment_date', '>=', now()->subDays(60)));
+                $query->whereHas('appointments', fn ($q) => $q->withTrashed()->where('status', 'completed'))
+                    ->whereDoesntHave('appointments', fn ($q) => $q->withTrashed()->where('status', 'completed')->where('appointment_date', '>=', now()->subDays(60)));
             }
         }
 
@@ -100,13 +100,13 @@ class CustomerController extends Controller
     public function show(string $id)
     {
         $user = User::where('role', 'customer')
-            ->withCount(['appointments as total_visits' => fn ($q) => $q->where('status', 'completed')])
-            ->withCount(['appointments as no_show_count' => fn ($q) => $q->where('status', 'no_show')])
-            ->withCount(['appointments as cancelled_count' => fn ($q) => $q->where('status', 'cancelled')])
-            ->withSum(['appointments as lifetime_value' => fn ($q) => $q->where('status', 'completed')->whereNotNull('user_id')], 'price')
+            ->withCount(['appointments as total_visits' => fn ($q) => $q->withTrashed()->where('status', 'completed')])
+            ->withCount(['appointments as no_show_count' => fn ($q) => $q->withTrashed()->where('status', 'no_show')])
+            ->withCount(['appointments as cancelled_count' => fn ($q) => $q->withTrashed()->where('status', 'cancelled')])
+            ->withSum(['appointments as lifetime_value' => fn ($q) => $q->withTrashed()->where('status', 'completed')->whereNotNull('user_id')], 'price')
             ->withAvg('appointmentFeedback as average_rating', 'rating')
             ->addSelect([
-                'last_visit_date' => Appointment::select('appointment_date')
+                'last_visit_date' => Appointment::withTrashed()->select('appointment_date')
                     ->whereColumn('user_id', 'users.id')
                     ->where('status', 'completed')
                     ->latest('appointment_date')
@@ -115,7 +115,7 @@ class CustomerController extends Controller
             ->findOrFail($id);
 
         // Service preferences
-        $servicePreferences = Appointment::select([
+        $servicePreferences = Appointment::withTrashed()->select([
             DB::raw('services.name as service_name'),
             DB::raw('COUNT(*) as count'),
         ])
@@ -129,7 +129,7 @@ class CustomerController extends Controller
         $user->setRelation('servicePreferences', $servicePreferences);
 
         // Barber preferences
-        $barberPreferences = Appointment::select([
+        $barberPreferences = Appointment::withTrashed()->select([
             DB::raw('barbers.fullname as barber_name'),
             DB::raw('COUNT(*) as count'),
         ])

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type SubmitErrorHandler, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -24,15 +24,36 @@ type ResetPasswordFormProps = {
 };
 
 type LinkStatus = "checking" | "valid" | "invalid" | "error";
+const RESET_CREDENTIALS_KEY = "password_reset_credentials";
+
+function readStoredCredentials(): unknown {
+  try {
+    const stored = sessionStorage.getItem(RESET_CREDENTIALS_KEY);
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeCredentials(credentials: { email: string; token: string }): void {
+  try {
+    sessionStorage.setItem(RESET_CREDENTIALS_KEY, JSON.stringify(credentials));
+  } catch {}
+}
+
+function clearStoredCredentials(): void {
+  try {
+    sessionStorage.removeItem(RESET_CREDENTIALS_KEY);
+  } catch {}
+}
 
 export function ResetPasswordForm({ email, token }: ResetPasswordFormProps) {
-  const hasValidLinkData = resetPasswordLinkSchema.safeParse({
-    email,
-    token,
-  }).success;
-  const [linkStatus, setLinkStatus] = useState<LinkStatus>(() =>
-    hasValidLinkData ? "checking" : "invalid",
+  const [credentials, setCredentials] = useState({ email, token });
+  const capturedCredentials = useRef<{ email: string; token: string } | null>(
+    null,
   );
+  const hasValidLinkData = resetPasswordLinkSchema.safeParse(credentials).success;
+  const [linkStatus, setLinkStatus] = useState<LinkStatus>("checking");
   const rateLimit = useRateLimit({
     maxAttempts: 5,
     cooldownMinutes: 3,
@@ -42,6 +63,7 @@ export function ResetPasswordForm({ email, token }: ResetPasswordFormProps) {
     register: formRegister,
     handleSubmit,
     formState: { errors, isSubmitting },
+    reset,
   } = useForm<ResetPasswordSchemaFormValues>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
@@ -52,6 +74,63 @@ export function ResetPasswordForm({ email, token }: ResetPasswordFormProps) {
     },
   });
 
+  useLayoutEffect(() => {
+    if (!capturedCredentials.current) {
+      const fragmentParams = new URLSearchParams(
+        window.location.hash.replace(/^#/, ""),
+      );
+      const fragmentResult = resetPasswordLinkSchema.safeParse({
+        email: fragmentParams.get("email") ?? "",
+        token: fragmentParams.get("token") ?? "",
+      });
+      const initialResult = resetPasswordLinkSchema.safeParse({ email, token });
+      const storedResult = resetPasswordLinkSchema.safeParse(
+        readStoredCredentials(),
+      );
+
+      capturedCredentials.current = fragmentResult.success
+        ? fragmentResult.data
+          : initialResult.success
+            ? initialResult.data
+            : storedResult.success
+              ? storedResult.data
+              : { email: "", token: "" };
+
+      if (resetPasswordLinkSchema.safeParse(capturedCredentials.current).success) {
+        storeCredentials(capturedCredentials.current);
+      }
+    }
+
+    const nextCredentials = capturedCredentials.current;
+    let active = true;
+
+    window.history.replaceState(
+      window.history.state,
+      "",
+      window.location.pathname,
+    );
+
+    queueMicrotask(() => {
+      if (!active) return;
+
+      setCredentials(nextCredentials);
+      reset({
+        ...nextCredentials,
+        password: "",
+        password_confirmation: "",
+      });
+      setLinkStatus(
+        resetPasswordLinkSchema.safeParse(nextCredentials).success
+          ? "checking"
+          : "invalid",
+      );
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [email, reset, token]);
+
   useEffect(() => {
     if (!hasValidLinkData) return;
 
@@ -60,14 +139,16 @@ export function ResetPasswordForm({ email, token }: ResetPasswordFormProps) {
     const validateLink = async () => {
       try {
         const response = await validateResetPasswordTokenRequest(
-          { email, token },
+          credentials,
           controller.signal,
         );
         setLinkStatus(response.data.valid ? "valid" : "invalid");
+        if (!response.data.valid) clearStoredCredentials();
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") return;
 
         if (error instanceof ApiError && error.status === 422) {
+          clearStoredCredentials();
           setLinkStatus("invalid");
           return;
         }
@@ -79,7 +160,7 @@ export function ResetPasswordForm({ email, token }: ResetPasswordFormProps) {
     void validateLink();
 
     return () => controller.abort();
-  }, [email, hasValidLinkData, token]);
+  }, [credentials, hasValidLinkData]);
 
   const onSubmit = async (data: ResetPasswordSchemaFormValues) => {
     if (!rateLimit.attempt()) return;
@@ -93,15 +174,17 @@ export function ResetPasswordForm({ email, token }: ResetPasswordFormProps) {
       });
       toast.success("Password reset successfully");
       rateLimit.reset();
+      clearStoredCredentials();
       window.location.replace("/login?password_reset=1");
     } catch (error) {
       if (error instanceof ApiError && error.status === 422) {
+        clearStoredCredentials();
         setLinkStatus("invalid");
         toast.error("This reset link is invalid or expired.");
         return;
       }
 
-      toast.error("Failed to reset password");
+      toast.error(error instanceof Error ? error.message : "Could not reset password. Please try again.");
     }
   };
 
@@ -172,6 +255,7 @@ export function ResetPasswordForm({ email, token }: ResetPasswordFormProps) {
 
   return (
     <form
+      method="post"
       className="w-full space-y-6"
       onSubmit={handleSubmit(onSubmit, onFormInvalid)}
     >

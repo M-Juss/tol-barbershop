@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { SUPPORT_TEXT_MAX_LENGTH } from "@/lib/support";
 
 const CANCEL_REASONS = [
   { value: "customer_unresponsive", label: "Customer unresponsive" },
@@ -96,9 +97,11 @@ export function CancelTicketDialog({
                 onChange={(e) => setCustomReason(e.target.value)}
                 placeholder="Describe why this ticket is being cancelled..."
                 className="min-h-[100px] resize-none border-gray-200"
-                maxLength={5000}
+                maxLength={SUPPORT_TEXT_MAX_LENGTH}
               />
-              <p className="text-xs text-gray-400">{customReason.length}/5000</p>
+              <p className="text-xs text-gray-400">
+                {customReason.length}/{SUPPORT_TEXT_MAX_LENGTH}
+              </p>
             </div>
           )}
         </div>

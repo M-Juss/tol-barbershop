@@ -25,12 +25,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { GroupPendingCard } from "@/components/common/GroupPendingCard";
-import { PendingAppointmentDetailDialog } from "@/components/common/PendingAppointmentDetailDialog";
+import dynamic from "next/dynamic";
+const PendingAppointmentDetailDialog = dynamic(
+  () =>
+    import("@/components/common/PendingAppointmentDetailDialog").then(
+      (mod) => mod.PendingAppointmentDetailDialog
+    ),
+  { ssr: false }
+);
 import { SectionCard } from "@/components/common/SectionCard";
 import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getAppointments,
+  updateBatchAppointmentStatus,
   updateAppointment,
   type Appointment,
 } from "@/services/customer/appointment.api";
@@ -382,6 +390,7 @@ export function Appointment() {
   const [rescheduleAppointment, setRescheduleAppointment] =
     useState<Appointment | null>(null);
   const [updatingBatchIds, setUpdatingBatchIds] = useState<string[]>([]);
+  const [approveTarget, setApproveTarget] = useState<Appointment[] | null>(null);
   const [batchRejectDialogOpen, setBatchRejectDialogOpen] = useState(false);
   const [batchRejectTarget, setBatchRejectTarget] = useState<Appointment[] | null>(null);
   const [batchRejectReason, setBatchRejectReason] = useState("");
@@ -515,7 +524,7 @@ export function Appointment() {
 
       const validation = updateAppointmentSchema.safeParse(payload);
       if (!validation.success) {
-        toast.error("Failed to update appointment");
+        toast.error("Please check the appointment details and try again.");
         return false;
       }
 
@@ -534,7 +543,7 @@ export function Appointment() {
       return true;
     } catch (error) {
       console.error("Failed to update appointment:", error);
-      toast.error("Failed to update appointment");
+      toast.error(error instanceof Error ? error.message : "Could not update appointment. Please try again.");
       return false;
     } finally {
       setUpdatingIds((prev) => prev.filter((id) => id !== appt.id));
@@ -543,43 +552,21 @@ export function Appointment() {
 
   const handleBatchApprove = async (appts: Appointment[]) => {
     const batchId = appts[0]?.batch_id;
-    if (!batchId) return;
+    if (!batchId || updatingBatchIds.includes(batchId)) return;
 
     try {
       setUpdatingBatchIds((prev) => [...prev, batchId]);
 
-      const results = await Promise.allSettled(
-        appts.map((appt) => {
-          const payload = {
-            user_id: appt.customer.id!,
-            service_id: appt.service.id!,
-            barber_user_id: appt.barber.id!,
-            appointment_date: appt.appointment_date,
-            appointment_time: normalizeToHHmm(appt.appointment_time),
-            duration_minutes: appt.duration_minutes,
-            price: Number(appt.price),
-            notes: appt.notes,
-            status: "approved" as const,
-          };
-          return updateAppointment(appt.id, payload);
-        }),
+      await updateBatchAppointmentStatus(batchId, "approved");
+      toast.success(
+        `${appts.length} appointment${appts.length > 1 ? "s" : ""} approved`,
       );
-
-      const succeeded = results.filter((r) => r.status === "fulfilled").length;
-      const failed = results.filter((r) => r.status === "rejected").length;
-
-      if (succeeded > 0) {
-        toast.success(`${succeeded} appointment${succeeded > 1 ? "s" : ""} approved`);
-      }
-      if (failed > 0) {
-        toast.error(`${failed} appointment${failed > 1 ? "s" : ""} failed to approve`);
-      }
 
       await loadAppointments();
       window.dispatchEvent(new CustomEvent("appointments:updated"));
     } catch (error) {
       console.error("Failed to batch approve:", error);
-      toast.error("Failed to approve group");
+      toast.error(error instanceof Error ? error.message : "Could not approve appointments. Please try again.");
     } finally {
       setUpdatingBatchIds((prev) => prev.filter((id) => id !== batchId));
     }
@@ -596,39 +583,27 @@ export function Appointment() {
     if (!appts || appts.length === 0) return;
 
     const batchId = appts[0]?.batch_id;
+    if (!batchId || updatingBatchIds.includes(batchId)) return;
+
+    if (!batchRejectReason.trim()) {
+      toast.error("Please provide a reason for rejection.");
+      return;
+    }
+
+    if (batchRejectReason.trim().length > 500) {
+      toast.error("Rejection reason must not exceed 500 characters");
+      return;
+    }
 
     try {
-      setUpdatingBatchIds((prev) => [...prev, batchId ?? ""]);
+      setUpdatingBatchIds((prev) => [...prev, batchId]);
 
       const reason = batchRejectReason.trim() || null;
 
-      const results = await Promise.allSettled(
-        appts.map((appt) => {
-          const payload = {
-            user_id: appt.customer.id!,
-            service_id: appt.service.id!,
-            barber_user_id: appt.barber.id!,
-            appointment_date: appt.appointment_date,
-            appointment_time: normalizeToHHmm(appt.appointment_time),
-            duration_minutes: appt.duration_minutes,
-            price: Number(appt.price),
-            notes: appt.notes,
-            cancellation_reason: reason,
-            status: "rejected" as const,
-          };
-          return updateAppointment(appt.id, payload);
-        }),
+      await updateBatchAppointmentStatus(batchId, "rejected", reason);
+      toast.success(
+        `${appts.length} appointment${appts.length > 1 ? "s" : ""} rejected`,
       );
-
-      const succeeded = results.filter((r) => r.status === "fulfilled").length;
-      const failed = results.filter((r) => r.status === "rejected").length;
-
-      if (succeeded > 0) {
-        toast.success(`${succeeded} appointment${succeeded > 1 ? "s" : ""} rejected`);
-      }
-      if (failed > 0) {
-        toast.error(`${failed} appointment${failed > 1 ? "s" : ""} failed to reject`);
-      }
 
       setBatchRejectDialogOpen(false);
       setBatchRejectTarget(null);
@@ -637,7 +612,7 @@ export function Appointment() {
       window.dispatchEvent(new CustomEvent("appointments:updated"));
     } catch (error) {
       console.error("Failed to batch reject:", error);
-      toast.error("Failed to reject group");
+      toast.error(error instanceof Error ? error.message : "Could not reject appointments. Please try again.");
     } finally {
       setUpdatingBatchIds((prev) => prev.filter((id) => id !== batchId));
     }
@@ -648,18 +623,12 @@ export function Appointment() {
     setCancellationDialogOpen(true);
   };
 
-  const handlePendingDetailApprove = async () => {
+  const handlePendingDetailApprove = () => {
     const targets = pendingDetailAppointments;
     if (!targets?.length) return;
 
     setPendingDetailAppointments(null);
-
-    if (targets[0].batch_id) {
-      await handleBatchApprove(targets);
-      return;
-    }
-
-    await runUpdate(targets[0], "approved");
+    setApproveTarget(targets);
   };
 
   const handlePendingDetailReject = () => {
@@ -703,6 +672,20 @@ export function Appointment() {
     }
   };
 
+  const handleApproveConfirm = async () => {
+    const targets = approveTarget;
+    if (!targets?.length) return;
+
+    if (targets[0].batch_id) {
+      await handleBatchApprove(targets);
+      setApproveTarget(null);
+      return;
+    }
+
+    const success = await runUpdate(targets[0], "approved");
+    if (success) setApproveTarget(null);
+  };
+
   const handleRescheduleClick = (appt: Appointment) => {
     setRescheduleAppointment(appt);
     setRescheduleDialogOpen(true);
@@ -728,7 +711,7 @@ export function Appointment() {
 
       const validation = updateAppointmentSchema.safeParse(payload);
       if (!validation.success) {
-        toast.error("Invalid reschedule data");
+        toast.error("Please check the reschedule details and try again.");
         return;
       }
 
@@ -741,11 +724,25 @@ export function Appointment() {
       window.dispatchEvent(new CustomEvent("appointments:updated"));
     } catch (error) {
       console.error("Failed to reschedule appointment:", error);
-      toast.error("Failed to reschedule appointment");
+      toast.error(error instanceof Error ? error.message : "Could not reschedule appointment. Please try again.");
     } finally {
       setUpdatingIds((prev) => prev.filter((id) => id !== rescheduleAppointment.id));
     }
   };
+
+  const approveTargetBatchId = approveTarget?.[0]?.batch_id;
+  const isApproving =
+    approveTarget?.some((appointment) => updatingIds.includes(appointment.id)) ||
+    (approveTargetBatchId
+      ? updatingBatchIds.includes(approveTargetBatchId)
+      : false);
+  const isConfirmingAction = confirmActionTarget
+    ? updatingIds.includes(confirmActionTarget.appt.id)
+    : false;
+  const batchRejectTargetId = batchRejectTarget?.[0]?.batch_id;
+  const isRejectingBatch = batchRejectTargetId
+    ? updatingBatchIds.includes(batchRejectTargetId)
+    : false;
 
   return (
     <div className="w-full bg-slate-100 p-4 sm:p-6 pb-12 sm:pb-10 font-sans">
@@ -788,7 +785,7 @@ export function Appointment() {
                       <GroupPendingCard
                         appointments={group}
                         onViewDetails={setPendingDetailAppointments}
-                        onApproveAll={handleBatchApprove}
+                        onApproveAll={setApproveTarget}
                         onRejectAll={handleBatchRejectClick}
                         disabled={isUpdating}
                       />
@@ -802,7 +799,7 @@ export function Appointment() {
                   >
                     <PendingCard
                       req={req}
-                      onApprove={(appt) => runUpdate(appt, "approved")}
+                      onApprove={(appt) => setApproveTarget([appt])}
                       onCancel={handleCancelClick}
                       disabled={updatingIds.includes(req.id)}
                     />
@@ -1046,8 +1043,53 @@ export function Appointment() {
       />
 
       <Dialog
+        open={approveTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !isApproving) setApproveTarget(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {approveTarget && approveTarget.length > 1
+                ? "Approve Group Booking"
+                : "Approve Appointment"}
+            </DialogTitle>
+            <DialogDescription>
+              Confirm approval for {approveTarget?.length ?? 0} appointment
+              {(approveTarget?.length ?? 0) === 1 ? "" : "s"}. This reserves the
+              selected time {approveTarget && approveTarget.length > 1 ? "slots" : "slot"}.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setApproveTarget(null)}
+              disabled={Boolean(isApproving)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleApproveConfirm}
+              disabled={Boolean(isApproving)}
+              className="bg-green-600 text-white hover:bg-green-700"
+            >
+              {isApproving
+                ? "Approving..."
+                : approveTarget && approveTarget.length > 1
+                  ? "Approve All"
+                  : "Approve"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
         open={confirmActionOpen}
         onOpenChange={(open) => {
+          if (isConfirmingAction) return;
           if (!open) {
             setConfirmActionOpen(false);
             setConfirmActionTarget(null);
@@ -1096,6 +1138,7 @@ export function Appointment() {
                 setConfirmActionOpen(false);
                 setConfirmActionTarget(null);
               }}
+              disabled={isConfirmingAction}
             >
               Cancel
             </Button>
@@ -1106,11 +1149,15 @@ export function Appointment() {
                   : "bg-red-500 hover:bg-red-600"
               }
               onClick={handleConfirmAction}
+              disabled={isConfirmingAction}
             >
-              Yes,{" "}
-              {confirmActionTarget?.status === "completed"
-                ? "Complete"
-                : "Mark No-show"}
+              {isConfirmingAction
+                ? "Updating..."
+                : `Yes, ${
+                    confirmActionTarget?.status === "completed"
+                      ? "Complete"
+                      : "Mark No-show"
+                  }`}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1119,6 +1166,7 @@ export function Appointment() {
       <Dialog
         open={batchRejectDialogOpen}
         onOpenChange={(open) => {
+          if (isRejectingBatch) return;
           if (!open) {
             setBatchRejectDialogOpen(false);
             setBatchRejectTarget(null);
@@ -1148,11 +1196,12 @@ export function Appointment() {
           <div className="space-y-2">
             <TextAreaWithLabel
               id="batch-reject-reason"
-              label="Reason (optional)"
+              label="Reason"
               rows={3}
               value={batchRejectReason}
               onChange={(e) => setBatchRejectReason(e.target.value)}
-              placeholder="Reason for rejection..."
+              placeholder="Enter the reason for rejection..."
+              maxLength={500}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100"
             />
           </div>
@@ -1164,14 +1213,16 @@ export function Appointment() {
                 setBatchRejectTarget(null);
                 setBatchRejectReason("");
               }}
+              disabled={isRejectingBatch}
             >
               Cancel
             </Button>
             <Button
               className="bg-red-500 hover:bg-red-600"
               onClick={handleBatchRejectSubmit}
+              disabled={isRejectingBatch}
             >
-              Reject All
+              {isRejectingBatch ? "Rejecting..." : "Reject All"}
             </Button>
           </DialogFooter>
         </DialogContent>

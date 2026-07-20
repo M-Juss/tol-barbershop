@@ -12,8 +12,8 @@ class WalkinController extends Controller
     public function stats()
     {
         try {
-            $totalWalkins = Appointment::where('is_walkin', true)->count();
-            $totalRevenue = (float) Appointment::where('is_walkin', true)
+            $totalWalkins = Appointment::withTrashed()->where('is_walkin', true)->count();
+            $totalRevenue = (float) Appointment::withTrashed()->where('is_walkin', true)
                 ->where('status', 'completed')
                 ->sum('price');
 

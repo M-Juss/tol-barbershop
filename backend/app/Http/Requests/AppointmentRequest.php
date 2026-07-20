@@ -91,6 +91,7 @@ class AppointmentRequest extends FormRequest
             'walkin_customer_name' => [
                 'required_if:is_walkin,true',
                 'string',
+                'min:2',
                 'max:255',
                 'regex:/^[A-Za-z\s]+$/',
             ],
@@ -109,6 +110,7 @@ class AppointmentRequest extends FormRequest
             ],
 
             'cancellation_reason' => [
+                'required_if:status,cancelled,rejected',
                 'nullable',
                 'string',
                 'max:500',

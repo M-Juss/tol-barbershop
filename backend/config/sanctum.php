@@ -1,9 +1,16 @@
 <?php
 
 use Illuminate\Cookie\Middleware\EncryptCookies;
-use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Laravel\Sanctum\Http\Middleware\AuthenticateSession;
 use Laravel\Sanctum\Sanctum;
+
+$frontendUrl = (string) env('FRONTEND_URL', '');
+$frontendHost = parse_url($frontendUrl, PHP_URL_HOST);
+$frontendPort = parse_url($frontendUrl, PHP_URL_PORT);
+$frontendStatefulDomain = is_string($frontendHost)
+    ? $frontendHost.($frontendPort ? ':'.$frontendPort : '')
+    : '';
 
 return [
 
@@ -19,10 +26,10 @@ return [
     */
 
     'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', sprintf(
-        '%s%s',
+        '%s%s%s',
         'localhost,localhost:3000,127.0.0.1,127.0.0.1:8000,::1',
         Sanctum::currentApplicationUrlWithPort(),
-        // Sanctum::currentRequestHost(),
+        $frontendStatefulDomain ? ','.$frontendStatefulDomain : '',
     ))),
 
     /*
@@ -81,7 +88,7 @@ return [
     'middleware' => [
         'authenticate_session' => AuthenticateSession::class,
         'encrypt_cookies' => EncryptCookies::class,
-        'validate_csrf_token' => ValidateCsrfToken::class,
+        'validate_csrf_token' => PreventRequestForgery::class,
     ],
 
 ];

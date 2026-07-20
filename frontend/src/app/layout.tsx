@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Toaster } from "@/components/ui/sonner";
 import { Poppins } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -44,6 +45,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn(poppins.variable, "h-full", "antialiased")}>
       <body className="min-h-dvh flex flex-col bg-background font-sans">
+        <Script
+          src="/reset-password-url-cleanup.js"
+          strategy="beforeInteractive"
+        />
         <AuthProvider>
           <RealtimeProvider>
             {children}

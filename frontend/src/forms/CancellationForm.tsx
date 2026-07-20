@@ -79,13 +79,13 @@ export function CancellationForm({
   }, [open, reset]);
 
   const onFormInvalid: SubmitErrorHandler<CancellationReasonSchemaFormValues> = () => {
-    toast.error("All fields are required");
+    toast.error("Please provide a reason for this action.");
   };
 
   const onFormSubmit = async (data: CancellationReasonSchemaFormValues) => {
     const sanitized = {
       ...data,
-      cancellation_reason: data.cancellation_reason ? sanitizeText(data.cancellation_reason) : undefined,
+      cancellation_reason: sanitizeText(data.cancellation_reason),
     };
     await onSubmit?.(sanitized);
   };
@@ -99,8 +99,8 @@ export function CancellationForm({
           </DialogTitle>
           <DialogDescription className="text-gray-500 text-sm mt-0.5">
             {mode === "reject"
-              ? "Review booking details and add a rejection reason if needed"
-              : "Review booking details and add a cancellation reason if needed"}
+              ? "Review booking details and provide a rejection reason."
+              : "Review booking details and provide a cancellation reason."}
           </DialogDescription>
         </DialogHeader>
 
@@ -166,13 +166,18 @@ export function CancellationForm({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit(onFormSubmit, onFormInvalid)} className="space-y-5">
+        <form
+          method="post"
+          onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
+          className="space-y-5"
+        >
           <div className="relative ">
             <TextAreaWithLabel
               id="cancellation_reason"
-              label={mode === "reject" ? "Rejection Reason (Optional)" : "Cancellation Reason (Optional)"}
-              placeholder={mode === "reject" ? "Add a reason for rejection (optional)..." : "Add a reason for cancellation (optional)..."}
+              label={mode === "reject" ? "Rejection Reason" : "Cancellation Reason"}
+              placeholder={mode === "reject" ? "Enter the reason for rejection..." : "Enter the reason for cancellation..."}
               rows={4}
+              maxLength={500}
               className="border-gray-300 focus:border-gray-400"
               {...register("cancellation_reason")}
             />

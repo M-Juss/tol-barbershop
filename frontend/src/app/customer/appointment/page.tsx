@@ -1,4 +1,4 @@
-"use client";
+
 
 import { NewAppointmentForm } from "@/forms/NewAppointmentForm";
 

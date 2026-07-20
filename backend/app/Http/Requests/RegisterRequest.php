@@ -29,7 +29,7 @@ class RegisterRequest extends FormRequest
         return [
             'fullname' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z\s]+$/'],
             'contact_number' => ['required', 'string', 'max:11', 'regex:/^09\d{9}$/'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'string', 'email', 'max:255'],
             'password' => ['required', 'confirmed', 'string', 'min:6', 'max:255'],
             'terms_accepted' => ['required', 'boolean', 'accepted'],
             'privacy_acknowledged' => ['required', 'boolean', 'accepted'],

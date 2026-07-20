@@ -40,4 +40,17 @@ return [
         'folder' => env('CLOUDINARY_FOLDER', 'tol-barbershop/landing-gallery'),
     ],
 
+    'webpush' => [
+        'subject' => env('VAPID_SUBJECT', 'mailto:admin@tolbarbershop.com'),
+        'public_key' => env('VAPID_PUBLIC_KEY'),
+        'private_key' => env('VAPID_PRIVATE_KEY'),
+        'allowed_endpoint_hosts' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env(
+                'PUSH_ALLOWED_ENDPOINT_HOSTS',
+                'fcm.googleapis.com,push.services.mozilla.com,updates.push.services.mozilla.com,.push.apple.com,.notify.windows.com',
+            )),
+        ))),
+    ],
+
 ];

@@ -1,16 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { XCircle, Loader2 } from "lucide-react";
 
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { PasswordInputWithLabel } from "@/components/common/PasswordInputWithLabel";
+import { Button } from "@/components/ui/button";
 import { normalizeEmail } from "@/lib/sanitizer";
+import { ApiError } from "@/lib/api";
 import {
   changeRegistrationEmailRequest,
+  checkEmailVerificationStatus,
+  confirmEmailVerificationRequest,
   resendEmailVerificationRequest,
 } from "@/services/shared/auth.api";
 import {
@@ -22,6 +27,8 @@ type VerifyEmailFormProps = {
   email: string;
 };
 
+type VerifyStatus = "loading" | "error";
+
 export function VerifyEmailForm({ email }: VerifyEmailFormProps) {
   const router = useRouter();
   const [currentEmail, setCurrentEmail] = useState(() => normalizeEmail(email));
@@ -30,7 +37,10 @@ export function VerifyEmailForm({ email }: VerifyEmailFormProps) {
   const [showChangeEmail, setShowChangeEmail] = useState(false);
   const [checkInbox, setCheckInbox] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [verifyStatus, setVerifyStatus] = useState<VerifyStatus>("loading");
+  const [verificationPath, setVerificationPath] = useState<string | null>(null);
   const [changeError, setChangeError] = useState("");
+  const hasAutoVerified = useRef(false);
   const {
     register,
     handleSubmit,
@@ -55,6 +65,92 @@ export function VerifyEmailForm({ email }: VerifyEmailFormProps) {
 
     return () => window.clearInterval(timer);
   }, [cooldownRemaining]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const fragmentPath = params.get("verification");
+
+    if (fragmentPath) {
+      sessionStorage.setItem("email_verification_path", fragmentPath);
+    }
+
+    const nextPath =
+      fragmentPath ?? sessionStorage.getItem("email_verification_path");
+    let active = true;
+
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${window.location.pathname}${window.location.search}`,
+    );
+
+    queueMicrotask(() => {
+      if (active && nextPath) setVerificationPath(nextPath);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!verificationPath || hasAutoVerified.current) return;
+    hasAutoVerified.current = true;
+
+    let active = true;
+
+    const autoVerify = async () => {
+      try {
+        const response =
+          await confirmEmailVerificationRequest(verificationPath);
+        sessionStorage.removeItem("email_verification_path");
+        if (!active) return;
+        router.replace(
+          `/login?verified=${response.data.status === "already_verified" ? "already" : "1"}`,
+        );
+      } catch (error) {
+        sessionStorage.removeItem("email_verification_path");
+        if (!active) return;
+        if (error instanceof ApiError && error.status === 422) {
+          setVerifyStatus("error");
+        } else {
+          setVerifyStatus("error");
+        }
+      }
+    };
+
+    autoVerify();
+
+    return () => {
+      active = false;
+    };
+  }, [verificationPath, router]);
+
+  const checkVerification = useCallback(async () => {
+    try {
+      const response = await checkEmailVerificationStatus(currentEmail);
+      if (response.data.verified) {
+        sessionStorage.removeItem("email_verification_path");
+        router.replace("/login?verified=1");
+      }
+    } catch {
+      // Silently fail — user can try again
+    }
+  }, [currentEmail, router]);
+
+  useEffect(() => {
+    if (verifyStatus !== "loading") return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        checkVerification();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
+  }, [verifyStatus, checkVerification]);
 
   const handleResend = async () => {
     if (cooldownRemaining > 0 || isResending) return;
@@ -107,6 +203,38 @@ export function VerifyEmailForm({ email }: VerifyEmailFormProps) {
     }
   };
 
+  if (verifyStatus === "loading" && verificationPath) {
+    return (
+      <div className="flex flex-col items-center space-y-4 py-8">
+        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+        <p className="text-sm text-gray-600">Verifying your email...</p>
+      </div>
+    );
+  }
+
+  if (verifyStatus === "error" && verificationPath) {
+    return (
+      <div className="flex flex-col items-center space-y-4 py-8">
+        <XCircle className="h-14 w-14 text-red-500" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Verification Failed
+          </h3>
+          <p className="mt-2 text-sm text-gray-600">
+            This verification link is invalid or expired.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={checkVerification}
+          className="mt-4"
+        >
+          I&apos;ve verified my email
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-5">
       {checkInbox && (
@@ -127,6 +255,15 @@ export function VerifyEmailForm({ email }: VerifyEmailFormProps) {
         disabled
         className="h-10 border-gray-300 bg-gray-50 text-gray-700 disabled:cursor-not-allowed disabled:opacity-100"
       />
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={checkVerification}
+        className="w-full"
+      >
+        I&apos;ve verified my email
+      </Button>
 
       {!showResend ? (
         <button
@@ -169,6 +306,7 @@ export function VerifyEmailForm({ email }: VerifyEmailFormProps) {
           {showChangeEmail && (
             <form
               id="change-registration-email"
+              method="post"
               className="space-y-4 rounded-md border border-gray-200 bg-gray-50 p-4"
               onSubmit={handleSubmit(handleChangeEmail)}
               noValidate

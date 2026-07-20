@@ -57,33 +57,33 @@ class AnalyticsController extends Controller
         $period = $request->period();
         $range = $this->getDateRange($period);
 
-        $completed = Appointment::where('status', 'completed')
+        $completed = Appointment::withTrashed()->where('status', 'completed')
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
             ->count();
 
-        $totalRevenue = (float) Appointment::where('status', 'completed')
+        $totalRevenue = (float) Appointment::withTrashed()->where('status', 'completed')
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
             ->sum('price');
 
-        $cancelled = Appointment::where('status', 'cancelled')
+        $cancelled = Appointment::withTrashed()->where('status', 'cancelled')
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
             ->count();
 
-        $noShow = Appointment::where('status', 'no_show')
+        $noShow = Appointment::withTrashed()->where('status', 'no_show')
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
             ->count();
 
-        $walkin = Appointment::where('is_walkin', true)
+        $walkin = Appointment::withTrashed()->where('is_walkin', true)
             ->whereIn('status', ['completed', 'approved', 'cancelled', 'no_show'])
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
             ->count();
 
-        $totalCustomers = Appointment::where('appointment_date', '>=', $range['from'])
+        $totalCustomers = Appointment::withTrashed()->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
             ->distinct('user_id')
             ->count('user_id');
@@ -118,7 +118,7 @@ class AnalyticsController extends Controller
         $period = $request->period();
         $range = $this->getDateRange($period);
 
-        $rows = Appointment::select(['appointment_date', 'price'])
+        $rows = Appointment::withTrashed()->select(['appointment_date', 'price'])
             ->where('status', 'completed')
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
@@ -139,7 +139,7 @@ class AnalyticsController extends Controller
         $period = $request->period();
         $range = $this->getDateRange($period);
 
-        $rows = Appointment::select(['appointment_date', 'status'])
+        $rows = Appointment::withTrashed()->select(['appointment_date', 'status'])
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
             ->get()
@@ -160,7 +160,7 @@ class AnalyticsController extends Controller
     {
         $range = $this->getDateRange($request->period());
 
-        $rows = Appointment::with('service:id,name')
+        $rows = Appointment::withTrashed()->with('service:id,name')
             ->where('status', 'completed')
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
@@ -180,7 +180,7 @@ class AnalyticsController extends Controller
     {
         $range = $this->getDateRange($request->period());
 
-        $rows = Appointment::with('barber:id,fullname')
+        $rows = Appointment::withTrashed()->with('barber:id,fullname')
             ->whereIn('status', ['completed', 'cancelled', 'no_show'])
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
@@ -230,7 +230,7 @@ class AnalyticsController extends Controller
     {
         $range = $this->getDateRange($request->period());
 
-        $rows = Appointment::select(['appointment_time'])
+        $rows = Appointment::withTrashed()->select(['appointment_time'])
             ->whereIn('status', ['completed', 'approved'])
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
@@ -256,7 +256,7 @@ class AnalyticsController extends Controller
         $range = $this->getDateRange($request->period());
 
         $dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        $rows = Appointment::select(['appointment_date', 'status'])
+        $rows = Appointment::withTrashed()->select(['appointment_date', 'status'])
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
             ->get()
@@ -276,5 +276,127 @@ class AnalyticsController extends Controller
         }
 
         return response()->json($result);
+    }
+
+    public function reports(AnalyticsPeriodRequest $request)
+    {
+        $period = $request->period();
+        $range = $this->getDateRange($period);
+
+        $appointments = Appointment::withTrashed()
+            ->with(['service:id,name', 'barber:id,fullname'])
+            ->where('appointment_date', '>=', $range['from'])
+            ->where('appointment_date', '<', $range['end_exclusive'])
+            ->get();
+
+        $completed = $appointments->where('status', 'completed');
+        $cancelled = $appointments->where('status', 'cancelled');
+        $noShow = $appointments->where('status', 'no_show');
+
+        $totalRevenue = (float) $completed->sum('price');
+        $completedCount = $completed->count();
+        $cancelledCount = $cancelled->count();
+        $noShowCount = $noShow->count();
+        $totalCustomers = $appointments->pluck('user_id')->unique()->count();
+
+        $avgRating = DB::table('appointment_feedback')
+            ->join('appointments', 'appointments.id', '=', 'appointment_feedback.appointment_id')
+            ->where('appointments.appointment_date', '>=', $range['from'])
+            ->where('appointments.appointment_date', '<', $range['end_exclusive'])
+            ->avg('appointment_feedback.rating');
+
+        $walkinCount = $appointments->where('is_walkin', true)->count();
+        $completionRate = ($completedCount + $cancelledCount + $noShowCount) > 0
+            ? round(($completedCount / ($completedCount + $cancelledCount + $noShowCount)) * 100, 1)
+            : 0;
+
+        $revenue = $completed
+            ->groupBy(fn ($a) => $this->getGroupLabel($a->appointment_date, $period))
+            ->map(fn ($appts, $label) => ['label' => (string) $label, 'value' => (float) $appts->sum('price')])
+            ->sortBy('label')->values();
+
+        $appointmentTrend = $appointments
+            ->groupBy(fn ($a) => $this->getGroupLabel($a->appointment_date, $period))
+            ->map(fn ($appts, $label) => [
+                'label' => (string) $label,
+                'completed' => $appts->where('status', 'completed')->count(),
+                'cancelled' => $appts->where('status', 'cancelled')->count(),
+                'no_show' => $appts->where('status', 'no_show')->count(),
+            ])
+            ->sortBy('label')->values();
+
+        $servicePerformance = $completed
+            ->groupBy(fn ($a) => $a->service?->name ?? 'Unknown')
+            ->map(fn ($appts, $name) => [
+                'service_name' => $name,
+                'completed_count' => $appts->count(),
+                'revenue' => (float) $appts->sum('price'),
+            ])->values();
+
+        $barberPerformance = $appointments->whereIn('status', ['completed', 'cancelled', 'no_show'])
+            ->groupBy(fn ($a) => $a->barber?->fullname ?? 'Unknown')
+            ->map(function ($appts, $name) {
+                $completedAppts = $appts->where('status', 'completed');
+
+                return [
+                    'barber_name' => $name,
+                    'completed_count' => $completedAppts->count(),
+                    'revenue' => (float) $completedAppts->sum('price'),
+                    'total_appointments' => $appts->count(),
+                ];
+            })->values();
+
+        $ratingRows = DB::table('appointment_feedback')
+            ->select('rating', DB::raw('COUNT(*) as count'))
+            ->join('appointments', 'appointments.id', '=', 'appointment_feedback.appointment_id')
+            ->where('appointments.appointment_date', '>=', $range['from'])
+            ->where('appointments.appointment_date', '<', $range['end_exclusive'])
+            ->groupBy('rating')->orderBy('rating')->get()->keyBy('rating');
+
+        $ratingDistribution = [];
+        for ($i = 1; $i <= 5; $i++) {
+            $ratingDistribution[] = ['rating' => $i, 'count' => (int) ($ratingRows->get($i)?->count ?? 0)];
+        }
+
+        $peakHours = $appointments->whereIn('status', ['completed', 'approved'])
+            ->groupBy(fn ($a) => sprintf('%02d:00', (int) substr($a->appointment_time, 0, 2)))
+            ->filter(fn ($appts, $hour) => ((int) substr($hour, 0, 2)) >= 9 && ((int) substr($hour, 0, 2)) <= 19)
+            ->map(fn ($appts, $hour) => ['hour' => $hour, 'count' => $appts->count()])
+            ->sortBy('hour')->values();
+
+        $dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $dayGroups = $appointments->groupBy(fn ($a) => $a->appointment_date->dayOfWeekIso - 1);
+        $dayOfWeek = [];
+        for ($i = 0; $i < 7; $i++) {
+            $dayData = $dayGroups->get($i, collect());
+            $dayOfWeek[] = [
+                'day' => $dayNames[$i],
+                'day_index' => $i,
+                'completed' => $dayData->where('status', 'completed')->count(),
+                'cancelled' => $dayData->where('status', 'cancelled')->count(),
+                'no_show' => $dayData->where('status', 'no_show')->count(),
+                'total' => $dayData->count(),
+            ];
+        }
+
+        return response()->json([
+            'kpi' => [
+                'total_revenue' => $totalRevenue,
+                'completed_appointments' => $completedCount,
+                'average_rating' => $avgRating ? round((float) $avgRating, 1) : 0,
+                'total_customers' => $totalCustomers,
+                'completion_rate' => $completionRate,
+                'walkin_count' => $walkinCount,
+                'cancelled_count' => $cancelledCount,
+                'date_range' => ['from' => $range['from'], 'to' => $range['to']],
+            ],
+            'revenue' => $revenue,
+            'appointments' => $appointmentTrend,
+            'services' => $servicePerformance,
+            'barbers' => $barberPerformance,
+            'ratings' => $ratingDistribution,
+            'peak_hours' => $peakHours,
+            'day_of_week' => $dayOfWeek,
+        ]);
     }
 }

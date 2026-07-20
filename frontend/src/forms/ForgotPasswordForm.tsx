@@ -70,6 +70,7 @@ export function ForgotPasswordForm() {
 
   return (
     <form
+      method="post"
       className="w-full space-y-6"
       onSubmit={handleSubmit(onSubmit, onFormInvalid)}
     >

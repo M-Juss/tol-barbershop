@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { MessageCircle, Clock, CheckCircle, XCircle, ChevronDown, ChevronRight } from "lucide-react";
-import { getMyTickets, type SupportTicket } from "@/services/customer/support.api";
+import {
+  getMessages,
+  getMyTickets,
+  type SupportMessage,
+  type SupportTicket,
+} from "@/services/customer/support.api";
 import { SupportChatBubble } from "@/components/common/SupportChatBubble";
 import { cn } from "@/lib/utils";
 import { formatTicketId } from "@/lib/booking";
@@ -42,14 +47,26 @@ export function SupportHistory() {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [messagesByTicket, setMessagesByTicket] = useState<Record<number, SupportMessage[]>>({});
+  const [messagesLoadingId, setMessagesLoadingId] = useState<number | null>(null);
 
-  const fetchTickets = useCallback(async () => {
+  const fetchTickets = useCallback(async (page = 1) => {
+    if (page > 1) setLoadingMore(true);
+
     try {
-      const data = await getMyTickets();
-      setTickets(data);
+      const data = await getMyTickets(page);
+      setTickets((current) =>
+        page === 1 ? data.tickets : [...current, ...data.tickets],
+      );
+      setCurrentPage(data.meta.current_page);
+      setHasMore(data.meta.current_page < data.meta.last_page);
     } catch {
     } finally {
-      setLoading(false);
+      if (page === 1) setLoading(false);
+      else setLoadingMore(false);
     }
   }, []);
 
@@ -57,8 +74,24 @@ export function SupportHistory() {
     fetchTickets();
   }, [fetchTickets]);
 
-  const toggleExpand = (id: number) => {
-    setExpandedId((prev) => (prev === id ? null : id));
+  const toggleExpand = async (id: number) => {
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
+
+    setExpandedId(id);
+    if (messagesByTicket[id]) return;
+
+    setMessagesLoadingId(id);
+    try {
+      const messages = await getMessages(id);
+      setMessagesByTicket((current) => ({ ...current, [id]: messages }));
+    } catch {
+      setMessagesByTicket((current) => ({ ...current, [id]: [] }));
+    } finally {
+      setMessagesLoadingId(null);
+    }
   };
 
   return (
@@ -157,7 +190,10 @@ export function SupportHistory() {
                       </p>
                     )}
 
-                    {ticket.messages_asc?.map((msg) => (
+                    {messagesLoadingId === ticket.id && (
+                      <p className="text-center text-xs text-gray-400">Loading conversation...</p>
+                    )}
+                    {messagesByTicket[ticket.id]?.map((msg) => (
                       <SupportChatBubble
                         key={msg.id}
                         message={msg.message}
@@ -171,6 +207,16 @@ export function SupportHistory() {
               </div>
             );
           })}
+          {hasMore && (
+            <button
+              type="button"
+              onClick={() => fetchTickets(currentPage + 1)}
+              disabled={loadingMore}
+              className="w-full rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loadingMore ? "Loading..." : "Load older tickets"}
+            </button>
+          )}
         </div>
       )}
 

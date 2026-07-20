@@ -1,4 +1,5 @@
 import type { GalleryCategory } from "@/lib/gallery";
+import { publicFetch } from "@/lib/api";
 
 export interface LandingService {
   id: number;
@@ -34,23 +35,9 @@ export const getLandingServices = async (): Promise<LandingService[]> => {
     throw new Error("NEXT_PUBLIC_API_URL is not configured");
   }
 
-  const response = await fetch(`${apiUrl}/public-services`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+  const result = await publicFetch(`${apiUrl}/public-services`, {
     cache: "no-store",
   });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      errorData.message || `Failed to fetch public services: ${response.status}`,
-    );
-  }
-
-  const result = await response.json();
   return result.data?.services ?? result.services ?? [];
 };
 
@@ -63,24 +50,9 @@ export const getLandingGalleryImages = async (): Promise<
     throw new Error("NEXT_PUBLIC_API_URL is not configured");
   }
 
-  const response = await fetch(`${apiUrl}/public-gallery-images`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+  const result = await publicFetch(`${apiUrl}/public-gallery-images`, {
     cache: "no-store",
   });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      errorData.message ||
-        `Failed to fetch public gallery images: ${response.status}`,
-    );
-  }
-
-  const result = await response.json();
   return result.data?.gallery_images ?? result.gallery_images ?? [];
 };
 
@@ -91,23 +63,9 @@ export const getLandingFeedback = async (): Promise<LandingFeedback[]> => {
     throw new Error("NEXT_PUBLIC_API_URL is not configured");
   }
 
-  const response = await fetch(`${apiUrl}/public-feedback`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+  const result = await publicFetch(`${apiUrl}/public-feedback`, {
     cache: "no-store",
   });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      errorData.message || `Failed to fetch feedback: ${response.status}`,
-    );
-  }
-
-  const result = await response.json();
   return result.data?.feedback ?? result.feedback ?? [];
 };
 
@@ -118,22 +76,8 @@ export const getFeaturedFeedback = async (): Promise<LandingFeedback[]> => {
     throw new Error("NEXT_PUBLIC_API_URL is not configured");
   }
 
-  const response = await fetch(`${apiUrl}/featured-feedback`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+  const result = await publicFetch(`${apiUrl}/featured-feedback`, {
     cache: "no-store",
   });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      errorData.message || `Failed to fetch featured feedback: ${response.status}`,
-    );
-  }
-
-  const result = await response.json();
   return result.data?.feedback ?? result.feedback ?? [];
 };

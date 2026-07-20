@@ -1,12 +1,29 @@
 "use client";
 import { useState } from "react";
-import { Service } from "@/layout/manager/Service";
-import { Admin } from "@/layout/manager/Admin";
-import { Barber } from "@/layout/manager/Barber";
-import { Slots } from "@/layout/manager/Slots";
-import { Gallery } from "@/layout/manager/Gallery";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+
+const Service = dynamic(
+  () => import("@/layout/manager/Service").then((m) => m.Service),
+  { ssr: false }
+);
+const Gallery = dynamic(
+  () => import("@/layout/manager/Gallery").then((m) => m.Gallery),
+  { ssr: false }
+);
+const Admin = dynamic(
+  () => import("@/layout/manager/Admin").then((m) => m.Admin),
+  { ssr: false }
+);
+const Barber = dynamic(
+  () => import("@/layout/manager/Barber").then((m) => m.Barber),
+  { ssr: false }
+);
+const Slots = dynamic(
+  () => import("@/layout/manager/Slots").then((m) => m.Slots),
+  { ssr: false }
+);
 
 type ManagementTab = "Service" | "Gallery" | "Admin" | "Barber" | "Slots";
 

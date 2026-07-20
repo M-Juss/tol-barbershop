@@ -1,8 +1,12 @@
 *.log
 .DS_Store
 .env
-.env.backup
-.env.production
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
 .phpactor.json
 .phpunit.result.cache
 /.cursor/

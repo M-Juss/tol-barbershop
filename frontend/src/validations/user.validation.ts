@@ -12,6 +12,7 @@ export const accountInformationSchema = z.object({
     .min(1, "Contact number is required")
     .regex(/^09\d{9}$/, "Contact number must be a valid PH mobile number (09XXXXXXXXX)")
     .max(11, "Contact number must not exceed 11 digits"),
+  current_password: z.string().max(255).optional(),
 });
 
 export type AccountInformationSchemaFormValues = z.infer<

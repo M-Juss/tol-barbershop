@@ -1,11 +1,12 @@
 import Image from "next/image";
+import Link from "next/link";
 
 import { ForgotPasswordForm } from "@/forms/ForgotPasswordForm";
 
 export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-primary p-4 pb-8">
-      <div className="flex w-full max-w-md flex-col items-center px-6 sm:px-12 py-8 bg-white rounded-lg shadow-md">
+      <div className="flex w-full max-w-md flex-col items-center px-6 sm:px-12 py-8 bg-white rounded-lg shadow-md animate-auth-card">
         <div className="flex space-x-2 items-center">
           <Image
             src="/Tol-Logo-White-Bg.png"
@@ -26,9 +27,9 @@ export default function ForgotPasswordPage() {
         <ForgotPasswordForm />
         <p>
           Back to{" "}
-          <a href="/login" className="text-accent hover:underline">
+          <Link href="/login" className="text-accent hover:underline">
             Login
-          </a>
+          </Link>
         </p>
       </div>
     </div>

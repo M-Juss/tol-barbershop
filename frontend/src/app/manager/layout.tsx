@@ -13,6 +13,7 @@ import {
   Headset,
 } from "lucide-react";
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
+import { NotificationPrompt } from "@/components/common/NotificationPrompt";
 import { toast } from "sonner";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
 import { usePageVisibility } from "@/hooks/usePageVisibility";
@@ -146,6 +147,7 @@ export default function ManagerLayout({
       <ResponsiveSidebar sections={sections} />
       <main className="min-h-0 flex-1 overflow-y-auto bg-gray-100 md:pl-0 pt-[calc(4rem+env(safe-area-inset-top))] md:pt-0 pb-[calc(5rem+env(safe-area-inset-bottom))] overscroll-contain">
         {children}
+        <NotificationPrompt />
       </main>
     </div>
   );

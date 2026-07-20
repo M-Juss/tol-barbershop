@@ -88,3 +88,12 @@ export const getAllClosedDatesForActivityLog = async (
     total: paginatedData?.total || 0,
   };
 };
+
+export const checkClosedDateConflicts = async (
+  date: string,
+): Promise<{ count: number }> => {
+  const response = await authFetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/closed-dates/check-conflicts?date=${date}`,
+  );
+  return response.data?.data ?? { count: 0 };
+};

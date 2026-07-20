@@ -1,12 +1,13 @@
 <?php
 
+use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureCustomerEmailIsVerified;
+use App\Http\Middleware\EnsureModulePermission;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -17,21 +18,15 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
+            'active' => EnsureAccountIsActive::class,
             'customer.verified' => EnsureCustomerEmailIsVerified::class,
+            'module' => EnsureModulePermission::class,
             'role' => EnsureRole::class,
             'security.headers' => SecurityHeaders::class,
         ]);
 
-        $middleware->validateCsrfTokens(except: [
-            'api/*',
-            'sanctum/csrf-cookie',
-        ]);
-
         $middleware->append(SecurityHeaders::class);
-
-        $middleware->api(prepend: [
-            EnsureFrontendRequestsAreStateful::class,
-        ]);
+        $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

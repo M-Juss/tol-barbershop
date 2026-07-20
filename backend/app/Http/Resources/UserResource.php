@@ -14,7 +14,7 @@ class UserResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $permissions = null;
+        $permissions = $this->role === 'admin' ? [] : null;
 
         if ($this->role === 'admin' && $this->roleModel) {
             $this->roleModel->load('modules');

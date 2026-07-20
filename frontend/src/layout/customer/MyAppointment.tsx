@@ -334,6 +334,7 @@ export function MyAppointment() {
           )}
         </DialogContent>
       </Dialog>
+      <div className="h-10" />
     </div>
   );
 }

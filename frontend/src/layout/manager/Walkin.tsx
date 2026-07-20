@@ -58,7 +58,7 @@ export function Walkin() {
           iconClassName="text-blue-500"
         />
         <StatCard
-          label="Revenue"
+          label="Total Walk-ins Revenue"
           value={loading ? "..." : formatCurrency(stats?.total_revenue ?? 0)}
           icon={Wallet}
           iconContainerClassName="bg-green-100"

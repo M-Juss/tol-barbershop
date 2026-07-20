@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
+import { PasswordInputWithLabel } from "@/components/common/PasswordInputWithLabel";
 import { Button } from "@/components/ui/button";
-import { SubmitErrorHandler, useForm } from "react-hook-form";
+import { SubmitErrorHandler, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   accountInformationSchema,
@@ -22,12 +23,15 @@ export function AccountInformationForm() {
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
+    setError,
+    control,
   } = useForm<AccountInformationSchemaFormValues>({
     resolver: zodResolver(accountInformationSchema),
     defaultValues: {
       fullname: "",
       email: "",
       contact_number: "",
+      current_password: "",
     },
   });
 
@@ -37,11 +41,16 @@ export function AccountInformationForm() {
         fullname: user.fullname ?? "",
         email: user.email ?? "",
         contact_number: user.contact_number ?? "",
+        current_password: "",
       });
     }
   }, [reset, user]);
 
   const [isEditing, setIsEditing] = useState(false);
+  const watchedEmail = useWatch({ control, name: "email" });
+  const emailIsChanging = Boolean(
+    user && normalizeEmail(watchedEmail ?? "") !== normalizeEmail(user.email),
+  );
 
   const onFormInvalid: SubmitErrorHandler<
     AccountInformationSchemaFormValues
@@ -56,8 +65,24 @@ export function AccountInformationForm() {
         fullname: sanitizeString(data.fullname),
         email: normalizeEmail(data.email),
         contact_number: normalizePhone(data.contact_number),
+        current_password: data.current_password || undefined,
       };
+      if (emailIsChanging && !sanitized.current_password) {
+        setError("current_password", {
+          message: "Current password is required to change your email.",
+        });
+        return;
+      }
+
       await changeInformation(sanitized);
+
+      if (emailIsChanging) {
+        toast.success("Email updated. Verify your new address to continue.");
+        window.location.replace(
+          `/verify-email?email=${encodeURIComponent(sanitized.email)}`,
+        );
+        return;
+      }
 
       await refreshUser();
       setIsEditing(false);
@@ -73,6 +98,7 @@ export function AccountInformationForm() {
         fullname: user.fullname ?? "",
         email: user.email ?? "",
         contact_number: user.contact_number ?? "",
+        current_password: "",
       });
     }
     setIsEditing(false);
@@ -108,6 +134,7 @@ export function AccountInformationForm() {
       </div>
 
       <form
+        method="post"
         onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
         className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5"
       >
@@ -168,6 +195,26 @@ export function AccountInformationForm() {
           disabled
           className="h-10"
         />
+
+        {isEditing && emailIsChanging && (
+          <div className="relative sm:col-span-2">
+            <PasswordInputWithLabel
+              id="current_password"
+              label="Current Password"
+              autoComplete="current-password"
+              maxLength={255}
+              {...register("current_password")}
+            />
+            {errors.current_password && (
+              <p className="mt-1 text-xs text-red-500">
+                {errors.current_password.message}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">
+              Required to protect changes to your sign-in email.
+            </p>
+          </div>
+        )}
 
         {isEditing && (
           <div className="sm:col-span-2 flex justify-end gap-2">

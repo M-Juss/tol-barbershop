@@ -1,9 +1,10 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useWatch, type SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertTriangle } from "lucide-react";
 
 import { DatePickerWithLabel } from "@/components/common/DatePickerWithLabel";
 import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
@@ -21,6 +22,7 @@ import {
   ClosedDateSchemaFormValues,
 } from "@/validations/closed.date.validation";
 import { sanitizeText } from "@/lib/sanitizer";
+import { checkClosedDateConflicts } from "@/services/manager/close.date.api";
 import { toast } from "sonner";
 
 type ClosedDateFormProps = {
@@ -53,6 +55,7 @@ export function ClosedDateForm({
     },
   });
   const dateClosed = useWatch({ control, name: "date_closed" });
+  const [conflictCount, setConflictCount] = useState(0);
 
   useEffect(() => {
     if (initialData) {
@@ -67,6 +70,32 @@ export function ClosedDateForm({
       });
     }
   }, [initialData, open, reset]);
+
+  useEffect(() => {
+    if (!dateClosed || !(dateClosed instanceof Date)) {
+      return;
+    }
+
+    const dateStr =
+      dateClosed.getFullYear() +
+      "-" +
+      String(dateClosed.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(dateClosed.getDate()).padStart(2, "0");
+    let cancelled = false;
+
+    checkClosedDateConflicts(dateStr)
+      .then((result) => {
+        if (!cancelled) setConflictCount(result.count);
+      })
+      .catch(() => {
+        if (!cancelled) setConflictCount(0);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dateClosed]);
 
   const onFormInvalid: SubmitErrorHandler<ClosedDateSchemaFormValues> = () => {
     toast.error("All fields are required");
@@ -92,18 +121,23 @@ export function ClosedDateForm({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onFormSubmit, onFormInvalid)} className="space-y-5">
+        <form
+          method="post"
+          onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
+          className="space-y-5"
+        >
           <div className="relative ">
             <DatePickerWithLabel
               id="date_closed"
               label="Closed Date"
               placeholder="Select closure date"
               date={dateClosed}
-              onDateChange={(date) =>
+              onDateChange={(date) => {
                 setValue("date_closed", date as Date, {
                   shouldValidate: true,
-                })
-              }
+                });
+                if (!date) setConflictCount(0);
+              }}
             />
             {errors.date_closed && (
               <p className="absolute left-0 top-full  text-red-500 text-xs">
@@ -117,6 +151,7 @@ export function ClosedDateForm({
               id="reason"
               label="Reason"
               placeholder="Enter reason for closure..."
+              maxLength={500}
               className="border-gray-300 focus:border-gray-400"
               {...register("reason")}
             />
@@ -124,6 +159,15 @@ export function ClosedDateForm({
               <p className="absolute left-0 top-full mt-1 text-red-500 text-xs">{errors.reason.message}</p>
             )}
           </div>
+
+          {conflictCount > 0 && (
+            <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <p className="text-sm text-amber-800">
+                {conflictCount} active appointment{conflictCount > 1 ? "s" : ""} exist on this date. Affected customers will be notified of the closure.
+              </p>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>

@@ -79,6 +79,7 @@ export function ChangePasswordForm({
         </DialogHeader>
 
         <form
+          method="post"
           onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
           className="space-y-4"
         >

@@ -12,47 +12,48 @@ export default function TermsOfUsePage() {
   return (
     <LegalDocument
       title="Terms of Use"
-      summary="These terms govern use of the TOL Barbershop website and its account, booking, support, feedback, and notification features."
+      summary="These terms explain the rules for using the TOL Barbershop website and its booking, account, support, feedback, and notification features."
     >
       <section>
-        <h2>1. Agreement and operator</h2>
+        <h2>1. Agreement and who we are</h2>
         <p>
-          By using the service, you accept these Terms of Use. When you create
-          an account, you expressly agree to these terms and acknowledge that
-          you have read our Privacy Policy. The service is operated by TOL Barbershop at 2nd Floor,
-          Osrem Building, Gen. Trias Drive, Tejero, General Trias City, Cavite,
-          Philippines. If you do not agree, do not use the service.
+          By using this service, you agree to these Terms of Use. When you
+          create an account, you confirm that you have read and agree to these
+          terms and our Privacy Policy. The service is operated by TOL
+          Barbershop at 2nd Floor, Osrem Building, Gen. Trias Drive, Tejero,
+          General Trias City, Cavite, Philippines. If you do not agree, please
+          do not use the service.
         </p>
       </section>
 
       <section>
-        <h2>2. Accounts</h2>
+        <h2>2. Your account</h2>
         <p>
-          Provide accurate, current account information and keep your login
-          credentials confidential. You are responsible for activity under
-          your account unless you promptly report unauthorized access. We may
-          require email verification and may reject, restrict, or deactivate
-          accounts that are false, compromised, abusive, or used contrary to
-          these terms or law.
+          Keep your account information accurate and your login credentials
+          private. You are responsible for all activity under your account
+          unless you promptly report unauthorized access. We may require email
+          verification and may reject, restrict, or deactivate accounts that
+          are false, compromised, abusive, or used contrary to these terms or
+          applicable law.
         </p>
       </section>
 
       <section>
-        <h2>3. Appointments and approval</h2>
+        <h2>3. Bookings and approval</h2>
         <p>
-          An online booking is a request, not an immediately confirmed
+          An online booking is a <strong>request</strong>, not a confirmed
           appointment. Requests remain pending until authorized staff approve
           them. Availability can change while a request is pending, and we may
-          reject or propose changes to a request because of barber or service
-          availability, shop closure, scheduling conflicts, safety, or other
-          reasonable operational needs. Check the booking status and service
+          reject or suggest changes due to barber or service availability, shop
+          closures, scheduling conflicts, safety concerns, or other reasonable
+          operational needs. Always check your booking status and any service
           communications before visiting.
         </p>
         <p>
-          Staff may create or update walk-in and shop bookings. Authorized
-          staff can access booking details as needed to review requests,
-          schedule barbers, provide services, document status and reasons,
-          support customers, and prepare operational reports.
+          Staff may create or update walk-in and shop bookings directly.
+          Authorized staff can access booking details as needed to review
+          requests, schedule barbers, provide services, document status and
+          reasons, support customers, and prepare operational reports.
         </p>
       </section>
 
@@ -62,47 +63,48 @@ export default function TermsOfUsePage() {
           If you make a group booking, you confirm that you are authorized to
           provide each participant&apos;s name and booking details, request the
           appointments, and receive booking communications for the group. You
-          must provide accurate information and make participants aware of
-          these terms and the Privacy Policy. Do not provide information that
-          is unnecessary for arranging the requested services.
+          must provide accurate information and make sure participants are
+          aware of these terms and our Privacy Policy. Only provide information
+          that is necessary for arranging the requested services.
         </p>
       </section>
 
       <section>
         <h2>5. Prices and in-shop payment</h2>
         <p>
-          The website does not currently implement online payment. Payment is
+          Our website does not currently process online payments. Payment is
           made at the shop using the methods accepted there at the time of
           service. Displayed prices relate to the selected service; any change
-          in service or price should be explained and agreed at the shop. We do
-          not collect payment-card details through the booking website.
+          in service or price should be discussed and agreed on at the shop.
+          We do not collect payment-card details through the booking website.
         </p>
       </section>
 
       <section>
         <h2>6. Cancellations and no-shows</h2>
         <p>
-          If you cannot attend, contact the shop through customer support or
-          email as early as practical. The current online service
-          does not impose a cancellation fee or fixed cancellation deadline.
-          We may record cancellations, reasons, and no-shows to maintain
-          accurate operations and address repeated misuse of booking capacity.
-          Repeated or abusive no-shows or reservations may result in booking
-          restrictions or account action after reasonable review.
+          If you cannot attend your appointment, please contact the shop
+          through customer support or email as early as possible. Our current
+          online service does not charge a cancellation fee or enforce a fixed
+          cancellation deadline. We may record cancellations, reasons, and
+          no-shows to maintain accurate operations and address repeated misuse
+          of booking capacity. Repeated or abusive no-shows or reservations
+          may result in booking restrictions or account action after reasonable
+          review.
         </p>
       </section>
 
       <section>
-        <h2>7. Support, notifications, and feedback</h2>
+        <h2>7. Support, notifications, and reviews</h2>
         <p>
-          Support messages must be relevant and respectful. In-app notices may
-          be used for service communications. Browser push notifications are
-          optional; you may unsubscribe through available account or browser
-          controls, though essential booking information may still be shown in
+          Support messages must be relevant and respectful. In-app notifications
+          may be used for service communications. Browser push notifications
+          are optional; you may unsubscribe through your account or browser
+          settings, though essential booking information may still be shown in
           the service or sent through another appropriate channel.
         </p>
         <p>
-          Feedback is optional. By submitting a rating or comment, you allow
+          Reviews are optional. By submitting a rating or comment, you allow
           TOL Barbershop to use it for service evaluation and business
           transparency, including display on the public website with your
           customer name, service, and barber information. Eligible five-star
@@ -115,12 +117,12 @@ export default function TermsOfUsePage() {
       <section>
         <h2>8. Your content</h2>
         <p>
-          You retain rights you hold in notes, messages, feedback, and other
-          content you submit. You give TOL Barbershop a
-          non-exclusive license to host, copy, display internally, and process
-          that content only as reasonably needed to operate, secure, support,
-          document, and explain the service. For submitted feedback, this
-          license also includes the public use described above.
+          You keep the rights you hold in notes, messages, reviews, and other
+          content you submit. You give TOL Barbershop a non-exclusive license
+          to host, copy, display internally, and process that content only as
+          reasonably needed to operate, secure, support, document, and explain
+          the service. For submitted reviews, this license also includes the
+          public use described above.
         </p>
         <p>
           You confirm that you have the rights and permissions needed for your
@@ -143,8 +145,8 @@ export default function TermsOfUsePage() {
           </li>
           <li>
             disrupt the service, bypass security or rate limits, introduce
-            malicious code, scrape protected data, or probe for vulnerabilities
-            without written authorization;
+            malicious code, scrape protected data, or probe for
+            vulnerabilities without written authorization;
           </li>
           <li>
             impersonate another person or misuse participant, customer, staff,
@@ -160,7 +162,7 @@ export default function TermsOfUsePage() {
           The website, TOL Barbershop branding, layout, text, graphics,
           photographs, and software are owned by or licensed to TOL Barbershop
           unless stated otherwise. These terms permit personal use of the
-          service but do not transfer intellectual property rights.
+          service but do not transfer intellectual property rights to you.
         </p>
       </section>
 
@@ -179,12 +181,13 @@ export default function TermsOfUsePage() {
         <h2>12. Responsibility and consumer rights</h2>
         <p>
           To the extent permitted by Philippine law, each party is responsible
-          for direct loss caused by its breach, negligence, or unlawful act.
-          TOL Barbershop is not responsible for delay or failure caused by
-          events reasonably outside its control, or for third-party services
-          that it does not control. Nothing in these terms excludes liability
-          that cannot lawfully be excluded or limits rights and remedies under
-          applicable Philippine consumer, privacy, or other mandatory law.
+          for direct loss caused by its own breach, negligence, or unlawful
+          act. TOL Barbershop is not responsible for delay or failure caused
+          by events reasonably outside its control, or for third-party
+          services it does not control. Nothing in these terms excludes
+          liability that cannot lawfully be excluded or limits rights and
+          remedies under applicable Philippine consumer, privacy, or other
+          mandatory law.
         </p>
       </section>
 
@@ -194,9 +197,11 @@ export default function TermsOfUsePage() {
           We may restrict or deactivate access when reasonably necessary to
           protect customers, staff, the shop, or the service; investigate a
           violation; comply with law; or respond to repeated misuse. You may
-          request account deletion through the available feature. Account
-          deletion is a soft deactivation, and operational records may be
-          retained as explained in the Privacy Policy.
+          request account deletion through the available account feature.
+          Account deletion is a <strong>soft deactivation</strong>, meaning
+          your account is disabled rather than immediately erased, and
+          operational records may be retained as explained in the Privacy
+          Policy.
         </p>
       </section>
 

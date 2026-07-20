@@ -144,6 +144,11 @@ export interface BookingSettings {
   max_slots_per_booking: number;
 }
 
+export type OccupiedAppointmentSlot = {
+  appointment_time: string;
+  duration_minutes: number;
+};
+
 export const getActiveBarbers = async (): Promise<Barber[]> => {
   const response = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/barber`);
   return response.data?.data ?? response.data;
@@ -277,12 +282,40 @@ export const createBatchAppointment = async (
   return response.data;
 };
 
+export const updateBatchAppointmentStatus = async (
+  batchId: string,
+  status: "approved" | "rejected",
+  cancellationReason?: string | null,
+): Promise<Appointment[]> => {
+  const response = await authFetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/appointments/batch/${encodeURIComponent(batchId)}/status`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        status,
+        cancellation_reason: cancellationReason ?? null,
+      }),
+    },
+  );
+
+  return response.data;
+};
+
 export const getUnavailableSlots = async (
   barberId: number,
   date: string,
-): Promise<string[]> => {
+  ignoreAppointmentId?: number,
+): Promise<OccupiedAppointmentSlot[]> => {
+  const params = new URLSearchParams({
+    barber_id: barberId.toString(),
+    date,
+  });
+  if (ignoreAppointmentId) {
+    params.set("ignore_appointment_id", ignoreAppointmentId.toString());
+  }
+
   const response = await authFetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/appointments/available-slots?barber_id=${barberId}&date=${date}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/appointments/available-slots?${params.toString()}`,
   );
   return response.data;
 };
