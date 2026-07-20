@@ -71,16 +71,23 @@ class DefaultDataSeeder extends Seeder
 
     private function seedUsers(): void
     {
-        User::firstOrCreate(
-            ['email' => 'manager@gmail.com'],
-            [
-                'fullname' => 'Manager',
-                'contact_number' => '09123456788',
-                'password' => Hash::make('Manager123!'),
-                'role' => 'manager',
-                'is_active' => true,
-            ]
-        );
+        $managerEmail = env('DEFAULT_MANAGER_EMAIL');
+        $managerPassword = env('DEFAULT_MANAGER_PASSWORD');
+        $managerName = env('DEFAULT_MANAGER_NAME');
+        $managerContact = env('DEFAULT_MANAGER_CONTACT');
+
+        if ($managerEmail && $managerPassword && $managerName && $managerContact) {
+            User::firstOrCreate(
+                ['email' => $managerEmail],
+                [
+                    'fullname' => $managerName,
+                    'contact_number' => $managerContact,
+                    'password' => Hash::make($managerPassword),
+                    'role' => 'manager',
+                    'is_active' => true,
+                ]
+            );
+        }
 
         foreach ($this->barbersData as $barber) {
             User::firstOrCreate(

@@ -96,6 +96,12 @@ PUSH_ALLOWED_ENDPOINT_HOSTS=fcm.googleapis.com,push.services.mozilla.com,updates
 
 CLOUDINARY_URL=<Cloudinary URL>
 CLOUDINARY_FOLDER=tol-barbershop/landing-gallery
+
+# Default manager account (used by seeders — rotate before public launch)
+DEFAULT_MANAGER_EMAIL=<manager email>
+DEFAULT_MANAGER_PASSWORD=<strong manager password>
+DEFAULT_MANAGER_NAME=<manager fullname>
+DEFAULT_MANAGER_CONTACT=<manager phone>
 ```
 
 `SESSION_DOMAIN` must remain unset or `null`. Laravel cookies travel to the browser through the Netlify rewrite, so assigning the backend domain to them will break login and CSRF.
