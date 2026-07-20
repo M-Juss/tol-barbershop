@@ -40,10 +40,10 @@ export function LegalDocument({
             Questions
           </p>
           <Link
-            href="mailto:tolbarbershop23@gmail.com"
+            href="mailto:ofcl.tolbarbershop@gmail.com"
             className="mt-2 block break-words text-sm font-medium text-primary underline decoration-accent/50 underline-offset-4 hover:text-accent"
           >
-            tolbarbershop23@gmail.com
+            ofcl.tolbarbershop@gmail.com
           </Link>
         </aside>
 

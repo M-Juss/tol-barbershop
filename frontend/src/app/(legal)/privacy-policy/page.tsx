@@ -265,8 +265,8 @@ export default function PrivacyPolicyPage() {
         </p>
         <p>
           For privacy questions or requests, contact TOL Barbershop at{" "}
-          <a href="mailto:tolbarbershop23@gmail.com">
-            tolbarbershop23@gmail.com
+          <a href="mailto:ofcl.tolbarbershop@gmail.com">
+            ofcl.tolbarbershop@gmail.com
           </a>
           , or at 2nd Floor, Osrem Building, Gen. Trias Drive, Tejero, General
           Trias City, Cavite, Philippines.

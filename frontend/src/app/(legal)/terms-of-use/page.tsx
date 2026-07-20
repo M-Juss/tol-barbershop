@@ -226,8 +226,8 @@ export default function TermsOfUsePage() {
         </p>
         <p>
           Questions may be sent to{" "}
-          <a href="mailto:tolbarbershop23@gmail.com">
-            tolbarbershop23@gmail.com
+          <a href="mailto:ofcl.tolbarbershop@gmail.com">
+            ofcl.tolbarbershop@gmail.com
           </a>
           .
         </p>

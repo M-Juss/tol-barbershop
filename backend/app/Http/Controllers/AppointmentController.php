@@ -1019,7 +1019,11 @@ class AppointmentController extends Controller
 
         $slots = [];
         for ($hour = 9; $hour <= 19; $hour++) {
-            $time12 = Carbon::createFromTime($hour, 0)->format('g:i A');
+            if ($hour === 12) {
+                $time12 = '12:30 PM';
+            } else {
+                $time12 = Carbon::createFromTime($hour, 0)->format('g:i A');
+            }
             $appts = $slotMap[$time12] ?? [];
             $slots[] = [
                 'time' => $time12,

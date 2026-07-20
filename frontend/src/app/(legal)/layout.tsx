@@ -63,10 +63,10 @@ export default function LegalLayout({
               Trias City, Cavite, Philippines
             </p>
             <Link
-              href="mailto:tolbarbershop23@gmail.com"
+              href="mailto:ofcl.tolbarbershop@gmail.com"
               className="mt-2 inline-block text-white/80 underline decoration-accent underline-offset-4 hover:text-white"
             >
-              tolbarbershop23@gmail.com
+              ofcl.tolbarbershop@gmail.com
             </Link>
           </div>
           <nav
