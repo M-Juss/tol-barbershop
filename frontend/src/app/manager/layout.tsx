@@ -16,7 +16,7 @@ import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { NotificationPrompt } from "@/components/common/NotificationPrompt";
 import { toast } from "sonner";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
-import { usePageVisibility } from "@/hooks/usePageVisibility";
+import { startPolling } from "@/lib/polling";
 import { getPendingAppointmentCount } from "@/services/manager/admin.api";
 import { getWaitingCount } from "@/services/manager/support.api";
 
@@ -63,7 +63,6 @@ export default function ManagerLayout({
   children: React.ReactNode;
 }) {
   useRoleRoutePersistence("/manager");
-  const isPageVisible = usePageVisibility();
   const [pendingCount, setPendingCount] = useState(0);
   const [waitingCount, setWaitingCount] = useState(0);
   const prevCountRef = useRef(0);
@@ -91,36 +90,27 @@ export default function ManagerLayout({
     } catch {}
   }, []);
 
-  const fetchWaitingCount = useCallback(async () => {
-    try {
-      const count = await getWaitingCount();
-      if (!isFirstWaitingLoadRef.current && count > prevWaitingRef.current) {
-        const diff = count - prevWaitingRef.current;
-        toast(`${diff} New Waiting Ticket${diff > 1 ? "s" : ""}`, {
-          description: `A customer is waiting in the support queue.`,
-          action: {
-            label: "View",
-            onClick: () => (window.location.href = "/manager/customer-service"),
-          },
-          duration: 8000,
-        });
-      }
-      isFirstWaitingLoadRef.current = false;
-      prevWaitingRef.current = count;
-      setWaitingCount(count);
-    } catch {}
+  const fetchWaitingCount = useCallback(async (signal?: AbortSignal) => {
+    const count = await getWaitingCount(signal);
+    if (!isFirstWaitingLoadRef.current && count > prevWaitingRef.current) {
+      const diff = count - prevWaitingRef.current;
+      toast(`${diff} New Waiting Ticket${diff > 1 ? "s" : ""}`, {
+        description: `A customer is waiting in the support queue.`,
+        action: {
+          label: "View",
+          onClick: () => (window.location.href = "/manager/customer-service"),
+        },
+        duration: 8000,
+      });
+    }
+    isFirstWaitingLoadRef.current = false;
+    prevWaitingRef.current = count;
+    setWaitingCount(count);
   }, []);
 
   useEffect(() => {
-    if (!isPageVisible) return;
-
-    queueMicrotask(() => {
-      fetchWaitingCount();
-    });
-    const interval = setInterval(fetchWaitingCount, 60000);
-
-    return () => clearInterval(interval);
-  }, [fetchWaitingCount, isPageVisible]);
+    return startPolling(fetchWaitingCount, 10000);
+  }, [fetchWaitingCount]);
 
   useEffect(() => {
     const onAppointmentsUpdated = () => fetchPendingCount();

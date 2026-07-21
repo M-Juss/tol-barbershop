@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatTicketId } from "@/lib/booking";
+import { ApiError } from "@/lib/api";
 import {
   getMyTickets,
   getTicketState,
@@ -42,7 +43,6 @@ import {
 } from "@/services/customer/support.api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { startPolling } from "@/lib/polling";
 import { cn } from "@/lib/utils";
 import {
@@ -88,7 +88,6 @@ function formatDate(dateString: string): string {
 
 export function SupportFab() {
   const { user } = useAuth();
-  const isPageVisible = usePageVisibility();
   const [ticket, setTicket] = useState<SupportTicketState | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [fabState, setFabState] = useState<FabState>("idle");
@@ -151,17 +150,21 @@ export function SupportFab() {
         setFabState("idle");
       }
     } catch (error) {
-      if (!(error instanceof DOMException && error.name === "AbortError")) {
+      const isAbortError =
+        error instanceof DOMException && error.name === "AbortError";
+      const isRateLimited = error instanceof ApiError && error.status === 429;
+      if (!isAbortError && !isRateLimited) {
         setFabState("idle");
       }
+      throw error;
     }
   }, []);
 
   useEffect(() => {
-    if (!user || !isPageVisible) return;
+    if (!user) return;
 
     return startPolling(fetchTicketState, 10000);
-  }, [user, fetchTicketState, isPageVisible]);
+  }, [user, fetchTicketState]);
 
   const fetchMessages = useCallback(async (signal?: AbortSignal) => {
     if (!ticket || ticket.status !== "active") return;
@@ -191,18 +194,20 @@ export function SupportFab() {
           ...data.map((message) => message.id),
         );
       }
-    } catch {}
+    } catch (error) {
+      if (signal?.aborted) return;
+      throw error;
+    }
   }, [ticket]);
 
   useEffect(() => {
     const shouldPollMessages =
       ticket?.status === "active" &&
       isSheetOpen &&
-      sheetTab === "ticketing" &&
-      isPageVisible;
+      sheetTab === "ticketing";
 
     if (shouldPollMessages) {
-      return startPolling(fetchMessages, 5000);
+      return startPolling(fetchMessages, 3000);
     }
 
     if (ticket?.status !== "active") {
@@ -212,7 +217,6 @@ export function SupportFab() {
     }
   }, [
     fetchMessages,
-    isPageVisible,
     isSheetOpen,
     sheetTab,
     ticket?.id,

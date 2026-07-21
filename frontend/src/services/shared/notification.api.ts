@@ -46,9 +46,11 @@ interface NotificationPayload {
 
 export const getNotifications = async (
   page: number = 1,
+  signal?: AbortSignal,
 ): Promise<NotificationPayload> => {
   const response = await authFetch(
     `${process.env.NEXT_PUBLIC_API_URL}/notifications?page=${page}`,
+    { signal },
   );
   return response.data;
 };

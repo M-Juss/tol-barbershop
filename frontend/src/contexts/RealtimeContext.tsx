@@ -10,8 +10,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { ApiError } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePageVisibility } from "@/hooks/usePageVisibility";
+import { getPollingBackoffMs } from "@/lib/polling";
 import {
   getEntityChangeVersions,
   type EntityChangeVersions,
@@ -26,8 +28,8 @@ type RealtimeContextValue = {
 };
 
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
-const POLL_INTERVAL_MS = 60_000;
-const POLL_JITTER_MS = 5_000;
+const POLL_INTERVAL_MS = 10_000;
+const POLL_JITTER_MS = 1_000;
 const FALLBACK_REFRESH_INTERVAL_MS = 5 * 60_000;
 const CHANGE_REQUEST_TIMEOUT_MS = 15_000;
 
@@ -50,6 +52,8 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   );
   const lastRefreshRef = useRef(new Map<EntityType, number>());
   const [subscriptionCount, setSubscriptionCount] = useState(0);
+  const consecutiveFailuresRef = useRef(0);
+  const backoffUntilRef = useRef(0);
 
   const notify = useCallback((entityType: EntityType) => {
     const listeners = listenersRef.current.get(entityType);
@@ -100,6 +104,8 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     versionsRef.current.clear();
     lastRefreshRef.current.clear();
+    consecutiveFailuresRef.current = 0;
+    backoffUntilRef.current = 0;
   }, [user?.id]);
 
   useEffect(() => {
@@ -118,14 +124,20 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     let controller: AbortController | undefined;
 
-    const scheduleNext = (): void => {
+    const scheduleNext = (delayMs = getPollDelay()): void => {
       timeoutId = setTimeout(() => {
         void run();
-      }, getPollDelay());
+      }, delayMs);
     };
 
     const run = async (): Promise<void> => {
       if (stopped) return;
+      const backoffRemainingMs = backoffUntilRef.current - Date.now();
+      if (backoffRemainingMs > 0) {
+        if (timeoutId) clearTimeout(timeoutId);
+        scheduleNext(backoffRemainingMs);
+        return;
+      }
       if (inFlight) {
         rerunRequested = true;
         return;
@@ -137,6 +149,8 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       }
 
       inFlight = true;
+      let shouldBackoff = false;
+      let nextDelayMs = getPollDelay();
       const requestController = new AbortController();
       let didTimeout = false;
       controller = requestController;
@@ -147,6 +161,8 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
       try {
         const versions = await getEntityChangeVersions(requestController.signal);
+        consecutiveFailuresRef.current = 0;
+        backoffUntilRef.current = 0;
 
         for (const entityType of Object.keys(versions) as EntityType[]) {
           if (!listenersRef.current.has(entityType)) continue;
@@ -167,7 +183,20 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         const isAbortError =
           error instanceof DOMException && error.name === "AbortError";
-        if (!stopped && (!isAbortError || didTimeout)) {
+        const isRateLimited = error instanceof ApiError && error.status === 429;
+
+        if (!isAbortError || didTimeout) {
+          consecutiveFailuresRef.current++;
+          shouldBackoff = true;
+          nextDelayMs = getPollingBackoffMs(
+            error,
+            POLL_INTERVAL_MS,
+            consecutiveFailuresRef.current,
+          );
+          backoffUntilRef.current = Date.now() + nextDelayMs;
+        }
+
+        if (!stopped && !isRateLimited && (!isAbortError || didTimeout)) {
           const now = Date.now();
           for (const entityType of listenersRef.current.keys()) {
             const lastRefresh = lastRefreshRef.current.get(entityType) ?? 0;
@@ -184,11 +213,12 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         }
 
         if (stopped) return;
-        if (rerunRequested) {
+        if (rerunRequested && !shouldBackoff) {
           rerunRequested = false;
           void run();
         } else {
-          scheduleNext();
+          rerunRequested = false;
+          scheduleNext(nextDelayMs);
         }
       }
     };
@@ -228,6 +258,7 @@ export function useRealtime() {
 export function useRealtimeEvent(
   entityType: EntityType,
   callback: RealtimeEventCallback,
+  enabled = true,
 ): void {
   const { subscribe } = useRealtime();
   const callbackRef = useRef(callback);
@@ -237,6 +268,8 @@ export function useRealtimeEvent(
   }, [callback]);
 
   useEffect(() => {
+    if (!enabled) return;
+
     let controller: AbortController | undefined;
     const unsubscribe = subscribe(entityType, () => {
       controller?.abort();
@@ -248,5 +281,5 @@ export function useRealtimeEvent(
       controller?.abort();
       unsubscribe();
     };
-  }, [entityType, subscribe]);
+  }, [enabled, entityType, subscribe]);
 }

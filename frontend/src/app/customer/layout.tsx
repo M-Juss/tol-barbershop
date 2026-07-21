@@ -5,7 +5,7 @@ import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { SupportFab } from "@/components/common/SupportFab";
 import { NotificationPrompt } from "@/components/common/NotificationPrompt";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
-import { usePageVisibility } from "@/hooks/usePageVisibility";
+import { startPolling } from "@/lib/polling";
 import { getNotifications } from "@/services/shared/notification.api";
 
 export default function CustomerLayout({
@@ -14,26 +14,21 @@ export default function CustomerLayout({
   children: React.ReactNode;
 }) {
   const [unreadCount, setUnreadCount] = useState(0);
-  const isPageVisible = usePageVisibility();
   useRoleRoutePersistence("/customer");
 
-  const loadUnreadCount = useCallback(async () => {
+  const loadUnreadCount = useCallback(async (signal?: AbortSignal) => {
     try {
-      const data = await getNotifications();
+      const data = await getNotifications(1, signal);
       setUnreadCount(data.unread_count);
-    } catch {
+    } catch (error) {
+      if (signal?.aborted) return;
       setUnreadCount(0);
+      throw error;
     }
   }, []);
 
   useEffect(() => {
-    if (!isPageVisible) return;
-
-    queueMicrotask(() => {
-      loadUnreadCount();
-    });
-
-    const timer = setInterval(loadUnreadCount, 60000);
+    const stopPolling = startPolling(loadUnreadCount, 30000);
 
     const handleUnreadUpdate = (event: Event) => {
       const customEvent = event as CustomEvent<{ unreadCount?: number }>;
@@ -46,10 +41,10 @@ export default function CustomerLayout({
     window.addEventListener("notifications:unread-updated", handleUnreadUpdate as EventListener);
 
     return () => {
-      clearInterval(timer);
+      stopPolling();
       window.removeEventListener("notifications:unread-updated", handleUnreadUpdate as EventListener);
     };
-  }, [isPageVisible, loadUnreadCount]);
+  }, [loadUnreadCount]);
 
   const sections = useMemo(
     () => [
