@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AppointmentStatusBadge } from "@/components/common/AppointmentStatusBadge";
+import { formatBookingId } from "@/lib/booking";
 import {
   CheckCircle2,
   User,
@@ -32,6 +33,7 @@ import {
   getAnalyticsKPI,
   type AnalyticsKPI,
 } from "@/services/manager/analytics.api";
+import { formatTime12 } from "@/lib/time-slots";
 
 function formatDateToLocal(date: Date): string {
   return (
@@ -48,18 +50,6 @@ function formatDisplayDate(date: Date) {
     month: "long",
     day: "numeric",
     year: "numeric",
-  });
-}
-
-function formatTime(time: string | null): string {
-  if (!time) return "—";
-  const [hours, minutes] = time.split(":").map(Number);
-  const d = new Date();
-  d.setHours(hours, minutes, 0, 0);
-  return d.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
   });
 }
 
@@ -120,8 +110,8 @@ function AppointmentDetailModal({
             {i > 0 && <div className="border-t border-gray-100 my-3" />}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-500">
-                  Appointment #{i + 1}
+                <span className="text-sm font-bold text-gray-900">
+                  {formatBookingId(appt.id)}
                 </span>
                 <AppointmentStatusBadge status={appt.status} />
               </div>
@@ -130,30 +120,30 @@ function AppointmentDetailModal({
                 <div className="flex items-center gap-3">
                   <User className="w-4 h-4 text-gray-400 shrink-0" />
                   <div className="min-w-0">
+                    <p className="text-xs text-gray-500">Customer</p>
                     <p className="text-sm font-medium text-gray-900 truncate">
                       {appt.customer || "—"}
                     </p>
-                    <p className="text-xs text-gray-500">Customer</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <Mail className="w-4 h-4 text-gray-400 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm text-gray-900 truncate">
-                      {appt.customer_email || "—"}
-                    </p>
-                    <p className="text-xs text-gray-500">Email</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Phone className="w-4 h-4 text-gray-400 shrink-0" />
                   <div className="min-w-0">
+                    <p className="text-xs text-gray-500">Contact</p>
                     <p className="text-sm text-gray-900 truncate">
                       {appt.customer_contact || "—"}
                     </p>
-                    <p className="text-xs text-gray-500">Contact</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500">Email</p>
+                    <p className="text-sm text-gray-900 truncate">
+                      {appt.customer_email || "—"}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -180,7 +170,7 @@ function AppointmentDetailModal({
                 <div>
                   <p className="text-xs text-gray-500">Time</p>
                   <p className="text-sm font-medium text-gray-900">
-                    {formatTime(appt.appointment_time)}
+                    {formatTime12(appt.appointment_time)}
                   </p>
                 </div>
                 <div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CircleCheckBig, UserPlus } from "lucide-react";
 import { SubmitErrorHandler, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/SelectWithLabel";
 import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
+import { DatePickerWithLabel } from "@/components/common/DatePickerWithLabel";
 import {
   getActiveBarbers,
   getActiveServices,
@@ -25,6 +26,33 @@ import {
   sanitizeText,
 } from "@/lib/sanitizer";
 
+function getManilaNow(): string {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Manila",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const h = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const m = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+
+  const slots: Record<number, number> = {
+    9: 0, 10: 0, 11: 0, 12: 30,
+    13: 0, 14: 0, 15: 0, 16: 0, 17: 0, 18: 0, 19: 0,
+  };
+  const slotHours = Object.keys(slots).map(Number).sort((a, b) => a - b);
+
+  for (let i = slotHours.length - 1; i >= 0; i--) {
+    const sh = slotHours[i];
+    const sm = slots[sh];
+    if (h > sh || (h === sh && m >= sm)) {
+      return `${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}`;
+    }
+  }
+  return "09:00";
+}
+
 type WalkinFormProps = {
   onSuccess?: () => Promise<void> | void;
 };
@@ -33,6 +61,25 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [formError, setFormError] = useState("");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+
+  const initialTime = useMemo(() => getManilaNow(), []);
+
+  const timeOptions = useMemo(() => {
+    const slots: { value: string; label: string }[] = [];
+    const add = (h24: number, m: number) => {
+      const period = h24 >= 12 ? "PM" : "AM";
+      const displayH = h24 % 12 || 12;
+      const v = `${String(h24).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      const l = `${displayH}:${String(m).padStart(2, "0")} ${period}`;
+      slots.push({ value: v, label: l });
+    };
+    for (let h = 9; h <= 11; h++) add(h, 0);
+    add(12, 30);
+    for (let h = 13; h <= 19; h++) add(h, 0);
+    return slots;
+  }, []);
+
   const {
     register,
     handleSubmit,
@@ -46,11 +93,15 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
       customer_name: "",
       service_id: 0,
       barber_user_id: 0,
+      appointment_date: "",
+      appointment_time: initialTime,
       price: 0,
       duration_minutes: null,
       notes: "",
     },
   });
+
+  const selectedTime = useWatch({ control, name: "appointment_time" });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -90,10 +141,6 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
   const onFormSubmit = async (data: WalkinSchemaValues) => {
     setFormError("");
     try {
-      const now = new Date();
-      const appointmentDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-      const appointmentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-
       await createAppointment({
         service_id: data.service_id,
         barber_user_id: data.barber_user_id,
@@ -102,16 +149,20 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
         notes: data.notes ? sanitizeText(data.notes) : null,
         status: "completed",
         is_walkin: true,
-        appointment_date: appointmentDate,
-        appointment_time: appointmentTime,
+        appointment_date: data.appointment_date,
+        appointment_time: data.appointment_time,
         walkin_customer_name: sanitizeString(data.customer_name),
       });
 
       toast.success("Completed walk-in successfully");
+      setSelectedDate(undefined);
+      const freshTime = getManilaNow();
       reset({
         customer_name: "",
         service_id: 0,
         barber_user_id: 0,
+        appointment_date: "",
+        appointment_time: freshTime,
         price: 0,
         duration_minutes: null,
         notes: "",
@@ -153,6 +204,50 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
           {errors.customer_name && (
             <p className="absolute left-0 top-full  text-red-500 text-xs">
               {errors.customer_name.message}
+            </p>
+          )}
+        </div>
+
+        <div className="relative">
+          <DatePickerWithLabel
+            id="walkin-date"
+            label="Date *"
+            placeholder="Select date"
+            date={selectedDate}
+            maxDaysAhead={0}
+            disablePastDates={false}
+            disableSundays={true}
+            onDateChange={(date) => {
+              if (!date) return;
+              const y = date.getFullYear();
+              const m = String(date.getMonth() + 1).padStart(2, "0");
+              const d = String(date.getDate()).padStart(2, "0");
+              const dateStr = `${y}-${m}-${d}`;
+              setValue("appointment_date", dateStr, { shouldValidate: true });
+              setSelectedDate(date);
+            }}
+          />
+          {errors.appointment_date && (
+            <p className="absolute left-0 top-full text-red-500 text-xs">
+              {errors.appointment_date.message}
+            </p>
+          )}
+        </div>
+
+        <div className="relative">
+          <SelectWithLabel
+            id="walkin-time"
+            label="Time *"
+            placeholder="Select time"
+            options={timeOptions}
+            value={selectedTime ?? ""}
+            onValueChange={(value) =>
+              setValue("appointment_time", value, { shouldValidate: true })
+            }
+          />
+          {errors.appointment_time && (
+            <p className="absolute left-0 top-full text-red-500 text-xs">
+              {errors.appointment_time.message}
             </p>
           )}
         </div>
