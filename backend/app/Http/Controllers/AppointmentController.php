@@ -13,8 +13,8 @@ use App\Models\Notification;
 use App\Models\Service;
 use App\Models\User;
 use App\Services\AppointmentBookingService;
+use App\Services\AppointmentNotificationService;
 use App\Services\PushNotificationService;
-use App\Support\DisplayId;
 use App\Support\EntityChange;
 use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
@@ -32,7 +32,10 @@ class AppointmentController extends Controller
 
     private const DASHBOARD_SLOT_STATUSES = ['completed', 'approved', 'pending', 'no_show'];
 
-    public function __construct(private readonly AppointmentBookingService $bookingService) {}
+    public function __construct(
+        private readonly AppointmentBookingService $bookingService,
+        private readonly AppointmentNotificationService $appointmentNotificationService,
+    ) {}
 
     /**
      * Display a listing of the resource.
@@ -160,14 +163,13 @@ class AppointmentController extends Controller
                 );
                 $service = $resources['services']->get((int) $validated['service_id']);
                 $now = Carbon::now();
-                $shopNow = Carbon::now((string) config('app.shop_timezone', 'Asia/Manila'));
 
                 return Appointment::create([
                     'user_id' => null,
                     'service_id' => $service->id,
                     'barber_user_id' => $resources['barber']->id,
-                    'appointment_date' => $shopNow->toDateString(),
-                    'appointment_time' => $shopNow->format('H:i'),
+                    'appointment_date' => $validated['appointment_date'],
+                    'appointment_time' => $validated['appointment_time'],
                     'duration_minutes' => $service->duration,
                     'price' => $service->price,
                     'status' => 'completed',
@@ -297,6 +299,11 @@ class AppointmentController extends Controller
                 logger()->error('Push notification failed: '.$e->getMessage());
             }
 
+            $this->appointmentNotificationService->notifyStatus(
+                $appointment,
+                'pending',
+                $appointment->user_id,
+            );
             EntityChange::dispatch('notifications');
         }
 
@@ -428,6 +435,11 @@ class AppointmentController extends Controller
                 logger()->error('Push notification failed: '.$e->getMessage());
             }
 
+            $this->appointmentNotificationService->notifyGroupStatus(
+                new Collection($createdAppointments),
+                'pending',
+                $authUser->id,
+            );
             EntityChange::dispatch('notifications');
         }
 
@@ -511,41 +523,11 @@ class AppointmentController extends Controller
         $appointments->load(['user', 'barber', 'service']);
 
         foreach ($appointments->groupBy('user_id') as $userAppointments) {
-            $customer = $userAppointments->first()?->user;
-            if (! $customer) {
-                continue;
-            }
-
-            Notification::create([
-                'user_id' => $customer->id,
-                'type' => 'appointment_status',
-                'title' => 'Group Booking Updated',
-                'message' => sprintf(
-                    'Your group booking is now %s.',
-                    $status === 'approved' ? 'approved' : 'rejected',
-                ),
-                'payload' => [
-                    'batch_id' => $batchId,
-                    'status' => $status,
-                    'appointment_count' => $userAppointments->count(),
-                ],
-                'created_by_user_id' => $request->user()?->id,
-            ]);
-
-            try {
-                (new PushNotificationService)->send($customer, [
-                    'title' => 'Group Booking Updated',
-                    'body' => sprintf(
-                        'Your group booking is now %s.',
-                        $status === 'approved' ? 'approved' : 'rejected',
-                    ),
-                    'icon' => '/Tol-Logo-White-Bg.png',
-                    'badge' => '/Tol-Logo-White-Bg.png',
-                    'data' => ['url' => '/customer'],
-                ]);
-            } catch (\Throwable $exception) {
-                report($exception);
-            }
+            $this->appointmentNotificationService->notifyGroupStatus(
+                $userAppointments,
+                $status,
+                $request->user()?->id,
+            );
         }
 
         EntityChange::dispatch('appointments');
@@ -719,140 +701,22 @@ class AppointmentController extends Controller
 
         $appointment->loadMissing(['user', 'barber', 'service']);
 
+        $customerNotification = null;
         if ($nextStatus && $nextStatus !== $originalStatus) {
-            $appointment->loadMissing(['service:id,name', 'barber:id,fullname']);
-            $bookingId = DisplayId::booking($appointment->id);
-
-            if ($nextStatus === 'completed') {
-                $exists = Notification::where('user_id', $appointment->user_id)
-                    ->where('type', 'appointment_feedback_request')
-                    ->where('payload->appointment_id', $appointment->id)
-                    ->exists();
-
-                if (! $exists) {
-                    Notification::create([
-                        'user_id' => $appointment->user_id,
-                        'type' => 'appointment_completed',
-                        'title' => 'Booking Complete',
-                        'message' => sprintf(
-                            'Your %s booking %s is now complete.',
-                            $appointment->service?->name ?? 'barbershop service',
-                            $bookingId
-                        ),
-                        'appointment_id' => $appointment->id,
-                        'service_name' => $appointment->service?->name,
-                        'payload' => [
-                            'appointment_id' => $appointment->id,
-                            'booking_id' => $bookingId,
-                            'status' => $nextStatus,
-                            'service_name' => $appointment->service?->name,
-                        ],
-                        'created_by_user_id' => $request->user()?->id,
-                    ]);
-                }
-            } else {
-                Notification::create([
-                    'user_id' => $appointment->user_id,
-                    'type' => 'appointment_status',
-                    'title' => 'Appointment Status Updated',
-                    'message' => sprintf(
-                        'Your appointment %s is now %s.',
-                        $bookingId,
-                        str_replace('_', ' ', $nextStatus)
-                    ),
-                    'appointment_id' => $appointment->id,
-                    'service_name' => $appointment->service?->name,
-                    'barber_name' => $appointment->barber?->fullname,
-                    'appointment_date' => $appointment->appointment_date,
-                    'appointment_time' => $appointment->appointment_time,
-                    'price' => $appointment->price,
-                    'payload' => [
-                        'appointment_id' => $appointment->id,
-                        'status' => $nextStatus,
-                        'service_name' => $appointment->service?->name,
-                        'barber_name' => $appointment->barber?->fullname,
-                        'appointment_date' => $appointment->appointment_date,
-                        'appointment_time' => $appointment->appointment_time,
-                        'price' => $appointment->price,
-                    ],
-                    'created_by_user_id' => $request->user()?->id,
-                ]);
-            }
-
-            try {
-                $pushService = new PushNotificationService;
-                $pushTitle = $nextStatus === 'completed'
-                    ? 'Booking Complete'
-                    : 'Appointment Status Updated';
-                $pushBody = $nextStatus === 'completed'
-                    ? sprintf('Your %s booking %s is now complete.', $appointment->service?->name ?? 'barbershop service', $bookingId)
-                    : sprintf('Your appointment %s is now %s.', $bookingId, str_replace('_', ' ', $nextStatus));
-
-                $pushService->send($appointment->user, [
-                    'title' => $pushTitle,
-                    'body' => $pushBody,
-                    'icon' => '/Tol-Logo-White-Bg.png',
-                    'badge' => '/Tol-Logo-White-Bg.png',
-                    'data' => [
-                        'url' => '/customer/notification',
-                        'appointment_id' => $appointment->id,
-                    ],
-                ]);
-            } catch (\Exception $e) {
-                logger()->error('Push notification failed: '.$e->getMessage());
-            }
+            $customerNotification = $this->appointmentNotificationService->notifyStatus(
+                $appointment,
+                $nextStatus,
+                $request->user()?->id,
+            );
         } elseif ($detailsChanged) {
-            $appointment->loadMissing(['service:id,name', 'barber:id,fullname']);
+            $customerNotification = $this->appointmentNotificationService->notifyRescheduled(
+                $appointment,
+                $request->user()?->id,
+            );
+        }
 
-            Notification::create([
-                'user_id' => $appointment->user_id,
-                'type' => 'appointment_rescheduled',
-                'title' => 'Appointment Rescheduled',
-                'message' => sprintf(
-                    'Your %s appointment has been rescheduled to %s at %s with %s.',
-                    $appointment->service?->name ?? 'barbershop service',
-                    Carbon::parse($appointment->appointment_date)->format('F j, Y'),
-                    Carbon::parse($appointment->appointment_time)->format('g:i A'),
-                    $appointment->barber?->fullname ?? 'the barber'
-                ),
-                'appointment_id' => $appointment->id,
-                'service_name' => $appointment->service?->name,
-                'barber_name' => $appointment->barber?->fullname,
-                'appointment_date' => $appointment->appointment_date,
-                'appointment_time' => $appointment->appointment_time,
-                'price' => $appointment->price,
-                'payload' => [
-                    'appointment_id' => $appointment->id,
-                    'service_name' => $appointment->service?->name,
-                    'barber_name' => $appointment->barber?->fullname,
-                    'appointment_date' => $appointment->appointment_date,
-                    'appointment_time' => $appointment->appointment_time,
-                    'price' => $appointment->price,
-                ],
-                'created_by_user_id' => $request->user()?->id,
-            ]);
-
-            try {
-                $pushService = new PushNotificationService;
-                $pushService->send($appointment->user, [
-                    'title' => 'Appointment Rescheduled',
-                    'body' => sprintf(
-                        'Your %s appointment has been rescheduled to %s at %s with %s.',
-                        $appointment->service?->name ?? 'barbershop service',
-                        Carbon::parse($appointment->appointment_date)->format('F j, Y'),
-                        Carbon::parse($appointment->appointment_time)->format('g:i A'),
-                        $appointment->barber?->fullname ?? 'the barber'
-                    ),
-                    'icon' => '/Tol-Logo-White-Bg.png',
-                    'badge' => '/Tol-Logo-White-Bg.png',
-                    'data' => [
-                        'url' => '/customer/notification',
-                        'appointment_id' => $appointment->id,
-                    ],
-                ]);
-            } catch (\Exception $e) {
-                logger()->error('Push notification failed: '.$e->getMessage());
-            }
+        if ($customerNotification) {
+            EntityChange::dispatch('notifications');
         }
 
         $appointment->load([
