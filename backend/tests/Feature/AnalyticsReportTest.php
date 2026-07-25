@@ -166,3 +166,245 @@ test('analytics series include appointments on the final date', function () {
         ->assertJsonPath('0.label', '2026')
         ->assertJsonPath('0.completed', 1);
 });
+
+test('analytics reports endpoint returns section-specific data', function () {
+    $context = createAnalyticsReportContext();
+    createAnalyticsReportAppointment($context, '2026-07-14', 'completed', 300);
+    createAnalyticsReportAppointment($context, '2026-07-13', 'cancelled');
+    Sanctum::actingAs($context['manager']);
+
+    $response = $this->getJson('/api/v1/analytics/reports?section=overview&period=daily')
+        ->assertOk();
+
+    $response->assertJsonStructure([
+        'meta' => ['section', 'period', 'comparison', 'date_range', 'granularity', 'earliest_date', 'timezone'],
+        'data' => ['total_revenue', 'completed_appointments', 'completion_rate', 'total_customers', 'average_rating', 'insights'],
+    ]);
+
+    expect($response->json('meta.section'))->toBe('overview');
+    expect($response->json('data.total_revenue'))->toBe(300);
+    expect($response->json('data.completed_appointments'))->toBe(1);
+});
+
+test('analytics reports validates section parameter', function () {
+    $context = createAnalyticsReportContext();
+    Sanctum::actingAs($context['manager']);
+
+    $this->getJson('/api/v1/analytics/reports?section=invalid')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('section');
+});
+
+test('analytics reports validates custom date range', function () {
+    $context = createAnalyticsReportContext();
+    Sanctum::actingAs($context['manager']);
+
+    $this->getJson('/api/v1/analytics/reports?section=overview&period=custom')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['start_date', 'end_date']);
+});
+
+test('analytics reports validates comparison parameter', function () {
+    $context = createAnalyticsReportContext();
+    Sanctum::actingAs($context['manager']);
+
+    $this->getJson('/api/v1/analytics/reports?section=overview&comparison=invalid')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('comparison');
+});
+
+test('analytics reports returns custom date range data', function () {
+    $context = createAnalyticsReportContext();
+    createAnalyticsReportAppointment($context, '2026-07-10', 'completed', 400);
+    createAnalyticsReportAppointment($context, '2026-07-20', 'completed', 200);
+    Sanctum::actingAs($context['manager']);
+
+    $response = $this->getJson('/api/v1/analytics/reports?section=revenue&period=custom&start_date=2026-07-01&end_date=2026-07-14')
+        ->assertOk();
+
+    expect($response->json('meta.date_range.from'))->toBe('2026-07-01');
+    expect($response->json('meta.date_range.to'))->toBe('2026-07-14');
+    expect($response->json('meta.section'))->toBe('revenue');
+    expect($response->json('data.total_revenue'))->toBe(400);
+});
+
+test('last month returns four zero-filled weekly revenue buckets', function () {
+    $context = createAnalyticsReportContext();
+    createAnalyticsReportAppointment($context, '2026-06-17', 'completed', 100);
+    createAnalyticsReportAppointment($context, '2026-06-23', 'completed', 200);
+    createAnalyticsReportAppointment($context, '2026-06-24', 'completed', 300);
+    createAnalyticsReportAppointment($context, '2026-07-14', 'completed', 400);
+    Sanctum::actingAs($context['manager']);
+
+    $response = $this->getJson('/api/v1/analytics/reports?section=revenue&period=30_days')
+        ->assertOk()
+        ->assertJsonPath('meta.date_range.from', '2026-06-17')
+        ->assertJsonPath('meta.date_range.to', '2026-07-14')
+        ->assertJsonPath('meta.granularity', 'weekly');
+
+    expect($response->json('data.by_date'))->toHaveCount(4)
+        ->and($response->json('data.by_date.0.date'))->toBe('2026-06-17')
+        ->and($response->json('data.by_date.0.value'))->toBe(300)
+        ->and($response->json('data.by_date.1.date'))->toBe('2026-06-24')
+        ->and($response->json('data.by_date.1.value'))->toBe(300)
+        ->and($response->json('data.by_date.2.value'))->toBe(0)
+        ->and($response->json('data.by_date.3.value'))->toBe(400);
+});
+
+test('last three months returns twelve weekly appointment buckets', function () {
+    $context = createAnalyticsReportContext();
+    createAnalyticsReportAppointment($context, '2026-04-22', 'completed');
+    createAnalyticsReportAppointment($context, '2026-04-29', 'cancelled');
+    createAnalyticsReportAppointment($context, '2026-07-14', 'no_show');
+    Sanctum::actingAs($context['manager']);
+
+    $response = $this->getJson('/api/v1/analytics/reports?section=appointments&period=3_months')
+        ->assertOk()
+        ->assertJsonPath('meta.date_range.from', '2026-04-22')
+        ->assertJsonPath('meta.granularity', 'weekly');
+
+    expect($response->json('data.by_date'))->toHaveCount(12)
+        ->and($response->json('data.by_date.0.date'))->toBe('2026-04-22')
+        ->and($response->json('data.by_date.0.completed'))->toBe(1)
+        ->and($response->json('data.by_date.1.date'))->toBe('2026-04-29')
+        ->and($response->json('data.by_date.1.cancelled'))->toBe(1)
+        ->and($response->json('data.by_date.11.date'))->toBe('2026-07-08')
+        ->and($response->json('data.by_date.11.no_show'))->toBe(1);
+});
+
+test('long presets return calendar month buckets', function () {
+    $context = createAnalyticsReportContext();
+    Sanctum::actingAs($context['manager']);
+
+    $sixMonths = $this->getJson('/api/v1/analytics/reports?section=revenue&period=6_months')
+        ->assertOk()
+        ->assertJsonPath('meta.date_range.from', '2026-02-01')
+        ->assertJsonPath('meta.granularity', 'monthly');
+
+    expect($sixMonths->json('data.by_date'))->toHaveCount(6)
+        ->and($sixMonths->json('data.by_date.0.date'))->toBe('2026-02-01')
+        ->and($sixMonths->json('data.by_date.5.date'))->toBe('2026-07-01');
+
+    $twelveMonths = $this->getJson('/api/v1/analytics/reports?section=appointments&period=12_months')
+        ->assertOk()
+        ->assertJsonPath('meta.date_range.from', '2025-08-01')
+        ->assertJsonPath('meta.granularity', 'monthly');
+
+    expect($twelveMonths->json('data.by_date'))->toHaveCount(12)
+        ->and($twelveMonths->json('data.by_date.0.date'))->toBe('2025-08-01')
+        ->and($twelveMonths->json('data.by_date.11.date'))->toBe('2026-07-01');
+});
+
+test('custom ranges adapt their bucket granularity by inclusive days', function () {
+    $context = createAnalyticsReportContext();
+    Sanctum::actingAs($context['manager']);
+
+    $this->getJson('/api/v1/analytics/reports?section=revenue&period=custom&start_date=2026-07-08&end_date=2026-07-14')
+        ->assertOk()
+        ->assertJsonPath('meta.granularity', 'daily')
+        ->assertJsonCount(7, 'data.by_date');
+
+    $this->getJson('/api/v1/analytics/reports?section=revenue&period=custom&start_date=2026-07-07&end_date=2026-07-14')
+        ->assertOk()
+        ->assertJsonPath('meta.granularity', 'weekly')
+        ->assertJsonCount(2, 'data.by_date');
+
+    $this->getJson('/api/v1/analytics/reports?section=revenue&period=custom&start_date=2026-04-14&end_date=2026-07-14')
+        ->assertOk()
+        ->assertJsonPath('meta.granularity', 'weekly');
+
+    $this->getJson('/api/v1/analytics/reports?section=revenue&period=custom&start_date=2026-04-13&end_date=2026-07-14')
+        ->assertOk()
+        ->assertJsonPath('meta.granularity', 'monthly');
+});
+
+test('report ranges use the Manila calendar date around UTC midnight', function () {
+    Carbon::setTestNow('2026-07-14 16:30:00 UTC');
+    $context = createAnalyticsReportContext();
+    Sanctum::actingAs($context['manager']);
+
+    $this->getJson('/api/v1/analytics/reports?section=revenue&period=7_days')
+        ->assertOk()
+        ->assertJsonPath('meta.date_range.from', '2026-07-09')
+        ->assertJsonPath('meta.date_range.to', '2026-07-15');
+
+    $this->getJson('/api/v1/analytics/reports?section=revenue&period=custom&start_date=2026-07-15&end_date=2026-07-15')
+        ->assertOk()
+        ->assertJsonPath('meta.date_range.to', '2026-07-15');
+});
+
+test('analytics reports returns previous period comparison', function () {
+    $context = createAnalyticsReportContext();
+    createAnalyticsReportAppointment($context, '2026-07-14', 'completed', 300);
+    Sanctum::actingAs($context['manager']);
+
+    $response = $this->getJson('/api/v1/analytics/reports?section=overview&period=daily&comparison=previous')
+        ->assertOk();
+
+    expect($response->json('meta.comparison'))->toBe('previous');
+    expect($response->json('data.comparison'))->not->toBeNull();
+    expect($response->json('data.comparison.total_revenue'))->toBe(0);
+});
+
+test('analytics reports returns appointments section', function () {
+    $context = createAnalyticsReportContext();
+    createAnalyticsReportAppointment($context, '2026-07-14', 'completed');
+    createAnalyticsReportAppointment($context, '2026-07-14', 'cancelled');
+    Sanctum::actingAs($context['manager']);
+
+    $response = $this->getJson('/api/v1/analytics/reports?section=appointments&period=daily')
+        ->assertOk();
+
+    $response->assertJsonStructure([
+        'data' => ['total', 'completed', 'cancelled', 'completion_rate', 'by_date', 'by_day_of_week', 'peak_hours'],
+    ]);
+
+    expect($response->json('data.total'))->toBe(2);
+    expect($response->json('data.completed'))->toBe(1);
+});
+
+test('analytics reports returns services section', function () {
+    $context = createAnalyticsReportContext();
+    createAnalyticsReportAppointment($context, '2026-07-14', 'completed', 250);
+    Sanctum::actingAs($context['manager']);
+
+    $response = $this->getJson('/api/v1/analytics/reports?section=services&period=daily')
+        ->assertOk();
+
+    $response->assertJsonStructure([
+        'data' => ['services', 'most_booked', 'least_booked', 'average_revenue_per_service'],
+    ]);
+
+    expect($response->json('data.services.0.completed_count'))->toBe(1);
+});
+
+test('analytics reports returns barbers section', function () {
+    $context = createAnalyticsReportContext();
+    createAnalyticsReportAppointment($context, '2026-07-14', 'completed', 300);
+    Sanctum::actingAs($context['manager']);
+
+    $response = $this->getJson('/api/v1/analytics/reports?section=barbers&period=daily')
+        ->assertOk();
+
+    $response->assertJsonStructure([
+        'data' => ['barbers'],
+    ]);
+
+    expect($response->json('data.barbers.0.completed_count'))->toBe(1);
+    expect($response->json('data.barbers.0.revenue'))->toBe(300);
+});
+
+test('analytics reports returns customers section', function () {
+    $context = createAnalyticsReportContext();
+    createAnalyticsReportAppointment($context, '2026-07-14', 'completed');
+    Sanctum::actingAs($context['manager']);
+
+    $response = $this->getJson('/api/v1/analytics/reports?section=customers&period=daily')
+        ->assertOk();
+
+    $response->assertJsonStructure([
+        'data' => ['total_customers_served', 'new_customers', 'returning_customers', 'repeat_rate', 'rating_distribution'],
+    ]);
+
+    expect($response->json('data.total_customers_served'))->toBe(1);
+});
