@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatBookingId } from "@/lib/booking";
 import { sanitizeString, sanitizeText } from "@/lib/sanitizer";
+import { formatTime12 } from "@/lib/time-slots";
 
 import type { Appointment } from "@/services/customer/appointment.api";
 
@@ -38,18 +39,6 @@ function formatDate(date: string): string {
     month: "long",
     day: "numeric",
     year: "numeric",
-  });
-}
-
-function formatTime(time24: string): string {
-  const [hours, minutes] = time24.split(":").map(Number);
-  const date = new Date();
-  date.setHours(hours, minutes, 0, 0);
-
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
   });
 }
 
@@ -120,7 +109,7 @@ export function PendingAppointmentDetailDialog({
                 </p>
                 <p className="mt-1 text-sm text-gray-600">
                   {sortedAppointments
-                    .map((appointment) => formatTime(appointment.appointment_time))
+                    .map((appointment) => formatTime12(appointment.appointment_time))
                     .join(" & ")}
                 </p>
               </div>
@@ -222,7 +211,7 @@ export function PendingAppointmentDetailDialog({
                       <div>
                         <p className="text-xs text-gray-500">Time</p>
                         <p className="mt-0.5 font-medium text-gray-900">
-                          {formatTime(appointment.appointment_time)}
+                          {formatTime12(appointment.appointment_time)}
                         </p>
                       </div>
                     </div>

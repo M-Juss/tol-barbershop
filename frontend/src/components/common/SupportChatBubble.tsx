@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { formatTime12 } from "@/lib/time-slots";
 
 type SupportChatBubbleProps = {
   message: string;
@@ -6,15 +7,6 @@ type SupportChatBubbleProps = {
   senderName: string;
   createdAt: string;
 };
-
-function formatTime(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
 
 export function SupportChatBubble({
   message,
@@ -43,7 +35,7 @@ export function SupportChatBubble({
         {message}
       </div>
       <span className="text-[10px] text-gray-400">
-        {formatTime(createdAt)}
+        {formatTime12(createdAt)}
       </span>
     </div>
   );

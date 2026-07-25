@@ -26,7 +26,7 @@ import {
   type OccupiedAppointmentSlot,
 } from "@/services/customer/appointment.api";
 import { sanitizeText } from "@/lib/sanitizer";
-import { generateTimeOptions, isTimeSlotUnavailable } from "@/lib/time-slots";
+import { generateTimeOptions, isTimeSlotUnavailable, formatTime12 } from "@/lib/time-slots";
 import { toast } from "sonner";
 
 const rescheduleSchema = z.object({
@@ -103,17 +103,6 @@ function formatShortDate(date: string): string {
     month: "short",
     day: "numeric",
     year: "numeric",
-  });
-}
-
-function formatTime(time24: string): string {
-  const [hours, minutes] = time24.split(":").map(Number);
-  const d = new Date();
-  d.setHours(hours, minutes, 0, 0);
-  return d.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
   });
 }
 
@@ -317,7 +306,7 @@ export function RescheduleForm({
               <Clock className="w-3.5 h-3.5 text-gray-400" />
               <span className="text-gray-600">
                 <span className="font-medium text-gray-800">Current Time:</span>{" "}
-                {formatTime(appointment.appointment_time)}
+                {formatTime12(appointment.appointment_time)}
               </span>
             </div>
           </div>

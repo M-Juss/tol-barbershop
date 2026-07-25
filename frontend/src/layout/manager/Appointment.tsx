@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRealtimeEvent } from "@/contexts/RealtimeContext";
 import {
   CalendarDays,
-  Clock,
   User,
   Mail,
   Phone,
@@ -57,6 +56,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
+import { formatTime12 } from "@/lib/time-slots";
 
 type BarberGroup = {
   barberName: string;
@@ -83,17 +83,6 @@ function formatShortDate(date: string): string {
     month: "short",
     day: "numeric",
     year: "numeric",
-  });
-}
-
-function formatTime(time24: string): string {
-  const [hours, minutes] = normalizeToHHmm(time24).split(":").map(Number);
-  const d = new Date();
-  d.setHours(hours, minutes, 0, 0);
-  return d.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
   });
 }
 
@@ -257,34 +246,37 @@ function AppointmentRow({
   const actionDisabled = appt.appointment_date.split("T")[0] > todayDate;
   const canReschedule = appt.appointment_date.split("T")[0] >= todayDate;
   return (
-    <div className={cn("flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3", className)}>
-      <div className="flex flex-col gap-1 min-w-0 flex-1">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Clock className="w-4 h-4 text-blue-500" />
-            <span className="font-semibold text-gray-900 text-sm">
-              {formatTime(appt.appointment_time)}
-            </span>
+    <div className={cn("rounded-xl border border-gray-200 bg-white px-4 py-3", className)}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex items-center gap-5">
+            <div className="shrink-0 w-24">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Time</p>
+              <p className="font-bold text-blue-600 text-sm">{formatTime12(appt.appointment_time)}</p>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Customer</p>
+              <p className="font-bold text-gray-900 text-sm truncate">{appt.customer.fullname}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 min-w-0">
-            <User className="w-4 h-4 text-gray-400 shrink-0" />
-            <span className="font-semibold text-gray-900 text-sm truncate">
-              {appt.customer.fullname}
-            </span>
+          <div className="flex items-center gap-5">
+            <div className="shrink-0 w-24">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Service</p>
+              <p className="text-xs text-gray-600 truncate">{appt.service.name}</p>
+            </div>
+            <div className="shrink-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Price</p>
+              <p className="text-xs font-medium text-gray-700">₱{Number(appt.price).toLocaleString()}</p>
+            </div>
           </div>
         </div>
-        <p className="text-xs text-gray-500 truncate">
-          {appt.service.name}
-          <span className="mx-2 text-gray-300">•</span>
-          ₱{Number(appt.price).toLocaleString()}
-        </p>
+        <ActionMenu
+          onSelect={(status) => onStatusChange(appt, status)}
+          onCancel={() => onCancel?.(appt)}
+          onReschedule={canReschedule ? () => onReschedule?.(appt) : undefined}
+          disabled={actionDisabled}
+        />
       </div>
-      <ActionMenu
-        onSelect={(status) => onStatusChange(appt, status)}
-        onCancel={() => onCancel?.(appt)}
-        onReschedule={canReschedule ? () => onReschedule?.(appt) : undefined}
-        disabled={actionDisabled}
-      />
     </div>
   );
 }
@@ -341,7 +333,7 @@ function PendingCard({
         </p>
         <p>
           <span className="font-medium text-gray-800">Time:</span>{" "}
-          {formatTime(req.appointment_time)}
+          {formatTime12(req.appointment_time)}
         </p>
         <p>
           <span className="font-medium text-gray-800">Price:</span>{" "}
@@ -900,26 +892,23 @@ export function Appointment() {
                       {paginatedApprovedGroups.map((group) => (
                         <div key={group.sortKey}>
                           <div className="flex items-center gap-3 mb-3">
-                            <CalendarDays className="w-5 h-5 text-blue-500" />
+                            <CalendarDays className="w-4 h-4 text-blue-500" />
                             <span className="font-bold text-gray-900 text-sm">
                               {group.label}
                             </span>
-                            <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                            <span className="text-xs text-gray-400">
                               {group.barberGroups.reduce((sum, bg) => sum + bg.appointments.length, 0)} appointment
                               {group.barberGroups.reduce((sum, bg) => sum + bg.appointments.length, 0) !== 1 ? "s" : ""}
                             </span>
                           </div>
-                          <div className="flex flex-col gap-4">
+                          <div className="flex flex-col gap-3">
                             {group.barberGroups.map((bg) => (
                               <div key={bg.barberName}>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Scissors className="w-3.5 h-3.5 text-gray-400" />
-                                  <span className="font-semibold text-gray-800 text-sm">{bg.barberName}</span>
-                                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
-                                    {bg.appointments.length}
-                                  </span>
+                                <div className="flex items-center gap-2 mb-2 pl-7">
+                                  <Scissors className="w-3 h-3 text-gray-400" />
+                                  <span className="font-semibold text-gray-700 text-xs">{bg.barberName}</span>
                                 </div>
-                                <div className="flex flex-col gap-2">
+                                <div className="flex flex-col gap-2 pl-7">
                                   {bg.appointments.map((appt) => (
                                     <div
                                       key={appt.id}
@@ -1031,26 +1020,23 @@ export function Appointment() {
                         {pastDueGroups.map((group) => (
                           <div key={group.sortKey}>
                             <div className="flex items-center gap-3 mb-3">
-                              <CalendarDays className="w-5 h-5 text-red-400" />
+                              <CalendarDays className="w-4 h-4 text-red-400" />
                               <span className="font-bold text-gray-700 text-sm">
                                 {group.label}
                               </span>
-                              <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-red-50 text-red-600">
+                              <span className="text-xs text-red-400">
                                 {group.barberGroups.reduce((sum, bg) => sum + bg.appointments.length, 0)} appointment
                                 {group.barberGroups.reduce((sum, bg) => sum + bg.appointments.length, 0) !== 1 ? "s" : ""}
                               </span>
                             </div>
-                            <div className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-3">
                               {group.barberGroups.map((bg) => (
                                 <div key={bg.barberName}>
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Scissors className="w-3.5 h-3.5 text-gray-400" />
-                                    <span className="font-semibold text-gray-800 text-sm">{bg.barberName}</span>
-                                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-600">
-                                      {bg.appointments.length}
-                                    </span>
+                                  <div className="flex items-center gap-2 mb-2 pl-7">
+                                    <Scissors className="w-3 h-3 text-gray-400" />
+                                    <span className="font-semibold text-gray-700 text-xs">{bg.barberName}</span>
                                   </div>
-                                  <div className="flex flex-col gap-2">
+                                  <div className="flex flex-col gap-2 pl-7">
                                     {bg.appointments.map((appt) => (
                                       <AppointmentRow
                                         key={appt.id}
@@ -1188,7 +1174,7 @@ export function Appointment() {
               </p>
               <p>
                 <span className="font-medium">Time:</span>{" "}
-                {formatTime(confirmActionTarget.appt.appointment_time)}
+                {formatTime12(confirmActionTarget.appt.appointment_time)}
               </p>
             </div>
           )}
@@ -1249,7 +1235,7 @@ export function Appointment() {
               {batchRejectTarget.map((appt) => (
                 <div key={appt.id} className="flex items-center justify-between text-gray-600">
                   <span>{appt.customer_name ?? appt.customer.fullname}</span>
-                  <span>{appt.service.name} at {formatTime(appt.appointment_time)}</span>
+                  <span>{appt.service.name} at {formatTime12(appt.appointment_time)}</span>
                 </div>
               ))}
             </div>

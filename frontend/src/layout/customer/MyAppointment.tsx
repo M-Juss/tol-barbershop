@@ -29,6 +29,7 @@ import {
 import { formatBookingId } from "@/lib/booking";
 import { cn } from "@/lib/utils";
 import { Star, User as UserIcon } from "lucide-react";
+import { formatTime12 } from "@/lib/time-slots";
 import {
   Dialog,
   DialogContent,
@@ -61,17 +62,6 @@ function formatDate(date: string): string {
   });
 }
 
-function formatTime(time24: string): string {
-  const [hours, minutes] = time24.split(":").map(Number);
-  const d = new Date();
-  d.setHours(hours, minutes, 0, 0);
-  return d.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
 export function MyAppointment() {
   const {
     appointments,
@@ -96,7 +86,7 @@ export function MyAppointment() {
           : (appointment.service.name ?? "Unknown service"),
         barber: appointment.barber.fullname ?? "Unknown barber",
         date: formatDate(appointment.appointment_date),
-        time: formatTime(appointment.appointment_time),
+        time: formatTime12(appointment.appointment_time),
         status: appointment.status,
         price: Number(appointment.price) || 0,
         cancellation_reason: appointment.cancellation_reason,

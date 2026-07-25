@@ -41,29 +41,45 @@ export function AppointmentCardCustomer({
 }: AppointmentCardCustomerProps) {
   return (
     <div
-      className={cn("border border-gray-200 rounded-xl p-4 flex items-center justify-between", className)}
+      className={cn("border border-gray-200 rounded-xl p-4", className)}
     >
-      <div className="flex items-center gap-4">
-        <div className="bg-blue-100 rounded-xl p-2.5">
-          <CalendarDays className="text-blue-500 w-5 h-5" strokeWidth={2} />
-        </div>
-        <div>
-          <p className="font-bold text-gray-900 text-base">{service}</p>
-          <p className="text-gray-500 text-sm mt-0.5">Barber: {barber}</p>
-          <span className="flex items-center gap-1.5 text-gray-500 text-sm mt-0.5">
-            Date & Time: {date} at {time}
-          </span>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex items-center gap-5">
+            <div className="shrink-0 w-28">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Date</p>
+              <div className="flex items-center gap-1.5">
+                <CalendarDays className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span className="font-bold text-gray-900 text-sm">{date}</span>
+              </div>
+            </div>
+            <div className="shrink-0 w-24">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Time</p>
+              <p className="font-bold text-blue-600 text-sm">{time}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-5">
+            <div className="shrink-0 w-28">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Service</p>
+              <p className="text-xs text-gray-600 truncate">{service}</p>
+            </div>
+            <div className="shrink-0 w-24">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Barber</p>
+              <p className="text-xs text-gray-600 truncate">{barber}</p>
+            </div>
+            <div className="shrink-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Price</p>
+              <p className="text-xs font-medium text-gray-700">₱{Number(price).toLocaleString()}</p>
+            </div>
+          </div>
           {(status === "Cancelled" || status === "Rejected") && cancellation_reason && (
-            <p className="text-red-500 text-xs mt-1.5">
+            <p className="text-red-500 text-xs">
               Reason: {cancellation_reason}
             </p>
           )}
         </div>
-      </div>
-      <div className="flex flex-col items-end gap-2">
-        <p className="font-bold text-gray-900 text-base sm:text-lg">₱{price}</p>
         <span
-          className={cn("text-xs font-medium px-3 py-1 rounded-full", statusBadge[status])}
+          className={cn("text-xs font-medium px-3 py-1 rounded-full shrink-0", statusBadge[status])}
         >
           {status}
         </span>

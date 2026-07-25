@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { SectionCard } from "@/components/common/SectionCard";
 import { AppointmentStatusBadge } from "@/components/common/AppointmentStatusBadge";
 import { formatBookingId } from "@/lib/booking";
+import { formatTime12 } from "@/lib/time-slots";
 import {
   Select,
   SelectContent,
@@ -48,17 +49,6 @@ function formatDate(date: string): string {
   });
 }
 
-function formatTime(time24: string): string {
-  const [hours, minutes] = time24.split(":").map(Number);
-  const d = new Date();
-  d.setHours(hours, minutes, 0, 0);
-  return d.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
 export function Historical() {
   const {
     appointments,
@@ -81,7 +71,7 @@ export function Historical() {
         service: appointment.service.name ?? "Unknown service",
         barber: appointment.barber.fullname ?? "Unknown barber",
         date: formatDate(appointment.appointment_date),
-        time: formatTime(appointment.appointment_time),
+        time: formatTime12(appointment.appointment_time),
         status: appointment.status,
         price: Number(appointment.price) || 0,
         cancellation_reason: appointment.cancellation_reason,

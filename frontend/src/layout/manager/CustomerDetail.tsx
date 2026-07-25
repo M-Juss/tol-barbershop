@@ -27,6 +27,7 @@ import {
   User,
   CheckCircle2,
 } from "lucide-react";
+import { formatTime12 } from "@/lib/time-slots";
 
 function formatDate(date: string | null): string {
   if (!date) return "\u2014";
@@ -34,18 +35,6 @@ function formatDate(date: string | null): string {
     month: "short",
     day: "numeric",
     year: "numeric",
-  });
-}
-
-function formatTime(time: string | null): string {
-  if (!time) return "\u2014";
-  const [hours, minutes] = time.split(":").map(Number);
-  const d = new Date();
-  d.setHours(hours, minutes, 0, 0);
-  return d.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
   });
 }
 
@@ -379,7 +368,7 @@ export function CustomerDetail({ id }: CustomerDetailProps) {
                         {appt.appointment_date}
                       </TableCell>
                       <TableCell className="text-gray-600 whitespace-nowrap">
-                        {formatTime(appt.appointment_time)}
+                        {formatTime12(appt.appointment_time)}
                       </TableCell>
                       <TableCell className="text-gray-700">
                         {appt.service_name}
@@ -414,7 +403,7 @@ export function CustomerDetail({ id }: CustomerDetailProps) {
                   <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
                     <div>
                       <span className="block text-gray-400">Time</span>
-                      {formatTime(appt.appointment_time)}
+                      {formatTime12(appt.appointment_time)}
                     </div>
                     <div>
                       <span className="block text-gray-400">Service</span>
