@@ -2,8 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { CalendarDays, CheckCheck, Clock, Scissors, User } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCheck,
+  Clock,
+  Scissors,
+  Users,
+} from "lucide-react";
 import { formatBookingId, formatTicketId } from "@/lib/booking";
+import { sanitizeText } from "@/lib/sanitizer";
 import { toast } from "sonner";
 import {
   getNotifications,
@@ -11,6 +18,7 @@ import {
   markNotificationAsRead,
   type NotificationItem,
 } from "@/services/shared/notification.api";
+import { formatTime12 } from "@/lib/time-slots";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,22 +39,50 @@ function formatDateTime(value: string): string {
   });
 }
 
-function isAppointmentStatusPayload(
-  payload: Record<string, unknown> | null | undefined,
-): payload is {
-  appointment_id: number;
-  status: string;
+type AppointmentNotificationPayload = {
+  appointment_id: number | string;
+  status?: string;
   service_name?: string;
   barber_name?: string;
   appointment_date?: string;
   appointment_time?: string;
-  price?: number;
-} {
+  price?: number | string;
+  cancellation_reason?: string | null;
+  next_step?: string;
+};
+
+type GroupAppointmentItem = {
+  appointment_id: number;
+  booking_id?: string;
+  customer_name?: string;
+  service_name?: string;
+  appointment_time?: string;
+  price?: number | string;
+};
+
+type GroupAppointmentNotificationPayload = {
+  batch_id: string;
+  status?: string;
+  appointment_count?: number;
+  appointment_date?: string;
+  barber_name?: string;
+  total_price?: number | string;
+  cancellation_reason?: string | null;
+  next_step?: string;
+  appointments?: GroupAppointmentItem[];
+};
+
+function isAppointmentNotificationPayload(
+  payload: Record<string, unknown> | null | undefined,
+): payload is AppointmentNotificationPayload {
   if (!payload) return false;
-  return (
-    typeof payload.appointment_id !== "undefined" &&
-    typeof payload.status === "string"
-  );
+  return typeof payload.appointment_id === "number" || typeof payload.appointment_id === "string";
+}
+
+function isGroupAppointmentNotificationPayload(
+  payload: Record<string, unknown> | null | undefined,
+): payload is GroupAppointmentNotificationPayload {
+  return Boolean(payload && typeof payload.batch_id === "string");
 }
 
 function formatAppointmentDate(value: string): string {
@@ -55,17 +91,6 @@ function formatAppointmentDate(value: string): string {
     month: "short",
     day: "numeric",
     year: "numeric",
-  });
-}
-
-function formatAppointmentTime(value: string): string {
-  const [hours, minutes] = value.split(":").map(Number);
-  const d = new Date();
-  d.setHours(hours, minutes, 0, 0);
-  return d.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
   });
 }
 
@@ -88,6 +113,50 @@ function getTicketId(item: NotificationItem): number | null {
 
 function getAppointmentId(item: NotificationItem): number | null {
   return item.appointment_id ?? getPayloadNumber(item.payload, "appointment_id");
+}
+
+function getPayloadString(
+  payload: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
+  const value = payload?.[key];
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function getAppointmentStatus(
+  item: NotificationItem,
+  payload: AppointmentNotificationPayload,
+): string {
+  if (payload.status) return payload.status;
+  if (item.type === "appointment_completed") return "completed";
+  if (item.type === "appointment_rescheduled") return "rescheduled";
+  return "updated";
+}
+
+function getStatusClasses(status: string): string {
+  if (status === "pending") return "bg-amber-100 text-amber-800";
+  if (status === "approved") return "bg-blue-100 text-blue-800";
+  if (status === "completed") return "bg-green-100 text-green-800";
+  if (status === "rejected") return "bg-orange-100 text-orange-800";
+  if (status === "cancelled") return "bg-red-100 text-red-800";
+  if (status === "rescheduled") return "bg-purple-100 text-purple-800";
+  return "bg-gray-100 text-gray-700";
+}
+
+function getStatusLabel(status: string): string {
+  if (status === "no_show") return "No-show";
+  return status.charAt(0).toUpperCase() + status.slice(1).replaceAll("_", " ");
+}
+
+function getFallbackNextStep(status: string): string | null {
+  if (status === "pending") return "We will notify you after the barbershop reviews your request.";
+  if (status === "approved") return "Please arrive about 5 minutes early so your visit can start on time.";
+  if (status === "rejected") return "You can choose another available date or time and submit a new request.";
+  if (status === "cancelled") return "You can create another booking whenever you are ready.";
+  if (status === "completed") return "We would appreciate your feedback about your visit.";
+  if (status === "no_show") return "If you believe this is incorrect, please contact the barbershop.";
+  if (status === "rescheduled") return "Please review the updated schedule and arrive about 5 minutes early.";
+  return null;
 }
 
 function getDisplayMessage(item: NotificationItem): string {
@@ -118,6 +187,229 @@ function getDisplayMessage(item: NotificationItem): string {
     .replace("Your ticket has", `Your ticket ${displayTicketId} has`)
     .replace("A support ticket was", `Support ticket ${displayTicketId} was`)
     .replace("has submitted a support request.", `has submitted support ticket ${displayTicketId}.`);
+}
+
+function AppointmentNotificationDetails({
+  item,
+  payload,
+}: {
+  item: NotificationItem;
+  payload: AppointmentNotificationPayload;
+}) {
+  const appointmentId = Number(payload.appointment_id);
+  const status = getAppointmentStatus(item, payload);
+  const serviceName = payload.service_name ?? item.service_name ?? "Barbershop Service";
+  const barberName = payload.barber_name ?? item.barber_name;
+  const appointmentDate = payload.appointment_date ?? item.appointment_date;
+  const appointmentTime = payload.appointment_time ?? item.appointment_time;
+  const price = payload.price ?? item.price;
+  const reason = payload.cancellation_reason
+    ? sanitizeText(payload.cancellation_reason)
+    : null;
+  const nextStep = payload.next_step ?? getFallbackNextStep(status);
+
+  return (
+    <>
+      <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="shrink-0 rounded-xl bg-blue-100 p-2.5">
+              <Scissors className="h-5 w-5 text-blue-500" strokeWidth={2} />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-base font-bold text-gray-900">
+                {serviceName}
+              </p>
+              <p className="mt-0.5 font-mono text-sm text-gray-500">
+                {Number.isFinite(appointmentId) ? formatBookingId(appointmentId) : "Appointment"}
+              </p>
+            </div>
+          </div>
+          <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold", getStatusClasses(status))}>
+            {getStatusLabel(status)}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <p className="text-xs text-gray-500">Barber</p>
+            <p className="mt-0.5 text-sm font-medium text-gray-900">
+              {barberName ?? "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Date</p>
+            <p className="mt-0.5 text-sm font-medium text-gray-900">
+              {appointmentDate ? formatAppointmentDate(appointmentDate) : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Time</p>
+            <p className="mt-0.5 text-sm font-medium text-gray-900">
+              {appointmentTime ? formatTime12(appointmentTime) : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Price</p>
+            <p className="mt-0.5 text-sm font-semibold text-gray-900">
+              {price != null && Number.isFinite(Number(price))
+                ? `₱${Number(price).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : "—"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg bg-gray-50 p-3">
+        <p className="mb-0.5 text-xs text-gray-500">Update</p>
+        <p className="text-sm leading-6 text-gray-700">{getDisplayMessage(item)}</p>
+      </div>
+
+      {reason && (
+        <div className="flex gap-3 rounded-lg border border-orange-200 bg-orange-50 p-3">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-orange-600" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-orange-900">
+              {status === "rejected" ? "Reason for rejection" : "Reason for cancellation"}
+            </p>
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-orange-800">
+              {reason}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {nextStep && (
+        <div className="flex gap-3 rounded-lg border border-blue-100 bg-blue-50 p-3">
+          <Clock className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+          <div>
+            <p className="text-sm font-semibold text-blue-900">What happens next</p>
+            <p className="mt-1 text-sm leading-5 text-blue-800">{nextStep}</p>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function GroupAppointmentNotificationDetails({
+  item,
+  payload,
+}: {
+  item: NotificationItem;
+  payload: GroupAppointmentNotificationPayload;
+}) {
+  const status = payload.status ?? "updated";
+  const appointments = Array.isArray(payload.appointments) ? payload.appointments : [];
+  const appointmentCount = payload.appointment_count ?? appointments.length;
+  const reason = payload.cancellation_reason
+    ? sanitizeText(payload.cancellation_reason)
+    : null;
+  const nextStep = payload.next_step ?? getFallbackNextStep(status);
+
+  return (
+    <>
+      <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="shrink-0 rounded-xl bg-purple-100 p-2.5">
+              <Users className="h-5 w-5 text-purple-600" strokeWidth={2} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-base font-bold text-gray-900">Group booking</p>
+              <p className="mt-0.5 text-sm text-gray-500">
+                {appointmentCount} appointment{appointmentCount === 1 ? "" : "s"}
+              </p>
+            </div>
+          </div>
+          <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold", getStatusClasses(status))}>
+            {getStatusLabel(status)}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div>
+            <p className="text-xs text-gray-500">Date</p>
+            <p className="mt-0.5 text-sm font-medium text-gray-900">
+              {payload.appointment_date ? formatAppointmentDate(payload.appointment_date) : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Barber</p>
+            <p className="mt-0.5 text-sm font-medium text-gray-900">
+              {payload.barber_name ?? "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Total</p>
+            <p className="mt-0.5 text-sm font-semibold text-gray-900">
+              {payload.total_price != null && Number.isFinite(Number(payload.total_price))
+                ? `₱${Number(payload.total_price).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : "—"}
+            </p>
+          </div>
+        </div>
+
+        {appointments.length > 0 && (
+          <div className="space-y-2 border-t border-gray-100 pt-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Appointments</p>
+            {appointments.map((appointment) => (
+              <div key={appointment.appointment_id} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-gray-900">
+                      {appointment.customer_name ?? "Customer"}
+                    </p>
+                    <p className="truncate text-xs text-gray-500">
+                      {appointment.service_name ?? "Barbershop service"}
+                    </p>
+                  </div>
+                  <p className="shrink-0 font-mono text-xs font-medium text-blue-700">
+                    {appointment.booking_id ?? formatBookingId(appointment.appointment_id)}
+                  </p>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
+                  <span>{appointment.appointment_time ? formatTime12(appointment.appointment_time) : "—"}</span>
+                  <span className="font-semibold text-gray-900">
+                    {appointment.price != null && Number.isFinite(Number(appointment.price))
+                      ? `₱${Number(appointment.price).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : "—"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-lg bg-gray-50 p-3">
+        <p className="mb-0.5 text-xs text-gray-500">Update</p>
+        <p className="text-sm leading-6 text-gray-700">{getDisplayMessage(item)}</p>
+      </div>
+
+      {reason && (
+        <div className="flex gap-3 rounded-lg border border-orange-200 bg-orange-50 p-3">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-orange-600" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-orange-900">Reason for rejection</p>
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-orange-800">
+              {reason}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {nextStep && (
+        <div className="flex gap-3 rounded-lg border border-blue-100 bg-blue-50 p-3">
+          <Clock className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+          <div>
+            <p className="text-sm font-semibold text-blue-900">What happens next</p>
+            <p className="mt-1 text-sm leading-5 text-blue-800">{nextStep}</p>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 export function Notification() {
@@ -251,6 +543,10 @@ export function Notification() {
             {notifications.map((item) => {
               const isUnread = !item.is_read;
               const ticketId = getTicketId(item);
+              const appointmentStatus =
+                (getAppointmentId(item) || isGroupAppointmentNotificationPayload(item.payload))
+                  ? getPayloadString(item.payload, "status")
+                  : null;
 
               return (
                 <div
@@ -280,6 +576,11 @@ export function Notification() {
                       {item.appointment_id && (
                         <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-mono text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-200">
                           {formatBookingId(item.appointment_id)}
+                        </span>
+                      )}
+                      {appointmentStatus && (
+                        <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium", getStatusClasses(appointmentStatus))}>
+                          {getStatusLabel(appointmentStatus)}
                         </span>
                       )}
                       {(item.type === "new_support_ticket" ||
@@ -357,7 +658,7 @@ export function Notification() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               Notification Details
@@ -365,78 +666,16 @@ export function Notification() {
           </DialogHeader>
           {selectedNotification && (
             <div className="space-y-4">
-              {selectedNotification.type === "appointment_status" &&
-              isAppointmentStatusPayload(selectedNotification.payload) ? (
-                <>
-                  <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 shadow-sm">
-                    <div className="flex items-start gap-3 pb-2 border-b border-gray-100">
-                      <div className="bg-blue-100 rounded-xl p-2.5 shrink-0">
-                        <Scissors className="text-blue-500 w-5 h-5" strokeWidth={2} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-gray-900 text-base">
-                          {selectedNotification.payload.service_name ?? "Barbershop Service"}
-                        </p>
-                        <p className="text-sm text-gray-500 mt-0.5">
-                          {formatBookingId(selectedNotification.payload.appointment_id)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2.5 text-sm text-gray-700">
-                        <User className="w-4 h-4 text-gray-400 shrink-0" />
-                        <span className="font-medium">Barber:</span>
-                        <span>{selectedNotification.payload.barber_name ?? "—"}</span>
-                      </div>
-
-                      {selectedNotification.payload.appointment_date && (
-                        <div className="flex items-center gap-2.5 text-sm text-gray-700">
-                          <CalendarDays className="w-4 h-4 text-gray-400 shrink-0" />
-                          <span className="font-medium">Date:</span>
-                          <span>{formatAppointmentDate(selectedNotification.payload.appointment_date)}</span>
-                        </div>
-                      )}
-
-                      {selectedNotification.payload.appointment_time && (
-                        <div className="flex items-center gap-2.5 text-sm text-gray-700">
-                          <Clock className="w-4 h-4 text-gray-400 shrink-0" />
-                          <span className="font-medium">Time:</span>
-                          <span>{formatAppointmentTime(selectedNotification.payload.appointment_time)}</span>
-                        </div>
-                      )}
-
-                      {selectedNotification.payload.price != null && (
-                        <div className="flex items-center gap-2.5 text-sm text-gray-700">
-                          <span className="w-4 h-4 shrink-0" />
-                          <span className="font-medium">Price:</span>
-                          <span className="font-semibold text-gray-900">
-                            ₱{Number(selectedNotification.payload.price).toFixed(2)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg bg-gray-50 p-3">
-                    <p className="text-xs text-gray-400 mb-0.5">Message</p>
-                    <p className="text-sm text-gray-700">{getDisplayMessage(selectedNotification)}</p>
-                  </div>
-
-                  {selectedNotification.payload.status === "approved" && (
-                    <div className="flex gap-3 rounded-lg border border-blue-100 bg-blue-50 p-3">
-                      <Clock className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-                      <div>
-                        <p className="text-sm font-semibold text-blue-900">
-                          Appointment reminder
-                        </p>
-                        <p className="mt-1 text-sm leading-5 text-blue-800">
-                          Please be at the shop by your scheduled appointment time. We recommend arriving about 5 minutes early so you can settle in and we can keep your visit running smoothly.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </>
+              {isGroupAppointmentNotificationPayload(selectedNotification.payload) ? (
+                <GroupAppointmentNotificationDetails
+                  item={selectedNotification}
+                  payload={selectedNotification.payload}
+                />
+              ) : isAppointmentNotificationPayload(selectedNotification.payload) ? (
+                <AppointmentNotificationDetails
+                  item={selectedNotification}
+                  payload={selectedNotification.payload}
+                />
               ) : (
                 <div className="space-y-3">
                   <div>
