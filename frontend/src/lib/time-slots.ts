@@ -72,3 +72,13 @@ export function generateTimeOptions(
 
   return options;
 }
+
+export function formatTime12(time24: string | null | undefined): string {
+  if (!time24) return "\u2014";
+  const date = new Date(`1970-01-01T${time24}`);
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
