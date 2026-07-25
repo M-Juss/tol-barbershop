@@ -128,8 +128,9 @@ class AppointmentBookingService
 
             foreach ($occupiedIntervals as $occupied) {
                 if ($start < $occupied['end'] && $end > $occupied['start']) {
+                    $time12 = CarbonImmutable::parse($slot['appointment_time'])->format('g:i A');
                     throw ValidationException::withMessages([
-                        $slot['field'] => "The time slot {$slot['appointment_time']} overlaps another appointment.",
+                        $slot['field'] => "The time slot {$time12} overlaps another appointment.",
                     ]);
                 }
             }
