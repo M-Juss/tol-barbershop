@@ -9,11 +9,11 @@ export default function ForgotPasswordPage() {
       <div className="flex w-full max-w-md flex-col items-center px-6 sm:px-12 py-8 bg-white rounded-lg shadow-md animate-auth-card">
         <div className="flex space-x-2 items-center">
           <Image
-            src="/Tol-Logo-White-Bg.png"
-            alt="Logo"
+            src="/tol-rounded-logo.png"
+            alt="TOL Barbershop logo"
             height={40}
             width={40}
-            className="rounded-lg"
+            className="rounded-3xl shadow-md shadow-black/20"
           />
           <h1 className="font-bold text-primary text-xl ">TOL Barbershop</h1>
         </div>

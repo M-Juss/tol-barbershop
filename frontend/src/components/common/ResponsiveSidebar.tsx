@@ -154,11 +154,11 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
         <div className="flex items-center justify-between p-4 border-b border-slate-600">
           <div className="flex space-x-2 items-center">
             <Image
-              src="/Tol-Logo-White-Bg.png"
-              alt="Logo"
+              src="/tol-rounded-logo.png"
+              alt="TOL Barbershop logo"
               height={35}
               width={35}
-              className="rounded-lg"
+              className="rounded-3xl shadow-md shadow-black/20"
             />
             <h1 className="font-bold text-primary-foreground text-xl">
               TOL Barbershop

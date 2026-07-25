@@ -27,8 +27,11 @@ export const metadata: Metadata = {
   description: "Premium barbershop experience",
   manifest: "/manifest.json",
   icons: {
-    icon: "/Tol-Logo-White-Bg.png",
-    apple: "/Tol-Logo-White-Bg.png",
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
   },
   appleWebApp: {
     capable: true,

@@ -18,11 +18,11 @@ export default function LegalLayout({
             className="flex w-fit items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
           >
             <Image
-              src="/Tol-Logo-White-Bg.png"
+              src="/tol-rounded-logo.png"
               alt="TOL Barbershop logo"
               width={40}
               height={40}
-              className="rounded-lg"
+              className="rounded-3xl shadow-md shadow-black/20"
               priority
             />
             <span>

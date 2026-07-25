@@ -35,11 +35,11 @@ export default async function VerifyEmailPage({
         <div className="flex w-full max-w-md flex-col items-center rounded-lg bg-white px-6 py-8 shadow-md sm:px-12">
           <div className="flex items-center space-x-2">
             <Image
-              src="/Tol-Logo-White-Bg.png"
-              alt="Logo"
+              src="/tol-rounded-logo.png"
+              alt="TOL Barbershop logo"
               height={40}
               width={40}
-              className="rounded-lg"
+              className="rounded-3xl shadow-md shadow-black/20"
             />
             <h1 className="text-xl font-bold text-primary">TOL Barbershop</h1>
           </div>
