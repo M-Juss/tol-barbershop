@@ -72,6 +72,8 @@ test('admin appointment and walk-in creation require the exact matching module',
         'price' => 300,
         'is_walkin' => true,
         'walkin_customer_name' => 'Walkin Customer',
+        'appointment_date' => '2026-07-16',
+        'appointment_time' => '12:30',
     ];
 
     Sanctum::actingAs($appointmentAdmin);
