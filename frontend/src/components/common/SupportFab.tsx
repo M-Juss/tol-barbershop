@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   MessageCircle,
+  Headset,
   Clock,
   CheckCircle,
   Send,
@@ -53,6 +54,23 @@ import {
 
 type FabState = "idle" | "submitting" | "waiting" | "active" | "resolved";
 type SheetTab = "ticketing" | "history";
+type MobileFabPosition = {
+  x: number;
+  y: number;
+};
+type FabDragState = {
+  pointerId: number;
+  startPointerX: number;
+  startPointerY: number;
+  startPositionX: number;
+  startPositionY: number;
+  moved: boolean;
+};
+
+const MOBILE_BREAKPOINT = 768;
+const FAB_SIZE = 56;
+const MOBILE_VIEWPORT_PADDING = 16;
+const MOBILE_NAV_CLEARANCE = 112;
 
 const CONCERN_CATEGORIES = [
   { value: "appointment_rescheduling", label: "Appointment Rescheduling" },
@@ -86,6 +104,59 @@ function formatDate(dateString: string): string {
   });
 }
 
+function clampMobileFabPosition(
+  position: MobileFabPosition,
+): MobileFabPosition {
+  const viewportWidth =
+    window.visualViewport?.width ?? document.documentElement.clientWidth;
+  const viewportHeight =
+    window.visualViewport?.height ?? document.documentElement.clientHeight;
+  const maxX = Math.max(
+    MOBILE_VIEWPORT_PADDING,
+    viewportWidth - FAB_SIZE - MOBILE_VIEWPORT_PADDING,
+  );
+  const maxY = Math.max(
+    MOBILE_VIEWPORT_PADDING,
+    viewportHeight - FAB_SIZE - MOBILE_NAV_CLEARANCE,
+  );
+
+  return {
+    x: Math.min(Math.max(position.x, MOBILE_VIEWPORT_PADDING), maxX),
+    y: Math.min(Math.max(position.y, MOBILE_VIEWPORT_PADDING), maxY),
+  };
+}
+
+function getInitialMobileFabPosition(): MobileFabPosition {
+  const viewportWidth =
+    window.visualViewport?.width ?? document.documentElement.clientWidth;
+  const viewportHeight =
+    window.visualViewport?.height ?? document.documentElement.clientHeight;
+
+  return clampMobileFabPosition({
+    x: viewportWidth - FAB_SIZE - MOBILE_VIEWPORT_PADDING,
+    y: viewportHeight * 0.58 - FAB_SIZE / 2,
+  });
+}
+
+function snapMobileFabPositionToSide(
+  position: MobileFabPosition,
+): MobileFabPosition {
+  const clampedPosition = clampMobileFabPosition(position);
+  const viewportWidth =
+    window.visualViewport?.width ?? document.documentElement.clientWidth;
+  const maxX = Math.max(
+    MOBILE_VIEWPORT_PADDING,
+    viewportWidth - FAB_SIZE - MOBILE_VIEWPORT_PADDING,
+  );
+  const isCloserToLeft =
+    clampedPosition.x + FAB_SIZE / 2 < viewportWidth / 2;
+
+  return {
+    x: isCloserToLeft ? MOBILE_VIEWPORT_PADDING : maxX,
+    y: clampedPosition.y,
+  };
+}
+
 export function SupportFab() {
   const { user } = useAuth();
   const [ticket, setTicket] = useState<SupportTicketState | null>(null);
@@ -104,11 +175,43 @@ export function SupportFab() {
   const lastMessageIdRef = useRef(0);
   const ticketMutationVersionRef = useRef(0);
   const ticketMutationPendingRef = useRef(false);
+  const [mobilePosition, setMobilePosition] =
+    useState<MobileFabPosition | null>(null);
+  const dragStateRef = useRef<FabDragState | null>(null);
+  const suppressClickRef = useRef(false);
 
   const [historyTickets, setHistoryTickets] = useState<SupportTicket[]>([]);
   const [historyPage, setHistoryPage] = useState(1);
   const [historyHasMore, setHistoryHasMore] = useState(false);
   const [historyLoadingMore, setHistoryLoadingMore] = useState(false);
+
+  useEffect(() => {
+    const updateMobilePosition = () => {
+      if (window.innerWidth >= MOBILE_BREAKPOINT) {
+        setMobilePosition(null);
+        dragStateRef.current = null;
+        return;
+      }
+
+      setMobilePosition((current) =>
+        current
+          ? snapMobileFabPositionToSide(current)
+          : getInitialMobileFabPosition(),
+      );
+    };
+
+    updateMobilePosition();
+    window.addEventListener("resize", updateMobilePosition);
+    window.visualViewport?.addEventListener("resize", updateMobilePosition);
+
+    return () => {
+      window.removeEventListener("resize", updateMobilePosition);
+      window.visualViewport?.removeEventListener(
+        "resize",
+        updateMobilePosition,
+      );
+    };
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -337,6 +440,11 @@ export function SupportFab() {
   };
 
   const handleFabClick = () => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+
     setSheetTab("ticketing");
     if (fabState === "idle") {
       setIsSheetOpen(true);
@@ -346,11 +454,78 @@ export function SupportFab() {
     fetchHistoryTickets();
   };
 
-  const FabIcon = MessageCircle;
+  const handleFabPointerDown = (
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    if (window.innerWidth >= MOBILE_BREAKPOINT || !mobilePosition) return;
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startPointerX: event.clientX,
+      startPointerY: event.clientY,
+      startPositionX: mobilePosition.x,
+      startPositionY: mobilePosition.y,
+      moved: false,
+    };
+  };
+
+  const handleFabPointerMove = (
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - dragState.startPointerX;
+    const deltaY = event.clientY - dragState.startPointerY;
+
+    if (!dragState.moved && Math.hypot(deltaX, deltaY) < 6) return;
+
+    dragState.moved = true;
+    event.preventDefault();
+    setMobilePosition(
+      clampMobileFabPosition({
+        x: dragState.startPositionX + deltaX,
+        y: dragState.startPositionY + deltaY,
+      }),
+    );
+  };
+
+  const handleFabPointerUp = (
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (dragState.moved) {
+      setMobilePosition((current) =>
+        current ? snapMobileFabPositionToSide(current) : current,
+      );
+    }
+    suppressClickRef.current = dragState.moved;
+    dragStateRef.current = null;
+    window.setTimeout(() => {
+      suppressClickRef.current = false;
+    }, 0);
+  };
+
+  const handleFabPointerCancel = (
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    if (dragStateRef.current?.pointerId !== event.pointerId) return;
+
+    dragStateRef.current = null;
+    suppressClickRef.current = false;
+  };
+
+  const FabIcon = Headset;
 
   const fabColors = {
-    idle: "bg-blue-500 hover:bg-blue-600",
-    submitting: "bg-blue-500 hover:bg-blue-600",
+    idle: "bg-accent hover:bg-red-700",
+    submitting: "bg-accent hover:bg-red-700",
     waiting: "bg-amber-500 hover:bg-amber-600",
     active: "bg-green-500 hover:bg-green-600",
     resolved: "bg-gray-500 hover:bg-gray-600",
@@ -371,8 +546,22 @@ export function SupportFab() {
       <button
         type="button"
         onClick={handleFabClick}
+        onPointerDown={handleFabPointerDown}
+        onPointerMove={handleFabPointerMove}
+        onPointerUp={handleFabPointerUp}
+        onPointerCancel={handleFabPointerCancel}
+        style={
+          mobilePosition
+            ? {
+                left: `${mobilePosition.x}px`,
+                top: `${mobilePosition.y}px`,
+                right: "auto",
+                bottom: "auto",
+              }
+            : undefined
+        }
         className={cn(
-          "fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all hover:scale-105 active:scale-95",
+          "fixed bottom-6 right-6 z-40 flex h-14 w-14 touch-none cursor-grab items-center justify-center rounded-full shadow-lg transition-[background-color,box-shadow,transform] hover:scale-105 active:cursor-grabbing active:scale-95 md:touch-auto md:cursor-pointer",
           fabColors,
           fabState === "active" && "animate-pulse",
         )}
@@ -426,7 +615,7 @@ export function SupportFab() {
           {sheetTab === "ticketing" && (
             <>
               {(fabState === "idle" || fabState === "resolved") && (
-                <div className="flex flex-1 flex-col p-4 gap-3 overflow-y-auto">
+                <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] md:pb-4">
                   <p className="text-sm text-gray-600">
                     Select a concern type and describe your issue.
                   </p>
@@ -515,7 +704,7 @@ export function SupportFab() {
                   </div>
 
                   {hasActiveConversation && (
-                    <div className="border-t border-gray-200 p-3 flex gap-2 shrink-0">
+                    <div className="flex shrink-0 gap-2 border-t border-gray-200 p-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))] md:pb-3">
                       <Textarea
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}

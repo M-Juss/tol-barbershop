@@ -17,6 +17,10 @@ import { isPushSupported, isIOSWithoutInstalledApp, enableBrowserPush } from "@/
 
 const STORAGE_KEY = "notification_prompt_dismissed";
 
+type NotificationPromptProps = {
+  settingsLocation?: string;
+};
+
 function isEligibleForPrompt(): boolean {
   if (typeof window === "undefined") return false;
   if (!isPushSupported()) return false;
@@ -26,7 +30,9 @@ function isEligibleForPrompt(): boolean {
   return true;
 }
 
-export function NotificationPrompt() {
+export function NotificationPrompt({
+  settingsLocation = "the sidebar",
+}: NotificationPromptProps) {
   const [open, setOpen] = useState(false);
   const [enabling, setEnabling] = useState(false);
 
@@ -74,7 +80,7 @@ export function NotificationPrompt() {
           </DialogDescription>
         </DialogHeader>
         <p className="text-center text-sm text-muted-foreground">
-          You can change this setting anytime from the sidebar.
+          You can change this setting anytime from {settingsLocation}.
         </p>
         <DialogFooter className="flex flex-col gap-2 sm:flex-row">
           <Button type="button" variant="outline" onClick={handleDismiss} className="w-full sm:w-auto">

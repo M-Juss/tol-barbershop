@@ -204,7 +204,7 @@ export function Overview() {
   );
 
   return (
-    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 pb-24 font-sans">
+    <div className="w-full h-fit bg-slate-100 p-4 sm:p-6 font-sans">
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
           Overview

@@ -1,9 +1,10 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bell, Calendar, CalendarPlus, LayoutDashboard, User } from "lucide-react";
 import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { SupportFab } from "@/components/common/SupportFab";
 import { NotificationPrompt } from "@/components/common/NotificationPrompt";
+import { CustomerBottomNavigation } from "@/layout/customer/CustomerBottomNavigation";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
 import { startPolling } from "@/lib/polling";
 import { getNotifications } from "@/services/shared/notification.api";
@@ -14,6 +15,7 @@ export default function CustomerLayout({
   children: React.ReactNode;
 }) {
   const [unreadCount, setUnreadCount] = useState(0);
+  const scrollContainerRef = useRef<HTMLElement | null>(null);
   useRoleRoutePersistence("/customer");
 
   const loadUnreadCount = useCallback(async (signal?: AbortSignal) => {
@@ -74,12 +76,19 @@ export default function CustomerLayout({
 
   return (
     <div className="flex h-dvh overflow-hidden">
-      <ResponsiveSidebar sections={sections} />
-      <main className="min-h-0 flex-1 overflow-y-auto bg-gray-100 md:pl-0 pt-[calc(4rem+env(safe-area-inset-top))] md:pt-0 pb-[calc(5rem+env(safe-area-inset-bottom))] overscroll-contain">
+      <ResponsiveSidebar sections={sections} mobileMode="desktop-only" />
+      <main
+        ref={scrollContainerRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-gray-100 pt-[env(safe-area-inset-top)] pb-[calc(7.5rem+env(safe-area-inset-bottom))] md:pt-0 md:pb-0"
+      >
         {children}
         <SupportFab />
-        <NotificationPrompt />
+        <NotificationPrompt settingsLocation="Profile under Device Notifications" />
       </main>
+      <CustomerBottomNavigation
+        unreadCount={unreadCount}
+        scrollContainerRef={scrollContainerRef}
+      />
     </div>
   );
 }

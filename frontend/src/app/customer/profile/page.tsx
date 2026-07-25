@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { AlertTriangle, Lock, Trash2 } from "lucide-react";
+import { AlertTriangle, Lock, LogOut, Trash2 } from "lucide-react";
 
 import { PasswordInputWithLabel } from "@/components/common/PasswordInputWithLabel";
+import { PushNotificationControl } from "@/components/common/PushNotificationControl";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,13 +21,17 @@ import {
   changePassword,
   deleteAccount,
 } from "@/services/customer/user.api";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 export default function Profile() {
+  const { logout } = useAuth();
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showDeactivateAccount, setShowDeactivateAccount] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [password, setPassword] = useState("");
   const [isDeactivating, setIsDeactivating] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleDeactivateAccount = async () => {
     if (!password) {
@@ -46,8 +51,20 @@ export default function Profile() {
     }
   };
 
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } catch {
+      setIsLoggingOut(false);
+      toast.error("Logout failed. Please try again.");
+    }
+  };
+
   return (
-    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 pb-24 font-sans">
+    <div className="w-full h-fit bg-slate-100 p-4 sm:p-6 font-sans">
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
           Profile
@@ -95,6 +112,33 @@ export default function Profile() {
           >
             <Trash2 className="w-4 h-4" strokeWidth={2} />
             Deactivate Account
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-gray-100 bg-white p-6 shadow-sm md:hidden">
+        <h2 className="text-base font-bold text-gray-900">
+          Preferences & Session
+        </h2>
+        <p className="mt-0.5 text-sm text-gray-500">
+          Manage notifications and account access
+        </p>
+
+        <PushNotificationControl variant="settings" />
+
+        <div className="border-t border-gray-100">
+          <button
+            type="button"
+            onClick={() => setShowLogoutDialog(true)}
+            className="flex w-full items-center gap-3 py-5 text-left text-gray-900 transition-colors hover:text-primary"
+          >
+            <LogOut className="size-5 shrink-0 text-red-500" />
+            <span className="flex-1">
+              <span className="block text-sm font-bold">Logout</span>
+              <span className="mt-0.5 block text-sm font-normal text-gray-500">
+                Sign out of your TOL Barbershop account
+              </span>
+            </span>
           </button>
         </div>
       </div>
@@ -158,6 +202,39 @@ export default function Profile() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={showLogoutDialog}
+        onOpenChange={(open) => {
+          if (!isLoggingOut) setShowLogoutDialog(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Confirm Logout</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to log out of your account?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowLogoutDialog(false)}
+              disabled={isLoggingOut}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+            >
+              {isLoggingOut ? "Logging out..." : "Logout"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <ChangePasswordForm
         open={showChangePassword}
         onClose={() => setShowChangePassword(false)}
@@ -170,7 +247,6 @@ export default function Profile() {
           }
         }}
       />
-      <div className="h-10" />
     </div>
   );
 }
