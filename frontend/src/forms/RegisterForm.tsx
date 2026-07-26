@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { CheckboxWithLabel } from "@/components/common/CheckboxWithLabel";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { PasswordInputWithLabel } from "@/components/common/PasswordInputWithLabel";
+import { Button } from "@/components/ui/button";
 import { useRateLimit } from "@/hooks/useRateLimit";
 import { cn } from "@/lib/utils";
 import {
@@ -253,17 +254,17 @@ export function RegisterForm() {
         />
       </div>
 
-      <button
+      <Button
         type="submit"
         disabled={isSubmitting || !rateLimit.canAttempt}
-        className="bg-accent hover:bg-accent/90 w-full text-white text-sm py-1.5 px-4 rounded-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="h-10 w-full bg-accent px-4 text-sm text-white hover:bg-accent/90"
       >
         {rateLimit.isCooldown
           ? `Try again in ${rateLimit.formatCooldownTime(rateLimit.cooldownRemaining)}`
           : isSubmitting
             ? "Registering..."
             : "Register"}
-      </button>
+      </Button>
     </form>
   );
 }

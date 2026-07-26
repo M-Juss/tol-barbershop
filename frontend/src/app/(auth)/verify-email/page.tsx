@@ -32,7 +32,7 @@ export default async function VerifyEmailPage({
   return (
     <RedirectIfAuthenticated>
       <div className="flex min-h-screen items-center justify-center bg-primary p-4 pb-8">
-        <div className="flex w-full max-w-md flex-col items-center rounded-lg bg-white px-6 py-8 shadow-md sm:px-12">
+        <div className="mobile-modal-surface flex w-full max-w-md flex-col items-center rounded-lg bg-white px-6 py-8 shadow-md sm:px-12">
           <div className="flex items-center space-x-2">
             <Image
               src="/tol-rounded-logo.png"

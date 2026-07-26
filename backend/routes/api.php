@@ -64,6 +64,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/appointments/overview/stats', [AppointmentController::class, 'overviewStats'])->middleware(['module:dashboard', 'throttle:authenticated-read']);
             Route::get('/appointments/overview/monthly-revenue', [AppointmentController::class, 'monthlyRevenue'])->middleware(['module:dashboard', 'throttle:authenticated-read']);
             Route::get('/appointments/overview/service-stats', [AppointmentController::class, 'serviceStats'])->middleware(['module:dashboard', 'throttle:authenticated-read']);
+            Route::get('/appointments/overview/weekly-schedule', [AppointmentController::class, 'weeklySchedule'])->middleware(['module:dashboard', 'throttle:authenticated-read']);
             Route::get('/appointments/overview/time-slots', [AppointmentController::class, 'timeSlots'])->middleware(['module:dashboard', 'throttle:authenticated-read']);
             Route::get('/analytics/kpi', [AnalyticsController::class, 'kpi'])->middleware(['module:dashboard,reports', 'throttle:authenticated-read']);
             Route::get('/analytics/reports', [AnalyticsController::class, 'reports'])->middleware(['module:reports', 'throttle:authenticated-read']);
@@ -125,6 +126,8 @@ Route::prefix('v1')->group(function () {
             ->middlewareFor(['index'], ['role:admin,manager,customer', 'module:management,appointment,walkin', 'throttle:authenticated-read'])
             ->middlewareFor(['show'], ['role:admin,manager,customer', 'module:management,appointment,walkin', 'throttle:authenticated-read'])
             ->middlewareFor(['store', 'update', 'destroy'], ['role:admin,manager', 'module:management', 'throttle:authenticated-write']);
+        Route::get('/closed-dates/activity', [ClosedDatesController::class, 'activity'])
+            ->middleware(['role:admin,manager', 'module:management', 'throttle:authenticated-read']);
         Route::get('/closed-dates/check-conflicts', [ClosedDatesController::class, 'checkConflicts'])
             ->middleware(['role:admin,manager', 'module:management', 'throttle:authenticated-read']);
         Route::apiResource('/closed-dates', ClosedDatesController::class)

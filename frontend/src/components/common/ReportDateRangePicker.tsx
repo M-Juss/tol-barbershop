@@ -109,7 +109,7 @@ function DateRangePickerContent({
                 key={preset.label}
                 variant="outline"
                 size="sm"
-                className="justify-start text-xs last:col-span-2 sm:last:col-span-1 sm:text-sm"
+                className="min-h-9 justify-start text-xs last:col-span-2 sm:min-h-0 sm:last:col-span-1 sm:text-sm"
                 onClick={() => setRange(preset.getRange(today))}
               >
                 {preset.label}
@@ -120,14 +120,14 @@ function DateRangePickerContent({
       </div>
 
       <div className="flex shrink-0 items-center justify-between border-t border-border bg-muted/30 px-4 py-3 sm:px-5">
-        <Button variant="ghost" size="sm" onClick={handleClear}>
+        <Button variant="ghost" size="sm" className="min-h-9 px-3 sm:min-h-0" onClick={handleClear}>
           Clear
         </Button>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" size="sm" className="min-h-9 px-3 sm:min-h-0" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button size="sm" disabled={!hasValidRange} onClick={handleApply}>
+          <Button size="sm" className="min-h-9 px-3 sm:min-h-0" disabled={!hasValidRange} onClick={handleApply}>
             Apply
           </Button>
         </div>

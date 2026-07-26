@@ -170,8 +170,10 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
       await onSuccess?.();
     } catch (error) {
       console.error("Failed to complete walk-in appointment:", error);
-      setFormError("Failed to complete walk-in");
-      toast.error("Failed to complete walk-in");
+      const message =
+        error instanceof Error ? error.message : "Failed to complete walk-in";
+      setFormError(message);
+      toast.error(message);
     }
   };
 
@@ -209,27 +211,26 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
         </div>
 
         <div className="relative">
-          <DatePickerWithLabel
-            id="walkin-date"
-            label="Date *"
-            placeholder="Select date"
-            date={selectedDate}
-            maxDaysAhead={0}
-            disablePastDates={false}
-            disableSundays={true}
-            onDateChange={(date) => {
-              if (!date) return;
-              const y = date.getFullYear();
-              const m = String(date.getMonth() + 1).padStart(2, "0");
-              const d = String(date.getDate()).padStart(2, "0");
-              const dateStr = `${y}-${m}-${d}`;
-              setValue("appointment_date", dateStr, { shouldValidate: true });
-              setSelectedDate(date);
+          <SelectWithLabel
+            id="barber"
+            label="Barber *"
+            placeholder="Select a barber"
+            options={barbers.map((barber) => ({
+              value: barber.id.toString(),
+              label: barber.fullname,
+            }))}
+            value={selectedBarberId > 0 ? String(selectedBarberId) : ""}
+            onValueChange={(value) => {
+              setValue("barber_user_id", Number(value), {
+                shouldValidate: true,
+              });
+              setValue("appointment_date", "");
+              setSelectedDate(undefined);
             }}
           />
-          {errors.appointment_date && (
+          {errors.barber_user_id && (
             <p className="absolute left-0 top-full text-red-500 text-xs">
-              {errors.appointment_date.message}
+              {errors.barber_user_id.message}
             </p>
           )}
         </div>
@@ -274,24 +275,29 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
         </div>
 
         <div className="relative ">
-          <SelectWithLabel
-            id="barber"
-            label="Barber *"
-            placeholder="Select a barber"
-            options={barbers.map((barber) => ({
-              value: barber.id.toString(),
-              label: barber.fullname,
-            }))}
-            value={selectedBarberId > 0 ? String(selectedBarberId) : ""}
-            onValueChange={(value) =>
-              setValue("barber_user_id", Number(value), {
-                shouldValidate: true,
-              })
-            }
+          <DatePickerWithLabel
+            id="walkin-date"
+            label="Date *"
+            placeholder="Select date"
+            date={selectedDate}
+            maxDaysAhead={0}
+            disablePastDates={false}
+            disableSundays={true}
+            disabled={selectedBarberId <= 0}
+            barberId={selectedBarberId > 0 ? selectedBarberId : undefined}
+            onDateChange={(date) => {
+              if (!date) return;
+              const y = date.getFullYear();
+              const m = String(date.getMonth() + 1).padStart(2, "0");
+              const d = String(date.getDate()).padStart(2, "0");
+              const dateStr = `${y}-${m}-${d}`;
+              setValue("appointment_date", dateStr, { shouldValidate: true });
+              setSelectedDate(date);
+            }}
           />
-          {errors.barber_user_id && (
+          {errors.appointment_date && (
             <p className="absolute left-0 top-full  text-red-500 text-xs">
-              {errors.barber_user_id.message}
+              {errors.appointment_date.message}
             </p>
           )}
         </div>

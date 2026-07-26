@@ -186,6 +186,13 @@
   .animate-auth-card {
     animation: auth-card-in 500ms ease-out both;
   }
+
+  @media (max-width: 39.999rem) {
+    .mobile-modal-surface {
+      width: calc(100vw - clamp(3rem, 16vw, 4rem)) !important;
+      max-width: calc(100vw - clamp(3rem, 16vw, 4rem)) !important;
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

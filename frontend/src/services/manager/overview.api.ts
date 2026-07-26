@@ -1,25 +1,25 @@
 import { authFetch } from "@/lib/api";
 import type { AppointmentStatus } from "@/services/customer/appointment.api";
 
-export interface OverviewStats {
+export type OverviewStats = {
   completed_appointments: number;
   pending_appointments: number;
   approved_appointments: number;
   total_customers: number;
   total_revenue: number;
-}
+};
 
-export interface DailyRevenue {
+export type DailyRevenue = {
   date: string;
   revenue: number;
-}
+};
 
-export interface ServiceStats {
+export type ServiceStats = {
   service_name: string;
   completed_count: number;
-}
+};
 
-export interface SlotAppointment {
+export type SlotAppointment = {
   id: number;
   customer: string | null;
   customer_email: string | null;
@@ -31,13 +31,47 @@ export interface SlotAppointment {
   appointment_date: string;
   appointment_time: string;
   status: AppointmentStatus;
-}
+};
 
-export interface TimeSlot {
+export type TimeSlot = {
   time: string;
   appointments: SlotAppointment[];
   status: "available" | "booked";
-}
+  available_barbers: number;
+  total_barbers: number;
+  is_past: boolean;
+  is_closed: boolean;
+  is_fully_booked: boolean;
+};
+
+export type WeeklyAvailabilityDay = {
+  date: string;
+  day: string;
+  day_number: number;
+  available_slots: number;
+  total_slots: number;
+  is_today: boolean;
+  is_past: boolean;
+  is_closed: boolean;
+  is_fully_booked: boolean;
+};
+
+export type WeeklyDashboardStats = {
+  completed_appointments: number;
+  pending_appointments: number;
+  approved_appointments: number;
+  average_rating: number;
+};
+
+export type WeeklySchedule = {
+  selected_date: string;
+  week_start: string;
+  week_end: string;
+  active_barbers: number;
+  weekly_stats: WeeklyDashboardStats;
+  days: WeeklyAvailabilityDay[];
+  time_slots: TimeSlot[];
+};
 
 export const getOverviewStats = async (): Promise<OverviewStats> => {
   return authFetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments/overview/stats`);
@@ -55,13 +89,15 @@ export const getServiceStats = async (): Promise<ServiceStats[]> => {
   );
 };
 
-export const getTimeSlotsForDate = async (
+export const getWeeklySchedule = async (
   date: Date,
-): Promise<TimeSlot[]> => {
+  signal?: AbortSignal,
+): Promise<WeeklySchedule> => {
   const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   const encodedDate = encodeURIComponent(dateKey);
 
   return authFetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/appointments/overview/time-slots?date=${encodedDate}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/appointments/overview/weekly-schedule?date=${encodedDate}`,
+    { signal },
   );
 };

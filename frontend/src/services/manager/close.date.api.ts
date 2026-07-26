@@ -3,6 +3,9 @@ import { authFetch } from "@/lib/api";
 export interface ClosedDate {
   id: number;
   date_closed: string;
+  closure_scope: "shop" | "barber";
+  barber_user_id: number | null;
+  barber_name: string | null;
   reason: string;
   is_removed: boolean;
   created_at: string;
@@ -11,13 +14,13 @@ export interface ClosedDate {
 
 export interface CreateClosedDateData {
   date_closed: string;
+  closure_scope: "shop" | "barber";
+  barber_user_id?: number;
   reason: string;
 }
 
 export interface UpdateClosedDateData {
-  date_closed?: string;
-  reason?: string;
-  is_removed?: boolean;
+  is_removed: true;
 }
 
 export interface PaginatedClosedDates {
@@ -28,12 +31,42 @@ export interface PaginatedClosedDates {
   total: number;
 }
 
+export type ClosedDateActivity = {
+  id: number;
+  closed_date_id: number;
+  action: "closed" | "reopened";
+  closure_scope: "shop" | "barber";
+  date_closed: string;
+  barber_user_id: number | null;
+  barber_name: string | null;
+  reason: string;
+  actor_name: string | null;
+  created_at: string;
+};
+
+export type PaginatedClosedDateActivities = {
+  data: ClosedDateActivity[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+};
+
 export const getClosedDates = async (
   page: number = 1,
   perPage: number = 5,
+  scope: "shop" | "all" | "availability" = "shop",
+  barberId?: number,
 ): Promise<PaginatedClosedDates> => {
+  const params = new URLSearchParams({
+    page: String(page),
+    per_page: String(perPage),
+    scope,
+  });
+  if (barberId) params.set("barber_id", String(barberId));
+
   const response = await authFetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/closed-dates?page=${page}&per_page=${perPage}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/closed-dates?${params.toString()}`,
   );
 
   const paginatedData = response.data;
@@ -70,12 +103,12 @@ export const updateClosedDate = async (
   return response.data;
 };
 
-export const getAllClosedDatesForActivityLog = async (
+export const getClosedDateActivities = async (
   page: number = 1,
   perPage: number = 5,
-): Promise<PaginatedClosedDates> => {
+): Promise<PaginatedClosedDateActivities> => {
   const response = await authFetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/closed-dates?page=${page}&per_page=${perPage}&all=true`,
+    `${process.env.NEXT_PUBLIC_API_URL}/closed-dates/activity?page=${page}&per_page=${perPage}`,
   );
 
   const paginatedData = response.data;
@@ -91,9 +124,17 @@ export const getAllClosedDatesForActivityLog = async (
 
 export const checkClosedDateConflicts = async (
   date: string,
+  closureScope: "shop" | "barber" = "shop",
+  barberUserId?: number,
 ): Promise<{ count: number }> => {
+  const params = new URLSearchParams({
+    date,
+    closure_scope: closureScope,
+  });
+  if (barberUserId) params.set("barber_user_id", String(barberUserId));
+
   const response = await authFetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/closed-dates/check-conflicts?date=${date}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/closed-dates/check-conflicts?${params.toString()}`,
   );
   return response.data?.data ?? { count: 0 };
 };

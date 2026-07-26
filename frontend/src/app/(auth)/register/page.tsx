@@ -8,7 +8,7 @@ export default function RegisterPage() {
   return (
     <RedirectIfAuthenticated>
       <div className="min-h-screen flex items-center justify-center bg-primary p-4">
-        <div className="flex w-full max-w-sm flex-col items-center px-8 py-6 bg-white rounded-lg shadow-md animate-auth-card">
+        <div className="mobile-modal-surface flex w-full max-w-sm flex-col items-center rounded-lg bg-white px-5 py-6 shadow-md animate-auth-card sm:px-8">
           <div className="flex items-center gap-2">
             <Image
               src="/tol-rounded-logo.png"

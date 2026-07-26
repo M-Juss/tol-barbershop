@@ -227,7 +227,7 @@ export function VerifyEmailForm({ email }: VerifyEmailFormProps) {
         <Button
           variant="outline"
           onClick={checkVerification}
-          className="mt-4"
+          className="mt-4 h-10"
         >
           I&apos;ve verified my email
         </Button>
@@ -260,7 +260,7 @@ export function VerifyEmailForm({ email }: VerifyEmailFormProps) {
         type="button"
         variant="outline"
         onClick={checkVerification}
-        className="w-full"
+        className="h-10 w-full"
       >
         I&apos;ve verified my email
       </Button>

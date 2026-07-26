@@ -76,12 +76,22 @@ class AppointmentRequest extends FormRequest
                         return;
                     }
 
+                    $barberUserId = (int) $this->input('barber_user_id');
                     $isClosed = ClosedDates::where('date_closed', $value)
                         ->where('is_removed', false)
+                        ->where(function ($query) use ($barberUserId): void {
+                            $query
+                                ->where('closure_scope', 'shop')
+                                ->orWhere(function ($barberQuery) use ($barberUserId): void {
+                                    $barberQuery
+                                        ->where('closure_scope', 'barber')
+                                        ->where('barber_user_id', $barberUserId);
+                                });
+                        })
                         ->exists();
 
                     if ($isClosed) {
-                        $fail('The barbershop is closed on the selected date.');
+                        $fail('The selected barber is unavailable on this date.');
                     }
                 },
             ],

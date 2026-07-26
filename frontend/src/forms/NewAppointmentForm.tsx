@@ -305,8 +305,10 @@ export function NewAppointmentForm() {
       router.push("/customer/history");
     } catch (error) {
       console.error("Failed to book appointment:", error);
-      setFormError("Failed to book appointment");
-      toast.error("Failed to book appointment");
+      const message =
+        error instanceof Error ? error.message : "Failed to book appointment";
+      setFormError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -377,8 +379,12 @@ export function NewAppointmentForm() {
       router.push("/customer/history");
     } catch (error) {
       console.error("Failed to book group appointment:", error);
-      setFormError("Failed to book group appointment");
-      toast.error("Failed to book group appointment");
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to book group appointment";
+      setFormError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -501,7 +507,13 @@ export function NewAppointmentForm() {
                 label: barber.fullname,
               }))}
               value={selectedBarber}
-              onValueChange={(value) => setSelectedBarber(value)}
+              onValueChange={(value) => {
+                setSelectedBarber(value);
+                setSelectedDate(undefined);
+                setSelectedTime("");
+                setSlotTimes([]);
+                setOccupiedSlots([]);
+              }}
             />
           </div>
 
@@ -516,6 +528,9 @@ export function NewAppointmentForm() {
               date={selectedDate}
               onDateChange={(date) => setSelectedDate(date)}
               disabled={!selectedBarber}
+              barberId={
+                selectedBarber ? Number(selectedBarber) : undefined
+              }
             />
           </div>
 

@@ -27,7 +27,7 @@ export default async function ResetPasswordPage({
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-primary p-4 pb-8">
-      <div className="flex w-full max-w-md flex-col items-center px-6 sm:px-12 py-8 bg-white rounded-lg shadow-md animate-auth-card">
+      <div className="mobile-modal-surface flex w-full max-w-md flex-col items-center rounded-lg bg-white px-6 py-8 shadow-md animate-auth-card sm:px-12">
         <div className="flex space-x-2 items-center">
           <Image
             src="/tol-rounded-logo.png"

@@ -83,6 +83,7 @@ test('admin page APIs carry their matching module middleware', function (string 
     expect($route->gatherMiddleware())->toContain("module:{$module}");
 })->with([
     'dashboard' => ['GET', '/api/v1/appointments/overview/stats', 'dashboard'],
+    'dashboard weekly schedule' => ['GET', '/api/v1/appointments/overview/weekly-schedule?date=2026-07-20', 'dashboard'],
     'management' => ['POST', '/api/v1/services', 'management'],
     'appointment' => ['GET', '/api/v1/appointments', 'appointment'],
     'walk-in' => ['GET', '/api/v1/walkins/stats', 'walkin'],

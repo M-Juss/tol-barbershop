@@ -325,7 +325,14 @@ export function RescheduleForm({
                 placeholder="Select a barber"
                 options={barbers}
                 value={selectedBarber}
-                onValueChange={(value) => setValue("barber_user_id", value)}
+                onValueChange={(value) => {
+                  setValue("barber_user_id", value, {
+                    shouldValidate: true,
+                  });
+                  setValue("appointment_date", "");
+                  setValue("appointment_time", "");
+                  setOccupiedSlots([]);
+                }}
                 disabled={loadingData || isSubmitting}
               />
               {errors.barber_user_id && (
@@ -351,6 +358,9 @@ export function RescheduleForm({
                   }
                 }}
                 disabled={!selectedBarber || isSubmitting}
+                barberId={
+                  selectedBarber ? Number(selectedBarber) : undefined
+                }
               />
               {errors.appointment_date && (
                 <p className="absolute left-0 top-full mt-1 text-red-500 text-xs">
