@@ -17,7 +17,13 @@ class ClosedDatesResource extends JsonResource
         return [
             'id' => $this->id,
             'date_closed' => $this->date_closed,
-            'reason' => $this->reason,
+            'closure_scope' => $this->closure_scope,
+            'barber_user_id' => $this->barber_user_id,
+            'barber_name' => $this->barber_name_snapshot,
+            $this->mergeWhen(
+                in_array($request->user()?->role, ['admin', 'manager'], true),
+                ['reason' => $this->reason],
+            ),
             'is_removed' => $this->is_removed,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

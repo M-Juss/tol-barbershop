@@ -72,6 +72,8 @@ test('admin appointment and walk-in creation require the exact matching module',
         'price' => 300,
         'is_walkin' => true,
         'walkin_customer_name' => 'Walkin Customer',
+        'appointment_date' => '2026-07-16',
+        'appointment_time' => '12:30',
     ];
 
     Sanctum::actingAs($appointmentAdmin);
@@ -157,7 +159,7 @@ test('closed dates reject active bookings accept true query values and remain un
     $customer = finalRegressionUser('customer');
     $barber = finalRegressionUser('barber');
     $service = finalRegressionService();
-    Appointment::create([
+    $appointment = Appointment::create([
         'user_id' => $customer->id,
         'service_id' => $service->id,
         'barber_user_id' => $barber->id,
@@ -169,6 +171,17 @@ test('closed dates reject active bookings accept true query values and remain un
         'active_slot_key' => "{$barber->id}|2026-07-17|09:00",
     ]);
     Sanctum::actingAs($manager);
+
+    $this->postJson('/api/v1/closed-dates', [
+        'date_closed' => '2026-07-17',
+        'reason' => 'Maintenance',
+    ])->assertUnprocessable()->assertJsonValidationErrors('date_closed');
+
+    $appointment->update([
+        'status' => 'cancelled',
+        'active_slot_key' => null,
+        'cancelled_at' => now(),
+    ]);
 
     $this->postJson('/api/v1/closed-dates', [
         'date_closed' => '2026-07-17',

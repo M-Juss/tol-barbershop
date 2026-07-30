@@ -59,6 +59,7 @@ class ChangeInformationRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'email.unique' => 'This email address is already registered and cannot be used.',
             'current_password.required' => 'Your current password is required to change your email.',
             'current_password.current_password' => 'Your current password is incorrect.',
         ];

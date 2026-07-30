@@ -1,5 +1,6 @@
-import { cn } from "@/lib/utils";
 import { CalendarDays } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 export type AppointmentStatus =
   | "Approved"
@@ -41,33 +42,67 @@ export function AppointmentCardCustomer({
 }: AppointmentCardCustomerProps) {
   return (
     <div
-      className={cn("border border-gray-200 rounded-xl p-4 flex items-center justify-between", className)}
+      className={cn(
+        "relative rounded-xl border border-gray-200 p-4",
+        className,
+      )}
     >
-      <div className="flex items-center gap-4">
-        <div className="bg-blue-100 rounded-xl p-2.5">
-          <CalendarDays className="text-blue-500 w-5 h-5" strokeWidth={2} />
-        </div>
-        <div>
-          <p className="font-bold text-gray-900 text-base">{service}</p>
-          <p className="text-gray-500 text-sm mt-0.5">Barber: {barber}</p>
-          <span className="flex items-center gap-1.5 text-gray-500 text-sm mt-0.5">
-            Date & Time: {date} at {time}
-          </span>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4">
+        <div className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              Date
+            </p>
+            <div className="flex items-start gap-1.5">
+              <CalendarDays className="mt-0.5 size-3.5 shrink-0 text-blue-500" />
+              <span className="text-sm font-bold leading-tight text-gray-900">
+                {date}
+              </span>
+            </div>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              Time
+            </p>
+            <p className="text-sm font-bold text-blue-600">{time}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              Service
+            </p>
+            <p className="truncate text-xs text-gray-600">{service}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              Barber
+            </p>
+            <p className="truncate pr-2 text-xs text-gray-600">{barber}</p>
+          </div>
           {(status === "Cancelled" || status === "Rejected") && cancellation_reason && (
-            <p className="text-red-500 text-xs mt-1.5">
+            <p className="col-span-2 text-xs text-red-500">
               Reason: {cancellation_reason}
             </p>
           )}
         </div>
+        <div className="min-w-20 text-right">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              Price
+            </p>
+            <p className="text-xl font-extrabold leading-tight text-primary">
+              ₱{Number(price).toLocaleString()}
+            </p>
+          </div>
+        </div>
       </div>
-      <div className="flex flex-col items-end gap-2">
-        <p className="font-bold text-gray-900 text-base sm:text-lg">₱{price}</p>
-        <span
-          className={cn("text-xs font-medium px-3 py-1 rounded-full", statusBadge[status])}
-        >
-          {status}
-        </span>
-      </div>
+      <span
+        className={cn(
+          "absolute right-4 bottom-3 max-w-20 -translate-x-8 truncate rounded-full px-2 py-0.5 text-[10px] font-medium sm:translate-x-0 sm:px-3 sm:py-1 sm:text-xs",
+          statusBadge[status],
+        )}
+      >
+        {status}
+      </span>
     </div>
   );
 }

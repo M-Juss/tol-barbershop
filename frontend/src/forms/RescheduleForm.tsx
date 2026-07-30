@@ -26,7 +26,7 @@ import {
   type OccupiedAppointmentSlot,
 } from "@/services/customer/appointment.api";
 import { sanitizeText } from "@/lib/sanitizer";
-import { generateTimeOptions, isTimeSlotUnavailable } from "@/lib/time-slots";
+import { generateTimeOptions, isTimeSlotUnavailable, formatTime12 } from "@/lib/time-slots";
 import { toast } from "sonner";
 
 const rescheduleSchema = z.object({
@@ -103,17 +103,6 @@ function formatShortDate(date: string): string {
     month: "short",
     day: "numeric",
     year: "numeric",
-  });
-}
-
-function formatTime(time24: string): string {
-  const [hours, minutes] = time24.split(":").map(Number);
-  const d = new Date();
-  d.setHours(hours, minutes, 0, 0);
-  return d.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
   });
 }
 
@@ -317,7 +306,7 @@ export function RescheduleForm({
               <Clock className="w-3.5 h-3.5 text-gray-400" />
               <span className="text-gray-600">
                 <span className="font-medium text-gray-800">Current Time:</span>{" "}
-                {formatTime(appointment.appointment_time)}
+                {formatTime12(appointment.appointment_time)}
               </span>
             </div>
           </div>
@@ -336,7 +325,14 @@ export function RescheduleForm({
                 placeholder="Select a barber"
                 options={barbers}
                 value={selectedBarber}
-                onValueChange={(value) => setValue("barber_user_id", value)}
+                onValueChange={(value) => {
+                  setValue("barber_user_id", value, {
+                    shouldValidate: true,
+                  });
+                  setValue("appointment_date", "");
+                  setValue("appointment_time", "");
+                  setOccupiedSlots([]);
+                }}
                 disabled={loadingData || isSubmitting}
               />
               {errors.barber_user_id && (
@@ -362,6 +358,9 @@ export function RescheduleForm({
                   }
                 }}
                 disabled={!selectedBarber || isSubmitting}
+                barberId={
+                  selectedBarber ? Number(selectedBarber) : undefined
+                }
               />
               {errors.appointment_date && (
                 <p className="absolute left-0 top-full mt-1 text-red-500 text-xs">

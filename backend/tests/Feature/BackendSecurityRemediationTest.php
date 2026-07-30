@@ -83,6 +83,7 @@ test('admin page APIs carry their matching module middleware', function (string 
     expect($route->gatherMiddleware())->toContain("module:{$module}");
 })->with([
     'dashboard' => ['GET', '/api/v1/appointments/overview/stats', 'dashboard'],
+    'dashboard weekly schedule' => ['GET', '/api/v1/appointments/overview/weekly-schedule?date=2026-07-20', 'dashboard'],
     'management' => ['POST', '/api/v1/services', 'management'],
     'appointment' => ['GET', '/api/v1/appointments', 'appointment'],
     'walk-in' => ['GET', '/api/v1/walkins/stats', 'walkin'],
@@ -184,6 +185,41 @@ test('profile updates keep a customer verified when the email is unchanged', fun
 
     expect($customer->fresh()->email_verified_at)->not->toBeNull();
 });
+
+test('profile email updates return a specific error for an email already in the system', function (bool $deactivated) {
+    $customer = User::factory()->create([
+        'email' => 'profile-owner@example.test',
+        'password' => 'current-password',
+    ]);
+    $existing = User::factory()->create([
+        'email' => $deactivated
+            ? 'deactivated-profile-email@example.test'
+            : 'active-profile-email@example.test',
+    ]);
+
+    if ($deactivated) {
+        $existing->delete();
+    }
+
+    Sanctum::actingAs($customer);
+
+    $this->putJson('/api/v1/change-information', [
+        'fullname' => $customer->fullname,
+        'email' => $existing->email,
+        'contact_number' => $customer->contact_number,
+        'current_password' => 'current-password',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonPath(
+            'errors.email.0',
+            'This email address is already registered and cannot be used.',
+        );
+
+    expect($customer->fresh()->email)->toBe('profile-owner@example.test');
+})->with([
+    'active email' => false,
+    'deactivated email' => true,
+]);
 
 test('password changes preserve the current token and revoke other sessions and tokens', function () {
     config()->set('session.driver', 'database');

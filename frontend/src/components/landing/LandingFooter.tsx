@@ -12,11 +12,11 @@ export function LandingFooter() {
         <div className="flex flex-col">
           <div className="flex items-center gap-3 mb-5 ">
             <Image
-              src="/Tol-Logo-White-Bg.png"
-              alt="Logo"
+              src="/tol-rounded-logo.png"
+              alt="TOL Barbershop logo"
               height={35}
               width={35}
-              className="rounded-lg"
+              className="rounded-3xl shadow-md shadow-black/20"
             />
             <p className="text-xl font-semibold ">TOL Barbershop</p>
           </div>

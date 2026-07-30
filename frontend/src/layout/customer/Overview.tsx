@@ -28,6 +28,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { formatTime12 } from "@/lib/time-slots";
 import {
   Dialog,
   DialogContent,
@@ -51,17 +52,6 @@ function formatDate(date: string): string {
     month: "short",
     day: "numeric",
     year: "numeric",
-  });
-}
-
-function formatTime(time24: string): string {
-  const [hours, minutes] = time24.split(":").map(Number);
-  const d = new Date();
-  d.setHours(hours, minutes, 0, 0);
-  return d.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
   });
 }
 
@@ -208,13 +198,13 @@ export function Overview() {
           price: Number(appointment.price) || 0,
           status: "Approved",
           date: formatDate(appointment.appointment_date),
-          time: formatTime(appointment.appointment_time),
+          time: formatTime12(appointment.appointment_time),
         })),
     [appointments],
   );
 
   return (
-    <div className="w-full h-full bg-slate-100 p-4 sm:p-6 pb-24 font-sans">
+    <div className="w-full h-fit bg-slate-100 p-4 sm:p-6 font-sans">
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
           Overview

@@ -81,16 +81,7 @@ class AppointmentBookingService
             }
         }
 
-        $isClosed = ClosedDates::where('date_closed', $appointmentDate)
-            ->where('is_removed', false)
-            ->lockForUpdate()
-            ->first(['id']);
-
-        if ($isClosed) {
-            throw ValidationException::withMessages([
-                'appointment_date' => 'The barbershop is closed on the selected date.',
-            ]);
-        }
+        $this->assertDateAvailableAndLock($barberUserId, $appointmentDate);
 
         $ignoreAppointmentIds = collect($ignoreAppointmentIds)
             ->map(fn (int|string $id): int => (int) $id)
@@ -128,8 +119,9 @@ class AppointmentBookingService
 
             foreach ($occupiedIntervals as $occupied) {
                 if ($start < $occupied['end'] && $end > $occupied['start']) {
+                    $time12 = CarbonImmutable::parse($slot['appointment_time'])->format('g:i A');
                     throw ValidationException::withMessages([
-                        $slot['field'] => "The time slot {$slot['appointment_time']} overlaps another appointment.",
+                        $slot['field'] => "The time slot {$time12} overlaps another appointment.",
                     ]);
                 }
             }
@@ -264,6 +256,36 @@ class AppointmentBookingService
     public function activeSlotKey(int $barberUserId, string $appointmentDate, string $appointmentTime): string
     {
         return $barberUserId.'|'.$appointmentDate.'|'.substr($appointmentTime, 0, 5);
+    }
+
+    public function assertDateAvailableAndLock(int $barberUserId, string $appointmentDate): void
+    {
+        $closure = ClosedDates::query()
+            ->where('date_closed', $appointmentDate)
+            ->where('is_removed', false)
+            ->where(function ($query) use ($barberUserId): void {
+                $query
+                    ->where('closure_scope', 'shop')
+                    ->orWhere(function ($barberQuery) use ($barberUserId): void {
+                        $barberQuery
+                            ->where('closure_scope', 'barber')
+                            ->where('barber_user_id', $barberUserId);
+                    });
+            })
+            ->lockForUpdate()
+            ->first(['closure_scope']);
+
+        if (! $closure) {
+            return;
+        }
+
+        $message = $closure->closure_scope === 'barber'
+            ? 'The selected barber is not working on this date.'
+            : 'The barbershop is closed on the selected date.';
+
+        throw ValidationException::withMessages([
+            'appointment_date' => $message,
+        ]);
     }
 
     private function parseBookingDate(string $value): CarbonImmutable

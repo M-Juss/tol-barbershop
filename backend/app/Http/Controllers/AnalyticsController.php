@@ -3,12 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\AnalyticsPeriodRequest;
+use App\Http\Requests\AnalyticsReportRequest;
 use App\Models\Appointment;
+use App\Services\AnalyticsReportService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class AnalyticsController extends Controller
 {
+    private AnalyticsReportService $reportService;
+
+    public function __construct(AnalyticsReportService $reportService)
+    {
+        $this->reportService = $reportService;
+    }
+
     private function getDateRange(string $period): array
     {
         $today = Carbon::today();
@@ -235,12 +244,7 @@ class AnalyticsController extends Controller
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
             ->get()
-            ->groupBy(fn ($appointment) => sprintf('%02d:00', (int) substr($appointment->appointment_time, 0, 2)))
-            ->filter(function ($appointments, $hour) {
-                $hourValue = (int) substr($hour, 0, 2);
-
-                return $hourValue >= 9 && $hourValue <= 19;
-            })
+            ->groupBy(fn ($appointment) => substr((string) $appointment->appointment_time, 0, 5))
             ->map(fn ($appointments, $hour) => [
                 'hour' => $hour,
                 'count' => $appointments->count(),
@@ -278,125 +282,53 @@ class AnalyticsController extends Controller
         return response()->json($result);
     }
 
-    public function reports(AnalyticsPeriodRequest $request)
+    public function reports(AnalyticsReportRequest $request)
     {
+        $section = $request->section();
         $period = $request->period();
-        $range = $this->getDateRange($period);
+        $comparison = $request->comparison();
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
 
-        $appointments = Appointment::withTrashed()
-            ->with(['service:id,name', 'barber:id,fullname'])
-            ->where('appointment_date', '>=', $range['from'])
-            ->where('appointment_date', '<', $range['end_exclusive'])
-            ->get();
+        $range = $this->reportService->getDateRange($period, $startDate, $endDate);
+        $compRange = $this->reportService->getComparisonRange($range, $comparison);
 
-        $completed = $appointments->where('status', 'completed');
-        $cancelled = $appointments->where('status', 'cancelled');
-        $noShow = $appointments->where('status', 'no_show');
-
-        $totalRevenue = (float) $completed->sum('price');
-        $completedCount = $completed->count();
-        $cancelledCount = $cancelled->count();
-        $noShowCount = $noShow->count();
-        $totalCustomers = $appointments->pluck('user_id')->unique()->count();
-
-        $avgRating = DB::table('appointment_feedback')
-            ->join('appointments', 'appointments.id', '=', 'appointment_feedback.appointment_id')
-            ->where('appointments.appointment_date', '>=', $range['from'])
-            ->where('appointments.appointment_date', '<', $range['end_exclusive'])
-            ->avg('appointment_feedback.rating');
-
-        $walkinCount = $appointments->where('is_walkin', true)->count();
-        $completionRate = ($completedCount + $cancelledCount + $noShowCount) > 0
-            ? round(($completedCount / ($completedCount + $cancelledCount + $noShowCount)) * 100, 1)
-            : 0;
-
-        $revenue = $completed
-            ->groupBy(fn ($a) => $this->getGroupLabel($a->appointment_date, $period))
-            ->map(fn ($appts, $label) => ['label' => (string) $label, 'value' => (float) $appts->sum('price')])
-            ->sortBy('label')->values();
-
-        $appointmentTrend = $appointments
-            ->groupBy(fn ($a) => $this->getGroupLabel($a->appointment_date, $period))
-            ->map(fn ($appts, $label) => [
-                'label' => (string) $label,
-                'completed' => $appts->where('status', 'completed')->count(),
-                'cancelled' => $appts->where('status', 'cancelled')->count(),
-                'no_show' => $appts->where('status', 'no_show')->count(),
-            ])
-            ->sortBy('label')->values();
-
-        $servicePerformance = $completed
-            ->groupBy(fn ($a) => $a->service?->name ?? 'Unknown')
-            ->map(fn ($appts, $name) => [
-                'service_name' => $name,
-                'completed_count' => $appts->count(),
-                'revenue' => (float) $appts->sum('price'),
-            ])->values();
-
-        $barberPerformance = $appointments->whereIn('status', ['completed', 'cancelled', 'no_show'])
-            ->groupBy(fn ($a) => $a->barber?->fullname ?? 'Unknown')
-            ->map(function ($appts, $name) {
-                $completedAppts = $appts->where('status', 'completed');
-
-                return [
-                    'barber_name' => $name,
-                    'completed_count' => $completedAppts->count(),
-                    'revenue' => (float) $completedAppts->sum('price'),
-                    'total_appointments' => $appts->count(),
-                ];
-            })->values();
-
-        $ratingRows = DB::table('appointment_feedback')
-            ->select('rating', DB::raw('COUNT(*) as count'))
-            ->join('appointments', 'appointments.id', '=', 'appointment_feedback.appointment_id')
-            ->where('appointments.appointment_date', '>=', $range['from'])
-            ->where('appointments.appointment_date', '<', $range['end_exclusive'])
-            ->groupBy('rating')->orderBy('rating')->get()->keyBy('rating');
-
-        $ratingDistribution = [];
-        for ($i = 1; $i <= 5; $i++) {
-            $ratingDistribution[] = ['rating' => $i, 'count' => (int) ($ratingRows->get($i)?->count ?? 0)];
-        }
-
-        $peakHours = $appointments->whereIn('status', ['completed', 'approved'])
-            ->groupBy(fn ($a) => sprintf('%02d:00', (int) substr($a->appointment_time, 0, 2)))
-            ->filter(fn ($appts, $hour) => ((int) substr($hour, 0, 2)) >= 9 && ((int) substr($hour, 0, 2)) <= 19)
-            ->map(fn ($appts, $hour) => ['hour' => $hour, 'count' => $appts->count()])
-            ->sortBy('hour')->values();
-
-        $dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        $dayGroups = $appointments->groupBy(fn ($a) => $a->appointment_date->dayOfWeekIso - 1);
-        $dayOfWeek = [];
-        for ($i = 0; $i < 7; $i++) {
-            $dayData = $dayGroups->get($i, collect());
-            $dayOfWeek[] = [
-                'day' => $dayNames[$i],
-                'day_index' => $i,
-                'completed' => $dayData->where('status', 'completed')->count(),
-                'cancelled' => $dayData->where('status', 'cancelled')->count(),
-                'no_show' => $dayData->where('status', 'no_show')->count(),
-                'total' => $dayData->count(),
-            ];
-        }
+        $data = match ($section) {
+            'overview' => $this->reportService->getOverview($range, $compRange),
+            'revenue' => $this->reportService->getRevenue($range, $compRange),
+            'appointments' => $this->reportService->getAppointments($range, $compRange),
+            'services' => $this->reportService->getServices($range, $compRange),
+            'barbers' => $this->reportService->getBarbers($range, $compRange),
+            'customers' => $this->reportService->getCustomers($range, $compRange),
+            'all' => [
+                'overview' => $this->reportService->getOverview($range),
+                'revenue' => $this->reportService->getRevenue($range),
+                'appointments' => $this->reportService->getAppointments($range),
+                'services' => $this->reportService->getServices($range),
+                'barbers' => $this->reportService->getBarbers($range),
+                'customers' => $this->reportService->getCustomers($range),
+            ],
+            default => $this->reportService->getOverview($range, $compRange),
+        };
 
         return response()->json([
-            'kpi' => [
-                'total_revenue' => $totalRevenue,
-                'completed_appointments' => $completedCount,
-                'average_rating' => $avgRating ? round((float) $avgRating, 1) : 0,
-                'total_customers' => $totalCustomers,
-                'completion_rate' => $completionRate,
-                'walkin_count' => $walkinCount,
-                'cancelled_count' => $cancelledCount,
-                'date_range' => ['from' => $range['from'], 'to' => $range['to']],
+            'meta' => [
+                'section' => $section,
+                'period' => $period,
+                'comparison' => $comparison,
+                'date_range' => [
+                    'from' => $range['from'],
+                    'to' => $range['to'],
+                ],
+                'comparison_range' => $compRange ? [
+                    'from' => $compRange['from'],
+                    'to' => $compRange['to'],
+                ] : null,
+                'granularity' => $range['granularity'],
+                'earliest_date' => $this->reportService->getEarliestDate(),
+                'timezone' => 'Asia/Manila',
             ],
-            'revenue' => $revenue,
-            'appointments' => $appointmentTrend,
-            'services' => $servicePerformance,
-            'barbers' => $barberPerformance,
-            'ratings' => $ratingDistribution,
-            'peak_hours' => $peakHours,
-            'day_of_week' => $dayOfWeek,
+            'data' => $data,
         ]);
     }
 }

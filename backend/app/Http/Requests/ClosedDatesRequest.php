@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\SanitizesInput;
+use Carbon\Carbon;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -22,6 +23,10 @@ class ClosedDatesRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->sanitizeTextFields(['reason']);
+
+        if (! $this->has('closure_scope')) {
+            $this->merge(['closure_scope' => 'shop']);
+        }
     }
 
     /**
@@ -31,16 +36,24 @@ class ClosedDatesRequest extends FormRequest
      */
     public function rules(): array
     {
-        $closedDateId = $this->route('closed_date') ?? $this->route('id');
+        $today = Carbon::today((string) config('app.shop_timezone', 'Asia/Manila'))->toDateString();
 
         return [
             'date_closed' => [
                 'required',
                 'date_format:Y-m-d',
-                Rule::unique('closed_dates', 'date_closed')->ignore($closedDateId),
+                'after_or_equal:'.$today,
+            ],
+            'closure_scope' => ['required', Rule::in(['shop', 'barber'])],
+            'barber_user_id' => [
+                Rule::requiredIf($this->input('closure_scope') === 'barber'),
+                'nullable',
+                'integer',
+                Rule::exists('users', 'id')->where(fn ($query) => $query
+                    ->where('role', 'barber')
+                    ->where('is_active', true)),
             ],
             'reason' => ['required', 'string', 'max:255'],
-            'is_removed' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -48,10 +61,12 @@ class ClosedDatesRequest extends FormRequest
     {
         return [
             'date_closed.required' => 'Date is required',
-            'date_closed.date' => 'Date must be a valid date',
+            'date_closed.date_format' => 'Date must use the Y-m-d format',
+            'date_closed.after_or_equal' => 'Closed dates cannot be in the past',
+            'closure_scope.required' => 'Closure type is required',
+            'barber_user_id.required' => 'Barber is required',
             'reason.required' => 'Reason is required',
             'reason.string' => 'Reason must be a string',
-            'is_removed.boolean' => 'Is removed must be a boolean',
         ];
     }
 }

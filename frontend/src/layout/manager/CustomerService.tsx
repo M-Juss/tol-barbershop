@@ -41,7 +41,6 @@ const CancelTicketDialog = dynamic(
 );
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { cn } from "@/lib/utils";
 import { startPolling } from "@/lib/polling";
 import { formatTicketId } from "@/lib/booking";
@@ -105,7 +104,6 @@ function isTerminalTicketCurrent(
 
 export function CustomerService() {
   const { user: authUser } = useAuth();
-  const isPageVisible = usePageVisibility();
   const [queue, setQueue] = useState<QueueResponse | null>(null);
   const [myActiveTicket, setMyActiveTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
@@ -201,17 +199,16 @@ export function CustomerService() {
         if (!myTicket) return null;
         return current?.id === myTicket.id ? current : myTicket;
       });
-    } catch {
+    } catch (error) {
+      if (signal && !allowDuringMutation) throw error;
     } finally {
       setLoading(false);
     }
   }, [authUser?.id]);
 
   useEffect(() => {
-    if (!isPageVisible) return;
-
     return startPolling(fetchQueue, 10000);
-  }, [fetchQueue, isPageVisible]);
+  }, [fetchQueue]);
 
   useEffect(() => {
     if (myActiveTicket && prevMyActiveTicketRef.current === null) {
@@ -253,14 +250,17 @@ export function CustomerService() {
           ...data.map((message) => message.id),
         );
       }
-    } catch {}
+    } catch (error) {
+      if (signal?.aborted) return;
+      throw error;
+    }
   }, [activeTicketId]);
 
   useEffect(() => {
-    const shouldPollMessages = activeTicketId !== null && tabView === "chat" && isPageVisible;
+    const shouldPollMessages = activeTicketId !== null && tabView === "chat";
 
     if (shouldPollMessages) {
-      return startPolling(fetchMessages, 5000);
+      return startPolling(fetchMessages, 3000);
     }
 
     if (activeTicketId === null) {
@@ -268,7 +268,7 @@ export function CustomerService() {
       messageTicketIdRef.current = null;
       lastMessageIdRef.current = 0;
     }
-  }, [activeTicketId, fetchMessages, isPageVisible, tabView]);
+  }, [activeTicketId, fetchMessages, tabView]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -443,7 +443,8 @@ export function CustomerService() {
       ) {
         historyCheckedAtRef.current = data.checked_at;
       }
-    } catch {
+    } catch (error) {
+      if (updatedAfter) throw error;
     } finally {
       if (!updatedAfter && page === 1 && !signal?.aborted) {
         setHistoryLoading(false);
@@ -478,14 +479,14 @@ export function CustomerService() {
   }, [refreshHistory]);
 
   useEffect(() => {
-    if (tabView !== "history" || !isPageVisible) return;
+    if (tabView !== "history") return;
 
     return startPolling(async (signal) => {
       const updatedAfter = historyCheckedAtRef.current;
       if (!updatedAfter) return;
       await fetchHistory(signal, updatedAfter);
     }, 60000);
-  }, [fetchHistory, isPageVisible, tabView]);
+  }, [fetchHistory, tabView]);
 
   const handleTabChange = (tab: TabView) => {
     tabViewRef.current = tab;

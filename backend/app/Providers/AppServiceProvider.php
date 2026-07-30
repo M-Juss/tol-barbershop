@@ -28,30 +28,47 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $clientKey = function (Request $request): string {
-            $forwardedFor = trim(explode(',', (string) $request->header('x-vercel-forwarded-for'))[0]);
-
-            if ($request->headers->has('x-vercel-id') && filter_var($forwardedFor, FILTER_VALIDATE_IP)) {
-                return $forwardedFor;
-            }
-
-            return (string) $request->ip();
-        };
         $emailKey = fn (Request $request, string $field): string => hash(
             'sha256',
             $request->ip().'|'.Str::lower(trim((string) $request->input($field))),
         );
 
+        $userId = fn (Request $request): string => (string) $request->user()->getAuthIdentifier();
+        $routeKey = fn (Request $request): string => (string) (
+            $request->route()?->getName()
+            ?? $request->route()?->uri()
+            ?? 'unknown'
+        );
+
         RateLimiter::for('login', fn (Request $request): array => [
             Limit::perMinute(10)->by('login-email:'.hash('sha256', Str::lower(trim((string) $request->input('email'))))),
-            Limit::perMinute(120)->by('login-client:'.hash('sha256', $clientKey($request))),
+            Limit::perMinute(120)->by('login-client:'.hash('sha256', $request->ip())),
         ]);
         RateLimiter::for('register', fn (Request $request): array => [
             Limit::perMinute(5)->by('register-email:'.hash('sha256', Str::lower(trim((string) $request->input('email'))))),
-            Limit::perMinute(30)->by('register-client:'.hash('sha256', $clientKey($request))),
+            Limit::perMinute(30)->by('register-client:'.hash('sha256', $request->ip())),
         ]);
-        RateLimiter::for('public-read', fn (Request $request): Limit => Limit::perMinute(300)
-            ->by('public-read:'.hash('sha256', $clientKey($request))));
+        RateLimiter::for('public-read', fn (Request $request): Limit => Limit::perMinute(600)
+            ->by('public-read:'.$request->ip().':'.$routeKey($request)));
+
+        RateLimiter::for('polling', fn (Request $request): Limit => Limit::perMinute(600)
+            ->by('poll:'.$userId($request).':'.$routeKey($request)));
+
+        RateLimiter::for('authenticated-read', fn (Request $request): Limit => Limit::perMinute(600)
+            ->by('read:'.$userId($request).':'.$routeKey($request)));
+
+        RateLimiter::for('authenticated-write', fn (Request $request): Limit => Limit::perMinute(30)
+            ->by('write:'.$userId($request)));
+
+        RateLimiter::for('booking-action', fn (Request $request): Limit => Limit::perMinute(30)
+            ->by('booking:'.$userId($request)));
+
+        RateLimiter::for('support-message', fn (Request $request): Limit => Limit::perMinute(60)
+            ->by('support-msg:'.$userId($request)));
+
+        RateLimiter::for('logout', fn (Request $request): Limit => Limit::perMinute(30)
+            ->by('logout:'.$userId($request)));
+
         RateLimiter::for('verification-link', fn (Request $request): Limit => Limit::perMinute(6)
             ->by(hash('sha256', $request->ip().'|'.$request->route('id'))));
         RateLimiter::for('verification-resend', fn (Request $request): Limit => Limit::perMinute(6)

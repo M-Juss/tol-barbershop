@@ -1,5 +1,9 @@
 import { authFetch } from "@/lib/api";
 
+export const NOTIFICATION_PROMPT_DISMISSED_KEY =
+  "notification_prompt_dismissed";
+const BROWSER_PUSH_PREFERENCE_PREFIX = "browser_push_enabled_user:";
+
 export interface PushSubscriptionKeys {
   p256dh: string;
   auth: string;
@@ -8,6 +12,25 @@ export interface PushSubscriptionKeys {
 export interface PushSubscriptionData {
   endpoint: string;
   keys: PushSubscriptionKeys;
+}
+
+function browserPushPreferenceKey(userId: number): string {
+  return `${BROWSER_PUSH_PREFERENCE_PREFIX}${userId}`;
+}
+
+export function isBrowserPushEnabledForUser(userId: number): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(browserPushPreferenceKey(userId)) === "1";
+}
+
+export function rememberBrowserPushEnabledForUser(userId: number): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(browserPushPreferenceKey(userId), "1");
+}
+
+export function forgetBrowserPushEnabledForUser(userId: number): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(browserPushPreferenceKey(userId));
 }
 
 export function isPushSupported(): boolean {
@@ -109,7 +132,10 @@ export async function enableBrowserPush(): Promise<boolean> {
     return false;
   }
 
-  const permission = await Notification.requestPermission();
+  const permission =
+    Notification.permission === "granted"
+      ? "granted"
+      : await Notification.requestPermission();
   if (permission !== "granted") {
     return false;
   }
@@ -151,6 +177,15 @@ export async function disableBrowserPush(): Promise<void> {
   } catch {}
 
   await subscription.unsubscribe();
+}
+
+export async function unsubscribeBrowserPushLocally(): Promise<void> {
+  if (!isPushSupported()) return;
+
+  const subscription = await getBrowserPushSubscription();
+  if (subscription) {
+    await subscription.unsubscribe();
+  }
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer | null): string {

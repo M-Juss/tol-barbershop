@@ -22,11 +22,11 @@ export function LandingHeader() {
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
           <div className="flex items-center space-x-2">
             <Image
-              src="/Tol-Logo-White-Bg.png"
+              src="/tol-rounded-logo.png"
               alt="TOL Barbershop logo"
               height={38}
               width={38}
-              className="rounded-lg shadow-md shadow-black/20"
+              className="rounded-3xl shadow-md shadow-black/20"
             />
             <p className="font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.55)]">
               TOL Barbershop

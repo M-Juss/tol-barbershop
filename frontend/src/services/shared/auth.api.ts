@@ -92,9 +92,12 @@ export const loginRequest = async (data: {
   });
 };
 
-export const logoutRequest = async () => {
+export const logoutRequest = async (pushEndpoint?: string) => {
   return authFetch(`${process.env.NEXT_PUBLIC_API_URL}/logout`, {
     method: "POST",
+    body: pushEndpoint
+      ? JSON.stringify({ push_endpoint: pushEndpoint })
+      : undefined,
   });
 };
 

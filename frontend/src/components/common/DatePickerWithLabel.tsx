@@ -29,6 +29,7 @@ type DatePickerWithLabelProps = {
   maxDaysAhead?: number;
   disableSundays?: boolean;
   disabled?: boolean;
+  barberId?: number;
 };
 
 export function DatePickerWithLabel({
@@ -41,12 +42,12 @@ export function DatePickerWithLabel({
   maxDaysAhead,
   disableSundays = true,
   disabled = false,
+  barberId,
 }: DatePickerWithLabelProps) {
   const [open, setOpen] = useState(false);
-  const [internalDate, setInternalDate] = useState<Date | undefined>(undefined);
   const [closedDates, setClosedDates] = useState<string[]>([]);
 
-  const selectedDate = date ?? internalDate;
+  const selectedDate = date;
 
   const { today, maxDate } = useMemo(() => {
     const start = new Date();
@@ -63,7 +64,12 @@ export function DatePickerWithLabel({
   useEffect(() => {
     const fetchClosedDates = async () => {
       try {
-        const response = await getClosedDates(1, 100);
+        const response = await getClosedDates(
+          1,
+          100,
+          barberId ? "availability" : "shop",
+          barberId,
+        );
         if (response && response.data) {
           const dates = response.data.map(
             (closedDate) => closedDate.date_closed,
@@ -76,13 +82,10 @@ export function DatePickerWithLabel({
     };
 
     fetchClosedDates();
-  }, []);
+  }, [barberId]);
 
   function handleDateSelect(nextDate: Date | undefined) {
     if (!nextDate) return;
-    if (date === undefined) {
-      setInternalDate(nextDate);
-    }
     onDateChange?.(nextDate);
     setOpen(false);
   }

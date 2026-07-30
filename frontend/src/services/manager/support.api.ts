@@ -53,9 +53,12 @@ export const getQueueHistory = async (
   return response.data;
 };
 
-export const getWaitingCount = async (): Promise<number> => {
+export const getWaitingCount = async (
+  signal?: AbortSignal,
+): Promise<number> => {
   const response = await authFetch(
     `${process.env.NEXT_PUBLIC_API_URL}/support/queue/count`,
+    { signal },
   );
   return response.data.count;
 };

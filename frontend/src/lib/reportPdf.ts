@@ -2,29 +2,20 @@ import { jsPDF } from "jspdf";
 import autoTable, { type UserOptions } from "jspdf-autotable";
 
 import { sanitizeString } from "@/lib/sanitizer";
+import { formatTime12 } from "@/lib/time-slots";
 import type {
   AnalyticsKPI,
   AppointmentVolumePoint,
   BarberStat,
   DayOfWeekStat,
   PeakHourStat,
-  Period,
+  ReportGranularity,
+  ReportPeriod,
   RatingStat,
   ServiceStat,
   TimeSeriesPoint,
+  CompleteReportResponse,
 } from "@/services/manager/analytics.api";
-
-type AnalyticsReportData = {
-  period: Period;
-  kpi: AnalyticsKPI;
-  revenueData: TimeSeriesPoint[];
-  appointmentData: AppointmentVolumePoint[];
-  serviceData: ServiceStat[];
-  barberData: BarberStat[];
-  ratingData: RatingStat[];
-  peakHourData: PeakHourStat[];
-  dayOfWeekData: DayOfWeekStat[];
-};
 
 type ReportDocument = jsPDF & {
   lastAutoTable?: {
@@ -46,26 +37,37 @@ const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
 const TABLE_TOP_MARGIN = 23;
 const TABLE_BOTTOM_MARGIN = 18;
 
-const periodLabels: Record<Period, string> = {
-  daily: "7 Days",
-  weekly: "12 Weeks",
-  monthly: "12 Months",
-  yearly: "5 Years",
+const periodLabels: Record<ReportPeriod, string> = {
+  daily: "Last 7 Days",
+  weekly: "Last 12 Weeks",
+  monthly: "Last 12 Months",
+  yearly: "Last 5 Years",
+  "7_days": "Last 7 Days",
+  "30_days": "Last Month",
+  "3_months": "Last 3 Months",
+  "6_months": "Last 6 Months",
+  "12_months": "Last 12 Months",
+  custom: "Custom Range",
 };
 
-function formatCurrency(value: number): string {
-  return `PHP ${value.toLocaleString("en-PH", {
+function toFiniteNumber(value: unknown): number {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function formatCurrency(value: unknown): string {
+  return `PHP ${toFiniteNumber(value).toLocaleString("en-PH", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 }
 
-function formatCount(value: number): string {
-  return value.toLocaleString("en-PH");
+function formatCount(value: unknown): string {
+  return toFiniteNumber(value).toLocaleString("en-PH");
 }
 
-function formatPercent(value: number): string {
-  return `${value.toFixed(1)}%`;
+function formatPercent(value: unknown): string {
+  return `${toFiniteNumber(value).toFixed(1)}%`;
 }
 
 function calculatePercent(value: number, total: number): number {
@@ -80,8 +82,8 @@ function formatDate(value: string): string {
   });
 }
 
-function formatBucketLabel(label: string, period: Period): string {
-  if (period === "daily") {
+function formatBucketLabel(label: string, granularity: ReportGranularity): string {
+  if (granularity === "daily") {
     return new Date(`${label}T00:00:00`).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -89,12 +91,11 @@ function formatBucketLabel(label: string, period: Period): string {
     });
   }
 
-  if (period === "weekly") {
-    const [year, week] = label.split("-");
-    return `Week ${Number(week)}, ${year}`;
+  if (granularity === "weekly") {
+    return `Week of ${formatDate(label)}`;
   }
 
-  if (period === "monthly") {
+  if (granularity === "monthly") {
     const [year, month] = label.split("-");
     return new Date(Number(year), Number(month) - 1).toLocaleDateString(
       "en-US",
@@ -102,57 +103,7 @@ function formatBucketLabel(label: string, period: Period): string {
     );
   }
 
-  return label;
-}
-
-function getIsoWeekLabel(date: Date): string {
-  const target = new Date(date);
-  const day = target.getUTCDay() || 7;
-  target.setUTCDate(target.getUTCDate() + 4 - day);
-  const year = target.getUTCFullYear();
-  const yearStart = new Date(Date.UTC(year, 0, 1));
-  const week = Math.ceil(
-    ((target.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7,
-  );
-  return `${year}-${String(week).padStart(2, "0")}`;
-}
-
-function getExpectedBucketLabels(
-  period: Period,
-  range: AnalyticsKPI["date_range"],
-): string[] {
-  const [fromYear, fromMonth, fromDay] = range.from.split("-").map(Number);
-  const [toYear, toMonth, toDay] = range.to.split("-").map(Number);
-  const cursor = new Date(Date.UTC(fromYear, fromMonth - 1, fromDay));
-  const end = new Date(Date.UTC(toYear, toMonth - 1, toDay));
-  const labels: string[] = [];
-
-  while (cursor <= end) {
-    if (period === "daily") {
-      labels.push(cursor.toISOString().slice(0, 10));
-      cursor.setUTCDate(cursor.getUTCDate() + 1);
-    } else if (period === "weekly") {
-      labels.push(getIsoWeekLabel(cursor));
-      cursor.setUTCDate(cursor.getUTCDate() + 7);
-    } else if (period === "monthly") {
-      labels.push(
-        `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}`,
-      );
-      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
-    } else {
-      labels.push(String(cursor.getUTCFullYear()));
-      cursor.setUTCFullYear(cursor.getUTCFullYear() + 1);
-    }
-  }
-
-  return labels;
-}
-
-function formatHour(value: string): string {
-  const [hourValue, minute = "00"] = value.split(":");
-  const hour = Number(hourValue);
-  const suffix = hour >= 12 ? "PM" : "AM";
-  return `${hour % 12 || 12}:${minute} ${suffix}`;
+  return label.slice(0, 4);
 }
 
 function findHighest<T>(items: T[], value: (item: T) => number): T | null {
@@ -208,7 +159,7 @@ function baseTableOptions(): UserOptions {
   };
 }
 
-function drawPageHeader(doc: jsPDF, period: Period): void {
+function drawPageHeader(doc: jsPDF, period: ReportPeriod): void {
   doc.setFillColor(...NAVY);
   doc.rect(0, 0, PAGE_WIDTH, 15, "F");
   doc.setFillColor(...RED);
@@ -231,7 +182,7 @@ function drawPageHeader(doc: jsPDF, period: Period): void {
 
 function drawPageFooters(
   doc: jsPDF,
-  period: Period,
+  period: ReportPeriod,
   range: AnalyticsKPI["date_range"],
 ): void {
   const pages = doc.getNumberOfPages();
@@ -281,7 +232,7 @@ async function loadLogo(): Promise<string | null> {
 
 function drawCoverHeader(
   doc: jsPDF,
-  period: Period,
+  period: ReportPeriod,
   range: AnalyticsKPI["date_range"],
   logo: string | null,
 ): void {
@@ -364,29 +315,114 @@ function addPage(doc: jsPDF): number {
   return 28;
 }
 
-export async function downloadAnalyticsReportPdf({
-  period,
-  kpi,
-  revenueData,
-  appointmentData,
-  serviceData,
-  barberData,
-  ratingData,
-  peakHourData,
-  dayOfWeekData,
-}: AnalyticsReportData): Promise<void> {
+export async function downloadAnalyticsReportPdf(
+  report: CompleteReportResponse,
+): Promise<void> {
+  const { meta, data } = report;
+  const period = meta.period;
+  const granularity = meta.granularity;
+  const {
+    overview: overviewRaw,
+    revenue: revenueRaw,
+    appointments: appointmentRaw,
+    services: serviceRaw,
+    barbers: barberRaw,
+    customers: customersRaw,
+  } = data;
+
+  const kpi: AnalyticsKPI = {
+    total_revenue: toFiniteNumber(
+      overviewRaw.total_revenue ?? revenueRaw.total_revenue,
+    ),
+    completed_appointments: toFiniteNumber(
+      overviewRaw.completed_appointments ?? appointmentRaw.completed,
+    ),
+    average_rating: toFiniteNumber(
+      overviewRaw.average_rating ?? customersRaw.average_rating,
+    ),
+    total_customers: toFiniteNumber(
+      overviewRaw.total_customers ?? customersRaw.total_customers_served,
+    ),
+    completion_rate: toFiniteNumber(
+      overviewRaw.completion_rate ?? appointmentRaw.completion_rate,
+    ),
+    walkin_count: toFiniteNumber(appointmentRaw.walkin_count),
+    cancelled_count: toFiniteNumber(
+      overviewRaw.cancelled_count ?? appointmentRaw.cancelled,
+    ),
+    date_range: meta.date_range,
+  };
+
+  const revenueSeries: TimeSeriesPoint[] =
+    revenueRaw.by_date?.map((point) => ({
+      label: point.date,
+      value: toFiniteNumber(point.value),
+    })) ?? [];
+  const appointmentSeries: AppointmentVolumePoint[] =
+    appointmentRaw.by_date?.map((point) => ({
+      label: point.date,
+      completed: toFiniteNumber(point.completed),
+      cancelled: toFiniteNumber(point.cancelled),
+      no_show: toFiniteNumber(point.no_show),
+    })) ?? [];
+  const serviceStats: ServiceStat[] =
+    serviceRaw.services?.map((service) => ({
+      service_name: service.service_name,
+      completed_count: toFiniteNumber(service.completed_count),
+      revenue: toFiniteNumber(service.revenue),
+    })) ?? [];
+  const barberStats: BarberStat[] =
+    barberRaw.barbers?.map((barber) => ({
+      barber_name: barber.barber_name,
+      completed_count: toFiniteNumber(barber.completed_count),
+      revenue: toFiniteNumber(barber.revenue),
+      total_appointments: toFiniteNumber(barber.total_appointments),
+    })) ?? [];
+  const rawRatingStats: RatingStat[] =
+    customersRaw.rating_distribution?.map((rating) => ({
+      rating: toFiniteNumber(rating.rating),
+      count: toFiniteNumber(rating.count),
+    })) ?? [];
+  const ratingCounts = rawRatingStats.reduce<Map<number, number>>(
+    (counts, item) => {
+      if (item.rating >= 1 && item.rating <= 5) {
+        counts.set(item.rating, (counts.get(item.rating) ?? 0) + item.count);
+      }
+
+      return counts;
+    },
+    new Map(),
+  );
+  const ratingStats: RatingStat[] = [5, 4, 3, 2, 1].map((rating) => ({
+    rating,
+    count: ratingCounts.get(rating) ?? 0,
+  }));
+  const peakHourStats: PeakHourStat[] =
+    appointmentRaw.peak_hours?.map((peakHour) => ({
+      hour: peakHour.hour,
+      count: toFiniteNumber(peakHour.count),
+    })) ?? [];
+  const dayOfWeekStats: DayOfWeekStat[] =
+    appointmentRaw.by_day_of_week?.map((day) => ({
+      day: day.day,
+      day_index: toFiniteNumber(day.day_index),
+      completed: toFiniteNumber(day.completed),
+      cancelled: toFiniteNumber(day.cancelled),
+      no_show: toFiniteNumber(day.no_show),
+      total: toFiniteNumber(day.total),
+    })) ?? [];
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }) as ReportDocument;
   const logo = await loadLogo();
-  const ratingCount = ratingData.reduce((sum, item) => sum + item.count, 0);
-  const totalCompleted = appointmentData.reduce(
+  const ratingCount = ratingStats.reduce((sum, item) => sum + item.count, 0);
+  const totalCompleted = appointmentSeries.reduce(
     (sum, item) => sum + item.completed,
     0,
   );
-  const totalCancelled = appointmentData.reduce(
+  const totalCancelled = appointmentSeries.reduce(
     (sum, item) => sum + item.cancelled,
     0,
   );
-  const totalNoShow = appointmentData.reduce(
+  const totalNoShow = appointmentSeries.reduce(
     (sum, item) => sum + item.no_show,
     0,
   );
@@ -455,16 +491,16 @@ export async function downloadAnalyticsReportPdf({
   y += 50;
 
   y = drawSectionTitle(doc, "Management Highlights", y);
-  const topRevenuePeriod = findHighest(revenueData, (item) => item.value);
-  const topService = findHighest(serviceData, (item) => item.revenue);
-  const topBarber = findHighest(barberData, (item) => item.revenue);
-  const busiestDay = findHighest(dayOfWeekData, (item) => item.total);
-  const busiestHour = findHighest(peakHourData, (item) => item.count);
+  const topRevenuePeriod = findHighest(revenueSeries, (item) => item.value);
+  const topService = findHighest(serviceStats, (item) => item.revenue);
+  const topBarber = findHighest(barberStats, (item) => item.revenue);
+  const busiestDay = findHighest(dayOfWeekStats, (item) => item.total);
+  const busiestHour = findHighest(peakHourStats, (item) => item.count);
   const highlights: string[] = [];
 
   if (topRevenuePeriod && topRevenuePeriod.value > 0) {
     highlights.push(
-      `Highest-revenue period: ${formatBucketLabel(topRevenuePeriod.label, period)}, generating ${formatCurrency(topRevenuePeriod.value)}.`,
+      `Highest-revenue period: ${formatBucketLabel(topRevenuePeriod.label, granularity)}, generating ${formatCurrency(topRevenuePeriod.value)}.`,
     );
   }
   if (topService && topService.completed_count > 0) {
@@ -484,7 +520,7 @@ export async function downloadAnalyticsReportPdf({
     busiestHour.count > 0
   ) {
     highlights.push(
-      `Highest demand occurred on ${busiestDay.day}s, with ${formatCount(busiestDay.total)} appointments; the busiest recorded hour was ${formatHour(busiestHour.hour)} with ${formatCount(busiestHour.count)} appointments.`,
+      `Highest demand occurred on ${busiestDay.day}s, with ${formatCount(busiestDay.total)} appointments; the busiest recorded hour was ${formatTime12(busiestHour.hour)} with ${formatCount(busiestHour.count)} appointments.`,
     );
   }
   if (resolvedAppointments > 0) {
@@ -524,15 +560,7 @@ export async function downloadAnalyticsReportPdf({
     string,
     { revenue: number; completed: number; cancelled: number; noShow: number }
   >();
-  getExpectedBucketLabels(period, kpi.date_range).forEach((label) => {
-    trendMap.set(label, {
-      revenue: 0,
-      completed: 0,
-      cancelled: 0,
-      noShow: 0,
-    });
-  });
-  revenueData.forEach((item) => {
+  revenueSeries.forEach((item) => {
     const label = String(item.label);
     const current = trendMap.get(label) ?? {
       revenue: 0,
@@ -542,7 +570,7 @@ export async function downloadAnalyticsReportPdf({
     };
     trendMap.set(label, { ...current, revenue: item.value });
   });
-  appointmentData.forEach((item) => {
+  appointmentSeries.forEach((item) => {
     const label = String(item.label);
     const current = trendMap.get(label) ?? {
       revenue: 0,
@@ -563,7 +591,7 @@ export async function downloadAnalyticsReportPdf({
     .map(([label, values]) => {
       const resolved = values.completed + values.cancelled + values.noShow;
       return [
-        formatBucketLabel(label, period),
+        formatBucketLabel(label, granularity),
         formatCurrency(values.revenue),
         formatCount(values.completed),
         formatCount(values.cancelled),
@@ -602,12 +630,12 @@ export async function downloadAnalyticsReportPdf({
 
   y = addPage(doc);
   y = drawSectionTitle(doc, "Service Performance", y);
-  const serviceRevenue = serviceData.reduce((sum, item) => sum + item.revenue, 0);
-  const serviceCompleted = serviceData.reduce(
+  const serviceRevenue = serviceStats.reduce((sum, item) => sum + item.revenue, 0);
+  const serviceCompleted = serviceStats.reduce(
     (sum, item) => sum + item.completed_count,
     0,
   );
-  const sortedServices = [...serviceData].sort((a, b) => b.revenue - a.revenue);
+  const sortedServices = [...serviceStats].sort((a, b) => b.revenue - a.revenue);
 
   if (sortedServices.length === 0) {
     y = drawNoData(doc, y);
@@ -654,16 +682,16 @@ export async function downloadAnalyticsReportPdf({
     y = addPage(doc);
   }
   y = drawSectionTitle(doc, "Barber Performance", y);
-  const sortedBarbers = [...barberData].sort((a, b) => b.revenue - a.revenue);
-  const barberAppointments = barberData.reduce(
+  const sortedBarbers = [...barberStats].sort((a, b) => b.revenue - a.revenue);
+  const barberAppointments = barberStats.reduce(
     (sum, item) => sum + item.total_appointments,
     0,
   );
-  const barberCompleted = barberData.reduce(
+  const barberCompleted = barberStats.reduce(
     (sum, item) => sum + item.completed_count,
     0,
   );
-  const barberRevenue = barberData.reduce((sum, item) => sum + item.revenue, 0);
+  const barberRevenue = barberStats.reduce((sum, item) => sum + item.revenue, 0);
 
   if (sortedBarbers.length === 0) {
     drawNoData(doc, y);
@@ -702,28 +730,28 @@ export async function downloadAnalyticsReportPdf({
 
   y = addPage(doc);
   y = drawSectionTitle(doc, "Demand By Day", y);
-  const dayTotal = dayOfWeekData.reduce((sum, item) => sum + item.total, 0);
-  const dayCompleted = dayOfWeekData.reduce(
+  const dayTotal = dayOfWeekStats.reduce((sum, item) => sum + item.total, 0);
+  const dayCompleted = dayOfWeekStats.reduce(
     (sum, item) => sum + item.completed,
     0,
   );
-  const dayCancelled = dayOfWeekData.reduce(
+  const dayCancelled = dayOfWeekStats.reduce(
     (sum, item) => sum + item.cancelled,
     0,
   );
-  const dayNoShow = dayOfWeekData.reduce(
+  const dayNoShow = dayOfWeekStats.reduce(
     (sum, item) => sum + item.no_show,
     0,
   );
 
-  if (dayOfWeekData.length === 0) {
+  if (dayOfWeekStats.length === 0) {
     y = drawNoData(doc, y);
   } else {
     autoTable(doc, {
       ...baseTableOptions(),
       startY: y,
       head: [["Day", "Total", "Completed", "Cancelled", "No-show"]],
-      body: dayOfWeekData.map((item) => [
+      body: dayOfWeekStats.map((item) => [
         item.day,
         formatCount(item.total),
         formatCount(item.completed),
@@ -751,16 +779,16 @@ export async function downloadAnalyticsReportPdf({
   }
   y = drawSectionTitle(doc, "Peak Hours", y);
 
-  if (peakHourData.length === 0) {
+  if (peakHourStats.length === 0) {
     y = drawNoData(doc, y);
   } else {
-    const peakTotal = peakHourData.reduce((sum, item) => sum + item.count, 0);
+    const peakTotal = peakHourStats.reduce((sum, item) => sum + item.count, 0);
     autoTable(doc, {
       ...baseTableOptions(),
       startY: y,
       head: [["Time", "Appointments", "Share"]],
-      body: peakHourData.map((item) => [
-        formatHour(item.hour),
+      body: peakHourStats.map((item) => [
+        formatTime12(item.hour),
         formatCount(item.count),
         formatPercent(calculatePercent(item.count, peakTotal)),
       ]),
@@ -778,7 +806,11 @@ export async function downloadAnalyticsReportPdf({
     y = getFinalY(doc, y) + 11;
   }
 
-  if (y > PAGE_HEIGHT - 70) {
+  const ratingSectionHeight = 65;
+  if (
+    ratingCount > 0 &&
+    y + ratingSectionHeight > PAGE_HEIGHT - TABLE_BOTTOM_MARGIN
+  ) {
     y = addPage(doc);
   }
   y = drawSectionTitle(doc, "Customer Ratings", y);
@@ -788,15 +820,14 @@ export async function downloadAnalyticsReportPdf({
   } else {
     autoTable(doc, {
       ...baseTableOptions(),
+      pageBreak: "avoid",
       startY: y,
       head: [["Rating", "Responses", "Share"]],
-      body: [...ratingData]
-        .sort((a, b) => b.rating - a.rating)
-        .map((item) => [
-          `${item.rating} ${item.rating === 1 ? "star" : "stars"}`,
-          formatCount(item.count),
-          formatPercent(calculatePercent(item.count, ratingCount)),
-        ]),
+      body: ratingStats.map((item) => [
+        `${item.rating} ${item.rating === 1 ? "star" : "stars"}`,
+        formatCount(item.count),
+        formatPercent(calculatePercent(item.count, ratingCount)),
+      ]),
       foot: [["OVERALL", formatCount(ratingCount), "100.0%"]],
       columnStyles: {
         0: { cellWidth: 74 },

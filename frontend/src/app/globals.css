@@ -99,6 +99,12 @@
   --input: oklch(0.9 0.01 250);
   --ring: oklch(0.6 0.2 25);
 
+  --toast-success: oklch(0.5 0.15 145);
+  --toast-warning: oklch(0.58 0.14 70);
+  --toast-info: var(--primary);
+  --toast-error: var(--destructive);
+  --toast-loading: oklch(0.45 0.03 250);
+
   /* Sidebar */
   --sidebar: oklch(0.25 0.05 250);
   --sidebar-foreground: oklch(0.98 0.01 250);
@@ -133,12 +139,20 @@
   --accent: oklch(0.65 0.2 25);
   --accent-foreground: oklch(0.1 0 0);
 
+  --destructive: oklch(0.65 0.22 25);
+
   --muted: oklch(0.3 0.02 250);
   --muted-foreground: oklch(0.7 0.02 250);
 
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.65 0.2 25);
+
+  --toast-success: oklch(0.72 0.16 145);
+  --toast-warning: oklch(0.78 0.15 75);
+  --toast-info: var(--primary);
+  --toast-error: var(--destructive);
+  --toast-loading: oklch(0.72 0.03 250);
 
   --sidebar: oklch(0.15 0.02 250);
   --sidebar-foreground: oklch(0.95 0.01 250);
@@ -185,6 +199,13 @@
 
   .animate-auth-card {
     animation: auth-card-in 500ms ease-out both;
+  }
+
+  @media (max-width: 39.999rem) {
+    .mobile-modal-surface {
+      width: calc(100vw - clamp(3rem, 16vw, 4rem)) !important;
+      max-width: calc(100vw - clamp(3rem, 16vw, 4rem)) !important;
+    }
   }
 }
 

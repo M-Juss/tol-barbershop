@@ -2,7 +2,6 @@ import { authFetch } from "@/lib/api";
 
 export interface WalkinStats {
   total_walkins: number;
-  total_revenue: number;
 }
 
 const API = process.env.NEXT_PUBLIC_API_URL;

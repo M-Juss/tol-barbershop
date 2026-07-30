@@ -32,15 +32,20 @@ type NavSection = {
 
 type ResponsiveSidebarProps = {
   sections: NavSection[];
+  mobileMode?: "drawer" | "desktop-only";
 };
 
-export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
+export function ResponsiveSidebar({
+  sections,
+  mobileMode = "drawer",
+}: ResponsiveSidebarProps) {
   const pathname = usePathname();
   const { logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const hasMobileDrawer = mobileMode === "drawer";
 
   useEffect(() => {
     const checkMobile = () => {
@@ -74,15 +79,15 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
       }
     };
 
-    if (isOpen && isMobile) {
+    if (hasMobileDrawer && isOpen && isMobile) {
       document.addEventListener("mousedown", handleClickOutside);
       return () =>
         document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [isOpen, isMobile]);
+  }, [hasMobileDrawer, isOpen, isMobile]);
 
   useEffect(() => {
-    if (isOpen && isMobile) {
+    if (hasMobileDrawer && isOpen && isMobile) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
@@ -91,7 +96,7 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isOpen, isMobile]);
+  }, [hasMobileDrawer, isOpen, isMobile]);
 
   const totalBadgeCount = sections.reduce(
     (sum, section) =>
@@ -119,21 +124,23 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
 
   return (
     <>
-      <button
-        id="hamburger-button"
-        onClick={() => setIsOpen(true)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-primary text-primary-foreground hover:bg-slate-800 transition-colors shadow-lg"
-        aria-label="Open menu"
-      >
-        <Menu className="w-6 h-6" />
-        {totalBadgeCount > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white ring-2 ring-white">
-            {totalBadgeCount > 99 ? "99+" : totalBadgeCount}
-          </span>
-        )}
-      </button>
+      {hasMobileDrawer && (
+        <button
+          id="hamburger-button"
+          onClick={() => setIsOpen(true)}
+          className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-primary text-primary-foreground hover:bg-slate-800 transition-colors shadow-lg"
+          aria-label="Open menu"
+        >
+          <Menu className="w-6 h-6" />
+          {totalBadgeCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white ring-2 ring-white">
+              {totalBadgeCount > 99 ? "99+" : totalBadgeCount}
+            </span>
+          )}
+        </button>
+      )}
 
-      {isOpen && isMobile && (
+      {hasMobileDrawer && isOpen && isMobile && (
         <div
           id="sidebar-backdrop"
           className="md:hidden fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
@@ -147,18 +154,24 @@ export function ResponsiveSidebar({ sections }: ResponsiveSidebarProps) {
           fixed md:sticky top-0 left-0 z-50 md:z-10
           h-dvh w-64 shrink-0 bg-primary text-sm
           transform transition-transform duration-300 ease-in-out
-          ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-          flex flex-col
+          ${
+            hasMobileDrawer
+              ? isOpen
+                ? "flex translate-x-0"
+                : "flex -translate-x-full md:translate-x-0"
+              : "hidden md:flex md:translate-x-0"
+          }
+          flex-col
         `}
       >
         <div className="flex items-center justify-between p-4 border-b border-slate-600">
           <div className="flex space-x-2 items-center">
             <Image
-              src="/Tol-Logo-White-Bg.png"
-              alt="Logo"
+              src="/tol-rounded-logo.png"
+              alt="TOL Barbershop logo"
               height={35}
               width={35}
-              className="rounded-lg"
+              className="rounded-3xl shadow-md shadow-black/20"
             />
             <h1 className="font-bold text-primary-foreground text-xl">
               TOL Barbershop

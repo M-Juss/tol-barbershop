@@ -8,8 +8,8 @@ import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { NotificationPrompt } from "@/components/common/NotificationPrompt";
 import { toast } from "sonner";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
-import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { useAuth } from "@/contexts/AuthContext";
+import { startPolling } from "@/lib/polling";
 import { getPendingAppointmentCount } from "@/services/manager/admin.api";
 import { getWaitingCount } from "@/services/manager/support.api";
 
@@ -60,7 +60,6 @@ export default function AdminLayout({
   useRoleRoutePersistence("/admin");
   const pathname = usePathname();
   const router = useRouter();
-  const isPageVisible = usePageVisibility();
   const { user, isLoading } = useAuth();
   const [pendingCount, setPendingCount] = useState(0);
   const [waitingCount, setWaitingCount] = useState(0);
@@ -114,36 +113,29 @@ export default function AdminLayout({
     } catch {}
   }, []);
 
-  const fetchWaitingCount = useCallback(async () => {
-    try {
-      const count = await getWaitingCount();
-      if (!isFirstWaitingLoadRef.current && count > prevWaitingRef.current) {
-        const diff = count - prevWaitingRef.current;
-        toast(`${diff} New Waiting Ticket${diff > 1 ? "s" : ""}`, {
-          description: `A customer is waiting in the support queue.`,
-          action: {
-            label: "View",
-            onClick: () => (window.location.href = "/admin/customer-service"),
-          },
-          duration: 8000,
-        });
-      }
-      isFirstWaitingLoadRef.current = false;
-      prevWaitingRef.current = count;
-      setWaitingCount(count);
-    } catch {}
+  const fetchWaitingCount = useCallback(async (signal?: AbortSignal) => {
+    const count = await getWaitingCount(signal);
+    if (!isFirstWaitingLoadRef.current && count > prevWaitingRef.current) {
+      const diff = count - prevWaitingRef.current;
+      toast(`${diff} New Waiting Ticket${diff > 1 ? "s" : ""}`, {
+        description: `A customer is waiting in the support queue.`,
+        action: {
+          label: "View",
+          onClick: () => (window.location.href = "/admin/customer-service"),
+        },
+        duration: 8000,
+      });
+    }
+    isFirstWaitingLoadRef.current = false;
+    prevWaitingRef.current = count;
+    setWaitingCount(count);
   }, []);
 
   useEffect(() => {
-    if (!isPageVisible || !canViewCustomerService) return;
+    if (!canViewCustomerService) return;
 
-    queueMicrotask(() => {
-      fetchWaitingCount();
-    });
-    const interval = setInterval(fetchWaitingCount, 60000);
-
-    return () => clearInterval(interval);
-  }, [canViewCustomerService, fetchWaitingCount, isPageVisible]);
+    return startPolling(fetchWaitingCount, 10000);
+  }, [canViewCustomerService, fetchWaitingCount]);
 
   useEffect(() => {
     if (!canViewAppointments) return;
@@ -158,7 +150,7 @@ export default function AdminLayout({
 
   useRealtimeEvent("appointments", () => {
     if (canViewAppointments) fetchPendingCount();
-  });
+  }, canViewAppointments);
 
   const sections = navSections
     .map((section) => ({

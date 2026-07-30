@@ -32,7 +32,11 @@ class LoginController extends Controller
             if (! $user->is_active) {
                 $this->forceLogout($request);
 
-                return $this->error('Account is disabled.', [], 403);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This account has been disabled. Contact the barbershop for assistance.',
+                    'code' => 'ACCOUNT_DISABLED',
+                ], 403);
             }
 
             if (! in_array($user->role, ['admin', 'manager', 'customer'], true)) {
@@ -63,6 +67,14 @@ class LoginController extends Controller
 
             if (str_contains($emailError, 'Too many login attempts')) {
                 return $this->error('Too many login attempts. Please try again later.', $errors, 429);
+            }
+
+            if ($emailError === LoginRequest::DEACTIVATED_ACCOUNT_MESSAGE) {
+                return response()->json([
+                    'success' => false,
+                    'message' => LoginRequest::DEACTIVATED_ACCOUNT_MESSAGE,
+                    'code' => 'ACCOUNT_DISABLED',
+                ], 403);
             }
 
             return $this->error('Invalid email or password.', $errors, 401);

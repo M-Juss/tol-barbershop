@@ -26,21 +26,22 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={theme as ToasterProps["theme"]}
       position={position}
       className="toaster group"
+      richColors
       icons={{
         success: (
-          <CircleCheckIcon className="size-4" />
+          <CircleCheckIcon className="size-4 text-[var(--toast-success)]" />
         ),
         info: (
-          <InfoIcon className="size-4" />
+          <InfoIcon className="size-4 text-[var(--toast-info)]" />
         ),
         warning: (
-          <TriangleAlertIcon className="size-4" />
+          <TriangleAlertIcon className="size-4 text-[var(--toast-warning)]" />
         ),
         error: (
-          <OctagonXIcon className="size-4" />
+          <OctagonXIcon className="size-4 text-[var(--toast-error)]" />
         ),
         loading: (
-          <Loader2Icon className="size-4 animate-spin" />
+          <Loader2Icon className="size-4 animate-spin text-[var(--toast-loading)]" />
         ),
       }}
       style={
@@ -48,14 +49,32 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-bg": "var(--popover)",
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
+          "--success-bg": "var(--popover)",
+          "--success-text": "var(--popover-foreground)",
+          "--success-border": "var(--border)",
+          "--error-bg": "var(--popover)",
+          "--error-text": "var(--popover-foreground)",
+          "--error-border": "var(--border)",
+          "--warning-bg": "var(--popover)",
+          "--warning-text": "var(--popover-foreground)",
+          "--warning-border": "var(--border)",
+          "--info-bg": "var(--popover)",
+          "--info-text": "var(--popover-foreground)",
+          "--info-border": "var(--border)",
           "--border-radius": "var(--radius)",
         } as React.CSSProperties
       }
       toastOptions={{
         classNames: {
           toast: "cn-toast",
-          description: "text-foreground/80",
-          actionButton: "bg-primary text-primary-foreground hover:bg-primary/90",
+          description: "opacity-80",
+          success: "border-l-4! border-l-[var(--toast-success)]!",
+          error: "border-l-4! border-l-[var(--toast-error)]!",
+          warning: "border-l-4! border-l-[var(--toast-warning)]!",
+          info: "border-l-4! border-l-[var(--toast-info)]!",
+          loading: "border-l-4! border-l-[var(--toast-loading)]!",
+          actionButton:
+            "border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80",
         },
       }}
       {...props}

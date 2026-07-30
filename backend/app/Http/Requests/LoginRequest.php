@@ -3,10 +3,12 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\SanitizesInput;
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -14,6 +16,8 @@ use Illuminate\Validation\ValidationException;
 class LoginRequest extends FormRequest
 {
     use SanitizesInput;
+
+    public const DEACTIVATED_ACCOUNT_MESSAGE = 'This account has been deactivated. This email can no longer be used to log in or register.';
 
     /**
      * Determine if the user is authorized to make this request.
@@ -59,6 +63,21 @@ class LoginRequest extends FormRequest
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey(), 300);
+
+            $disabledUser = User::withTrashed()
+                ->where('email', $this->string('email')->toString())
+                ->where(function ($query): void {
+                    $query
+                        ->whereNotNull('deleted_at')
+                        ->orWhere('is_active', false);
+                })
+                ->first();
+
+            if ($disabledUser && Hash::check($this->string('password')->toString(), $disabledUser->password)) {
+                throw ValidationException::withMessages([
+                    'email' => self::DEACTIVATED_ACCOUNT_MESSAGE,
+                ]);
+            }
 
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),

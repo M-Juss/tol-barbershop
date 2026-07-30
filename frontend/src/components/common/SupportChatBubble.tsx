@@ -7,12 +7,16 @@ type SupportChatBubbleProps = {
   createdAt: string;
 };
 
-function formatTime(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleTimeString("en-US", {
+function formatMessageTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    hour12: true,
   });
 }
 
@@ -43,7 +47,7 @@ export function SupportChatBubble({
         {message}
       </div>
       <span className="text-[10px] text-gray-400">
-        {formatTime(createdAt)}
+        {formatMessageTimestamp(createdAt)}
       </span>
     </div>
   );

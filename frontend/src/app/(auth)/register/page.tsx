@@ -8,14 +8,14 @@ export default function RegisterPage() {
   return (
     <RedirectIfAuthenticated>
       <div className="min-h-screen flex items-center justify-center bg-primary p-4">
-        <div className="flex w-full max-w-sm flex-col items-center px-8 py-6 bg-white rounded-lg shadow-md animate-auth-card">
+        <div className="mobile-modal-surface flex w-full max-w-sm flex-col items-center rounded-lg bg-white px-5 py-6 shadow-md animate-auth-card sm:px-8">
           <div className="flex items-center gap-2">
             <Image
-              src="/Tol-Logo-White-Bg.png"
-              alt="Logo"
+              src="/tol-rounded-logo.png"
+              alt="TOL Barbershop logo"
               height={32}
               width={32}
-              className="rounded-lg"
+              className="rounded-3xl shadow-md shadow-black/20"
             />
             <h1 className="font-bold text-primary text-lg">TOL Barbershop</h1>
           </div>

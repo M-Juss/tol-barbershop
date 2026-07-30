@@ -19,8 +19,9 @@ import {
   getClosedDates,
   createClosedDate,
   updateClosedDate,
-  getAllClosedDatesForActivityLog,
-  ClosedDate,
+  getClosedDateActivities,
+  type ClosedDate,
+  type ClosedDateActivity,
 } from "@/services/manager/close.date.api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -98,7 +99,7 @@ export function Slots() {
     try {
       setLoading(true);
 
-      const response = await getClosedDates(page, 5);
+      const response = await getClosedDates(page, 5, "all");
 
       if (!response || !response.data) {
         console.error("Invalid response structure:", response);
@@ -122,11 +123,11 @@ export function Slots() {
     try {
       setActivityLoading(true);
 
-      const activityResponse = await getAllClosedDatesForActivityLog(page, 5);
+      const activityResponse = await getClosedDateActivities(page, 5);
 
       if (activityResponse && activityResponse.data) {
-        const logs = activityResponse.data.map((date: ClosedDate) => {
-          const formattedDate = new Date(date.date_closed).toLocaleDateString(
+        const logs = activityResponse.data.map((activity: ClosedDateActivity) => {
+          const formattedDate = new Date(activity.date_closed).toLocaleDateString(
             "en-US",
             {
               year: "numeric",
@@ -134,20 +135,25 @@ export function Slots() {
               day: "numeric",
             },
           );
-
-          const timeField = date.is_removed ? date.updated_at : date.created_at;
-          const time = new Date(timeField).toLocaleTimeString("en-US", {
+          const time = new Date(activity.created_at).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
             hour: "numeric",
             minute: "2-digit",
             hour12: true,
           });
+          const subject =
+            activity.closure_scope === "barber"
+              ? `${activity.barber_name ?? "Barber"}'s schedule`
+              : "The shop";
 
           return {
-            action: date.is_removed
-              ? `${formattedDate} has been re-opened`
-              : `${formattedDate} has been closed`,
-            details: date.reason,
-            time: time,
+            action:
+              activity.action === "reopened"
+                ? `${subject} was reopened for ${formattedDate}`
+                : `${subject} was closed for ${formattedDate}`,
+            details: `Reason: ${activity.reason}${activity.actor_name ? ` • By ${activity.actor_name}` : ""}`,
+            time,
           };
         });
 
@@ -185,6 +191,8 @@ export function Slots() {
     try {
       await createClosedDate({
         date_closed: formatDateToLocal(data.date_closed!),
+        closure_scope: data.closure_scope,
+        barber_user_id: data.barber_user_id ?? undefined,
         reason: data.reason,
       });
       await fetchAllData(currentPage);
@@ -195,7 +203,11 @@ export function Slots() {
         month: "long",
         day: "numeric",
       });
-      toast.success(`Closed date added successfully for ${formattedDate}`);
+      toast.success(
+        data.closure_scope === "barber"
+          ? `Barber day off added for ${formattedDate}`
+          : `Closed date added for ${formattedDate}`,
+      );
     } catch (error) {
       console.error("Error creating closed date:", error);
       toast.error(error instanceof Error ? error.message : "Could not add closed date. Please try again.");
@@ -208,11 +220,7 @@ export function Slots() {
     const { id, date_closed: dateClosed } = closedDateToReopen;
     setIsReopening(true);
     try {
-      await updateClosedDate(id, {
-        date_closed: dateClosed,
-        reason: `${dateClosed} is now available to be booked`,
-        is_removed: true,
-      });
+      await updateClosedDate(id, { is_removed: true });
       await fetchAllData(currentPage);
 
       const date = new Date(dateClosed);
@@ -266,9 +274,16 @@ export function Slots() {
                     key={date.id}
                     className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-md"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
                       <Calendar size={16} className="text-red-500" />
-                      <p className="text-sm text-gray-700">{formattedDate}</p>
+                      <div className="min-w-0">
+                        <p className="text-sm text-gray-700">{formattedDate}</p>
+                        <p className="truncate text-xs text-gray-500">
+                          {date.closure_scope === "barber"
+                            ? date.barber_name
+                            : "Whole shop"}
+                        </p>
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -416,7 +431,8 @@ export function Slots() {
               Reopen Closed Date
             </DialogTitle>
             <DialogDescription>
-              Reopening this date makes it available for new bookings. Continue?
+              Reopening this schedule makes it available for new bookings.
+              Continue?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

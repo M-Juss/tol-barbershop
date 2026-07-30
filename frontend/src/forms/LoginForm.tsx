@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { PasswordInputWithLabel } from "@/components/common/PasswordInputWithLabel";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRateLimit } from "@/hooks/useRateLimit";
 import { ApiError } from "@/lib/api";
@@ -118,17 +119,17 @@ export function LoginForm() {
         </a>
       </div>
 
-      <button
+      <Button
         type="submit"
         disabled={isSubmitting || !rateLimit.canAttempt}
-        className="bg-accent hover:bg-accent/90 w-full text-white text-sm py-1.5 px-4 mt-2 rounded-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="mt-2 h-10 w-full bg-accent px-4 text-sm text-white hover:bg-accent/90"
       >
         {rateLimit.isCooldown
           ? `Try again in ${rateLimit.formatCooldownTime(rateLimit.cooldownRemaining)}`
           : isSubmitting
             ? "Logging in..."
             : "Login"}
-      </button>
+      </Button>
     </form>
   );
 }

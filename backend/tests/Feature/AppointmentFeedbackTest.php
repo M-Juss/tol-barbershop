@@ -225,7 +225,7 @@ test('appointment status notifications include the appointment reference', funct
         'user_id' => $customer->id,
         'service_id' => $service->id,
         'barber_user_id' => $barber->id,
-        'appointment_date' => now()->addDay()->toDateString(),
+        'appointment_date' => now()->addDays(now()->isSaturday() ? 2 : 1)->toDateString(),
         'appointment_time' => '10:00',
         'duration_minutes' => 45,
         'price' => 250,
@@ -251,9 +251,9 @@ test('appointment status notifications include the appointment reference', funct
         ->first();
 
     expect($notification)->not->toBeNull();
-    expect($notification->message)->toBe(
-        sprintf('Your appointment %s is now approved.', DisplayId::booking($appointment->id))
-    );
+    expect($notification->title)->toBe('Appointment Confirmed');
+    expect($notification->message)->toContain(DisplayId::booking($appointment->id));
+    expect($notification->message)->not->toContain('is now');
 });
 
 function createFeedbackListRecord(

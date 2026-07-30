@@ -2,6 +2,7 @@ import { ChevronRight, Mail, Phone, Scissors, User, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { formatTime12 } from "@/lib/time-slots";
 
 import type { Appointment } from "@/services/customer/appointment.api";
 
@@ -10,18 +11,6 @@ function formatShortDate(date: string): string {
     month: "short",
     day: "numeric",
     year: "numeric",
-  });
-}
-
-function formatTime(time24: string): string {
-  const [hours, minutes] = time24.split(":").map(Number);
-  const date = new Date();
-  date.setHours(hours, minutes, 0, 0);
-
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
   });
 }
 
@@ -107,9 +96,9 @@ export function GroupPendingCard({
           </p>
           <p>
             <span className="font-medium text-gray-800">Time:</span>{" "}
-            {formatTime(sortedAppointments[0].appointment_time)}
+            {formatTime12(sortedAppointments[0].appointment_time)}
             {sortedAppointments.length > 1
-              ? ` - ${formatTime(sortedAppointments[sortedAppointments.length - 1].appointment_time)}`
+              ? ` - ${formatTime12(sortedAppointments[sortedAppointments.length - 1].appointment_time)}`
               : ""}
           </p>
           <p>

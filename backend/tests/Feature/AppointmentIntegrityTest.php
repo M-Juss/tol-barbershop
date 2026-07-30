@@ -297,6 +297,35 @@ test('a past approved appointment can complete and terminal appointments cannot 
         ->assertJsonValidationErrors('status');
 });
 
+test('a past-due approved appointment cannot be rescheduled', function () {
+    $customer = createAppointmentIntegrityUser('customer');
+    $manager = createAppointmentIntegrityUser('manager');
+    $barber = createAppointmentIntegrityUser('barber');
+    $service = createAppointmentIntegrityService();
+    $appointment = Appointment::create([
+        'user_id' => $customer->id,
+        'service_id' => $service->id,
+        'barber_user_id' => $barber->id,
+        'appointment_date' => '2026-07-15',
+        'appointment_time' => '10:00',
+        'duration_minutes' => 60,
+        'price' => 300,
+        'status' => 'approved',
+        'active_slot_key' => "{$barber->id}|2026-07-15|10:00",
+    ]);
+    Sanctum::actingAs($manager);
+
+    $this->putJson(
+        "/api/v1/appointments/{$appointment->id}",
+        appointmentIntegrityPayload($customer, $barber, $service, '2026-07-17', '10:00', 'approved'),
+    )
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('appointment');
+
+    expect($appointment->fresh()->appointment_date->toDateString())->toBe('2026-07-15')
+        ->and(substr($appointment->fresh()->appointment_time, 0, 5))->toBe('10:00');
+});
+
 test('only terminal appointments can be soft archived with the acting staff recorded', function () {
     $customer = createAppointmentIntegrityUser('customer');
     $manager = createAppointmentIntegrityUser('manager');

@@ -26,6 +26,10 @@ const API_PREFIX = "/api/v1";
 const CSRF_COOKIE_URL = "/sanctum/csrf-cookie";
 const SAFE_URL_BASE = "https://same-origin.invalid";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+const NETWORK_ERROR_MESSAGE =
+  "We’re having trouble connecting right now. Check your internet connection and try again in a few moments.";
+const SERVER_ERROR_MESSAGE =
+  "Something went wrong on our side. Please try again later.";
 
 let csrfInitialization: Promise<void> | null = null;
 
@@ -43,6 +47,79 @@ function parseRetryAfter(value: string | null): number | null {
   }
 
   return null;
+}
+
+function getFriendlyResponseErrorMessage(
+  data: Record<string, unknown>,
+  status: number,
+  retryAfterSeconds: number | null,
+): string {
+  if (status === 503) {
+    return "The service is temporarily unavailable. Please try again in a few minutes.";
+  }
+
+  if (status === 504) {
+    return "The request took too long. Please try again.";
+  }
+
+  if (status >= 500) {
+    return SERVER_ERROR_MESSAGE;
+  }
+
+  if (status === 429) {
+    return retryAfterSeconds
+      ? `Too many attempts. Please wait ${retryAfterSeconds} seconds and try again.`
+      : "Too many attempts. Please wait a moment and try again.";
+  }
+
+  if (status === 419) {
+    return "Your session expired. Refresh the page and try again.";
+  }
+
+  const responseMessage =
+    typeof data.message === "string" ? data.message.trim() : "";
+
+  if (responseMessage && responseMessage !== "Unauthenticated.") {
+    return responseMessage;
+  }
+
+  switch (status) {
+    case 400:
+      return "Please check the information you entered and try again.";
+    case 401:
+      return "Your session expired. Please log in again.";
+    case 403:
+      return "You do not have permission to perform this action.";
+    case 404:
+      return "The requested information could not be found.";
+    case 409:
+      return "This request conflicts with an existing record. Please review the details and try again.";
+    case 422:
+      return "Please check the highlighted information and try again.";
+    default:
+      return "We couldn’t complete your request. Please try again.";
+  }
+}
+
+async function safeFetch(
+  input: RequestInfo | URL,
+  init: RequestInit,
+): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
+
+    throw new ApiError(
+      NETWORK_ERROR_MESSAGE,
+      0,
+      null,
+      null,
+      "NETWORK_ERROR",
+    );
+  }
 }
 
 function clearAuthRoleCookie(): void {
@@ -70,10 +147,18 @@ async function parseResponse(response: Response, clearAuthOnUnauthorized: boolea
   }
 
   if (!response.ok) {
+    const retryAfterSeconds = parseRetryAfter(
+      response.headers.get("Retry-After"),
+    );
+
     throw new ApiError(
-      data.message || `Failed to fetch data: ${response.status}`,
+      getFriendlyResponseErrorMessage(
+        data,
+        response.status,
+        retryAfterSeconds,
+      ),
       response.status,
-      parseRetryAfter(response.headers.get("Retry-After")),
+      retryAfterSeconds,
       data.errors ?? null,
       typeof data.code === "string" ? data.code : null,
     );
@@ -131,7 +216,7 @@ export async function initializeCsrfCookie(force = false): Promise<void> {
 
   if (!csrfInitialization) {
     csrfInitialization = (async () => {
-      const response = await fetch(CSRF_COOKIE_URL, {
+      const response = await safeFetch(CSRF_COOKIE_URL, {
         method: "GET",
         headers: { Accept: "application/json" },
         credentials: "include",
@@ -143,14 +228,25 @@ export async function initializeCsrfCookie(force = false): Promise<void> {
       });
 
       if (!response.ok) {
+        const retryAfterSeconds = parseRetryAfter(
+          response.headers.get("Retry-After"),
+        );
         throw new ApiError(
-          "Unable to initialize the secure session.",
+          getFriendlyResponseErrorMessage(
+            {},
+            response.status,
+            retryAfterSeconds,
+          ),
           response.status,
+          retryAfterSeconds,
         );
       }
 
       if (!getCookie("XSRF-TOKEN")) {
-        throw new ApiError("The CSRF cookie could not be set.", 419);
+        throw new ApiError(
+          "We couldn’t start a secure session. Refresh the page and try again.",
+          419,
+        );
       }
     })();
   }
@@ -197,7 +293,7 @@ async function request(
   }
 
   const performFetch = () =>
-    fetch(relativeUrl, {
+    safeFetch(relativeUrl, {
       ...options,
       method,
       headers: buildHeaders(options, isFormData),

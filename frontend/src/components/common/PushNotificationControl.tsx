@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { cn } from "@/lib/utils";
 
 const statusCopy = {
   loading: "Checking notification status...",
@@ -36,11 +37,18 @@ const statusLabel = {
   error: "Check",
 };
 
-export function PushNotificationControl() {
+type PushNotificationControlProps = {
+  variant?: "sidebar" | "settings";
+};
+
+export function PushNotificationControl({
+  variant = "sidebar",
+}: PushNotificationControlProps) {
   const [open, setOpen] = useState(false);
   const { status, isUpdating, enable, disable } = usePushNotifications();
   const isEnabled = status === "enabled";
   const canEnable = status === "disabled" || status === "error";
+  const isSettingsVariant = variant === "settings";
 
   const handleEnable = async () => {
     if (await enable()) {
@@ -63,15 +71,46 @@ export function PushNotificationControl() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-gray-300 transition-colors hover:bg-slate-800 hover:text-white"
+        className={cn(
+          "flex w-full items-center gap-3 transition-colors",
+          isSettingsVariant
+            ? "py-5 text-gray-900 hover:text-primary"
+            : "rounded-lg px-4 py-3 text-gray-300 hover:bg-slate-800 hover:text-white",
+        )}
       >
         {isEnabled ? (
-          <Bell className="size-5 shrink-0" />
+          <Bell
+            className={cn(
+              "size-5 shrink-0",
+              isSettingsVariant && "text-green-600",
+            )}
+          />
         ) : (
-          <BellOff className="size-5 shrink-0" />
+          <BellOff
+            className={cn(
+              "size-5 shrink-0",
+              isSettingsVariant && "text-gray-500",
+            )}
+          />
         )}
-        <span className="flex-1 text-left">Notification</span>
-        <span className="text-xs text-gray-400">
+        <span className="flex-1 text-left">
+          <span className={cn(isSettingsVariant && "block text-sm font-bold")}>
+            {isSettingsVariant ? "Device Notifications" : "Notification"}
+          </span>
+          {isSettingsVariant ? (
+            <span className="mt-0.5 block text-sm font-normal text-gray-500">
+              Appointment and support alerts on this device
+            </span>
+          ) : null}
+        </span>
+        <span
+          className={cn(
+            "text-xs",
+            isSettingsVariant
+              ? "rounded-full bg-gray-100 px-2.5 py-1 font-semibold text-gray-600"
+              : "text-gray-400",
+          )}
+        >
           {statusLabel[status]}
         </span>
       </button>
@@ -79,7 +118,7 @@ export function PushNotificationControl() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Notification</DialogTitle>
+            <DialogTitle>Device Notifications</DialogTitle>
             <DialogDescription>{statusCopy[status]}</DialogDescription>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
