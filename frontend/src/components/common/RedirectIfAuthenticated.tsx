@@ -21,7 +21,7 @@ export function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
     }
   }, [isLoading, isAuthenticated, user, router]);
 
-  if (!isLoading && isAuthenticated) {
+  if (isLoading || isAuthenticated) {
     return null;
   }
 

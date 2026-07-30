@@ -29,38 +29,38 @@ const Toaster = ({ ...props }: ToasterProps) => {
       richColors
       icons={{
         success: (
-          <CircleCheckIcon className="size-4 text-[#166534]" />
+          <CircleCheckIcon className="size-4 text-[var(--toast-success)]" />
         ),
         info: (
-          <InfoIcon className="size-4 text-[#1E40AF]" />
+          <InfoIcon className="size-4 text-[var(--toast-info)]" />
         ),
         warning: (
-          <TriangleAlertIcon className="size-4 text-[#92400E]" />
+          <TriangleAlertIcon className="size-4 text-[var(--toast-warning)]" />
         ),
         error: (
-          <OctagonXIcon className="size-4 text-[#991B1B]" />
+          <OctagonXIcon className="size-4 text-[var(--toast-error)]" />
         ),
         loading: (
-          <Loader2Icon className="size-4 text-[#374151] animate-spin" />
+          <Loader2Icon className="size-4 animate-spin text-[var(--toast-loading)]" />
         ),
       }}
       style={
         {
-          "--normal-bg": "#FFFFFF",
-          "--normal-text": "#111827",
-          "--normal-border": "#E5E7EB",
-          "--success-bg": "#DCFCE7",
-          "--success-text": "#166534",
-          "--success-border": "#86EFAC",
-          "--error-bg": "#FEE2E2",
-          "--error-text": "#991B1B",
-          "--error-border": "#FCA5A5",
-          "--warning-bg": "#FEF3C7",
-          "--warning-text": "#92400E",
-          "--warning-border": "#FCD34D",
-          "--info-bg": "#DBEAFE",
-          "--info-text": "#1E40AF",
-          "--info-border": "#93C5FD",
+          "--normal-bg": "var(--popover)",
+          "--normal-text": "var(--popover-foreground)",
+          "--normal-border": "var(--border)",
+          "--success-bg": "var(--popover)",
+          "--success-text": "var(--popover-foreground)",
+          "--success-border": "var(--border)",
+          "--error-bg": "var(--popover)",
+          "--error-text": "var(--popover-foreground)",
+          "--error-border": "var(--border)",
+          "--warning-bg": "var(--popover)",
+          "--warning-text": "var(--popover-foreground)",
+          "--warning-border": "var(--border)",
+          "--info-bg": "var(--popover)",
+          "--info-text": "var(--popover-foreground)",
+          "--info-border": "var(--border)",
           "--border-radius": "var(--radius)",
         } as React.CSSProperties
       }
@@ -68,7 +68,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
         classNames: {
           toast: "cn-toast",
           description: "opacity-80",
-          actionButton: "bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-300",
+          success: "border-l-4! border-l-[var(--toast-success)]!",
+          error: "border-l-4! border-l-[var(--toast-error)]!",
+          warning: "border-l-4! border-l-[var(--toast-warning)]!",
+          info: "border-l-4! border-l-[var(--toast-info)]!",
+          loading: "border-l-4! border-l-[var(--toast-loading)]!",
+          actionButton:
+            "border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80",
         },
       }}
       {...props}

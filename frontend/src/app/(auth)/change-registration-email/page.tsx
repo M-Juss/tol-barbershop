@@ -3,13 +3,12 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { RedirectIfAuthenticated } from "@/components/common/RedirectIfAuthenticated";
-import { VerifyEmailForm } from "@/forms/VerifyEmailForm";
+import { ChangeRegistrationEmailForm } from "@/forms/ChangeRegistrationEmailForm";
 import { verifyEmailSchema } from "@/validations/auth.validation";
 
-type VerifyEmailPageProps = {
+type ChangeRegistrationEmailPageProps = {
   searchParams: Promise<{
     email?: string | string[];
-    status?: string | string[];
   }>;
 };
 
@@ -20,19 +19,21 @@ export const metadata: Metadata = {
 
 export const revalidate = 0;
 
-export default async function VerifyEmailPage({
+export default async function ChangeRegistrationEmailPage({
   searchParams,
-}: VerifyEmailPageProps) {
+}: ChangeRegistrationEmailPageProps) {
   const params = await searchParams;
   const emailResult = verifyEmailSchema.safeParse({
     email: typeof params.email === "string" ? params.email : "",
   });
   const email = emailResult.success ? emailResult.data.email : "";
-  const invalidLink = params.status === "invalid";
+  const verificationHref = email
+    ? `/verify-email?email=${encodeURIComponent(email)}`
+    : "/verify-email";
 
   return (
     <RedirectIfAuthenticated>
-      <div className="flex min-h-screen items-center justify-center bg-primary p-4 pb-8">
+      <div className="flex min-h-screen items-center justify-center bg-primary p-4 py-8">
         <div className="mobile-modal-surface flex w-full max-w-md flex-col items-center rounded-lg bg-white px-6 py-8 shadow-md sm:px-12">
           <div className="flex items-center space-x-2">
             <Image
@@ -46,42 +47,35 @@ export default async function VerifyEmailPage({
           </div>
 
           <h2 className="mt-3 text-center text-2xl font-semibold">
-            Verify Your Email
+            Change Registration Email
           </h2>
-          <p className="mb-6 mt-2 text-center text-sm text-gray-600 sm:text-base">
-            {email
-              ? "Verify your email address to continue."
-              : "Your registration email is missing. Return to login and enter your credentials again to continue."}
+          <p className="mb-6 mt-2 text-center text-sm text-gray-600">
+            Correct your email address and send verification to the new inbox.
           </p>
 
-          {email && invalidLink && (
-            <div
-              className="mb-6 w-full rounded-md border border-red-200 bg-red-50 p-4 text-center text-sm text-red-700"
-              role="alert"
-            >
-              This verification link is invalid or expired. Request a new link
-              below.
-            </div>
-          )}
-
           {email ? (
-            <VerifyEmailForm email={email} />
+            <ChangeRegistrationEmailForm currentEmail={email} />
           ) : (
             <div
               className="w-full rounded-md border border-amber-200 bg-amber-50 p-4 text-center text-sm text-amber-800"
               role="alert"
             >
-              No email address was provided, so verification actions are not
-              available.
+              Your current registration email is missing. Return to
+              verification and try again.
             </div>
           )}
 
-          <Link
-            href="/"
-            className="mt-6 text-sm font-medium text-accent underline-offset-4 hover:underline"
-          >
-            Back to Home
-          </Link>
+          <div className="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm">
+            <Link
+              href={verificationHref}
+              className="font-medium text-accent hover:underline"
+            >
+              Back to verification
+            </Link>
+            <Link href="/" className="text-gray-600 hover:text-accent hover:underline">
+              Back to Home
+            </Link>
+          </div>
         </div>
       </div>
     </RedirectIfAuthenticated>

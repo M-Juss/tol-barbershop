@@ -32,9 +32,17 @@ class RegisterController extends Controller
         $acceptedAt = now();
 
         try {
-            $user = DB::transaction(function () use ($userAttributes, $termsVersion, $privacyVersion, $acceptedAt): ?User {
-                if (User::where('email', $userAttributes['email'])->lockForUpdate()->exists()) {
-                    return null;
+            $registration = DB::transaction(function () use ($userAttributes, $termsVersion, $privacyVersion, $acceptedAt): array {
+                $existingUser = User::withTrashed()
+                    ->where('email', $userAttributes['email'])
+                    ->lockForUpdate()
+                    ->first(['id', 'deleted_at']);
+
+                if ($existingUser) {
+                    return [
+                        'user' => null,
+                        'deactivated' => $existingUser->trashed(),
+                    ];
                 }
 
                 $user = User::create($userAttributes);
@@ -44,10 +52,28 @@ class RegisterController extends Controller
                     'accepted_at' => $acceptedAt,
                 ]);
 
-                return $user;
+                return [
+                    'user' => $user,
+                    'deactivated' => false,
+                ];
             });
         } catch (UniqueConstraintViolationException) {
-            $user = null;
+            $registration = [
+                'user' => null,
+                'deactivated' => User::withTrashed()
+                    ->where('email', $userAttributes['email'])
+                    ->whereNotNull('deleted_at')
+                    ->exists(),
+            ];
+        }
+
+        $user = $registration['user'];
+        if ($registration['deactivated']) {
+            return $this->error(
+                'This email belongs to a deactivated account and cannot be used again.',
+                ['email' => ['This email belongs to a deactivated account and cannot be used again.']],
+                422,
+            );
         }
 
         if ($user) {

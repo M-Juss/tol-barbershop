@@ -5,6 +5,7 @@ import { Bell } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Dialog,
   DialogContent,
@@ -13,40 +14,56 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { isPushSupported, isIOSWithoutInstalledApp, enableBrowserPush } from "@/services/shared/push.api";
-
-const STORAGE_KEY = "notification_prompt_dismissed";
+import {
+  enableBrowserPush,
+  isBrowserPushEnabledForUser,
+  isIOSWithoutInstalledApp,
+  isPushSupported,
+  NOTIFICATION_PROMPT_DISMISSED_KEY,
+  rememberBrowserPushEnabledForUser,
+} from "@/services/shared/push.api";
 
 type NotificationPromptProps = {
   settingsLocation?: string;
 };
 
-function isEligibleForPrompt(): boolean {
+function isEligibleForPrompt(userId: number | undefined): boolean {
   if (typeof window === "undefined") return false;
+  if (!userId) return false;
   if (!isPushSupported()) return false;
   if (isIOSWithoutInstalledApp()) return false;
-  if (Notification.permission !== "default") return false;
-  if (localStorage.getItem(STORAGE_KEY)) return false;
+  if (Notification.permission === "denied") return false;
+  if (
+    Notification.permission === "granted" &&
+    isBrowserPushEnabledForUser(userId)
+  ) {
+    return false;
+  }
+  if (localStorage.getItem(NOTIFICATION_PROMPT_DISMISSED_KEY)) return false;
   return true;
 }
 
 export function NotificationPrompt({
   settingsLocation = "the sidebar",
 }: NotificationPromptProps) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [enabling, setEnabling] = useState(false);
 
   useEffect(() => {
-    if (isEligibleForPrompt()) {
+    if (isEligibleForPrompt(user?.id)) {
       setOpen(true);
     }
-  }, []);
+  }, [user?.id]);
 
   const handleEnable = async () => {
     setEnabling(true);
     try {
       const success = await enableBrowserPush();
       if (success) {
+        if (user) {
+          rememberBrowserPushEnabledForUser(user.id);
+        }
         toast.success("Notifications enabled");
         window.dispatchEvent(new Event("push-subscription-changed"));
       } else {
@@ -56,13 +73,13 @@ export function NotificationPrompt({
       toast.error("Could not enable notifications");
     } finally {
       setEnabling(false);
-      localStorage.setItem(STORAGE_KEY, "1");
+      localStorage.setItem(NOTIFICATION_PROMPT_DISMISSED_KEY, "1");
       setOpen(false);
     }
   };
 
   const handleDismiss = () => {
-    localStorage.setItem(STORAGE_KEY, "1");
+    localStorage.setItem(NOTIFICATION_PROMPT_DISMISSED_KEY, "1");
     setOpen(false);
   };
 

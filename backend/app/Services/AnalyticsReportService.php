@@ -355,8 +355,7 @@ class AnalyticsReportService
 
         $peakHours = $appointments
             ->whereIn('status', ['completed', 'approved'])
-            ->groupBy(fn ($a) => $a->appointment_time)
-            ->filter(fn ($appts, $hour) => in_array($hour, ['09:00', '10:00', '11:00', '12:30', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00']))
+            ->groupBy(fn ($a) => substr((string) $a->appointment_time, 0, 5))
             ->map(fn ($appts, $hour) => ['hour' => $hour, 'count' => $appts->count()])
             ->sortBy('hour')
             ->values();

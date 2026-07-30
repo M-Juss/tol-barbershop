@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { formatTime12 } from "@/lib/time-slots";
 
 type SupportChatBubbleProps = {
   message: string;
@@ -7,6 +6,19 @@ type SupportChatBubbleProps = {
   senderName: string;
   createdAt: string;
 };
+
+function formatMessageTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
 export function SupportChatBubble({
   message,
@@ -35,7 +47,7 @@ export function SupportChatBubble({
         {message}
       </div>
       <span className="text-[10px] text-gray-400">
-        {formatTime12(createdAt)}
+        {formatMessageTimestamp(createdAt)}
       </span>
     </div>
   );

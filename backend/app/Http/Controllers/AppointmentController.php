@@ -629,6 +629,14 @@ class AppointmentController extends Controller
                     || $validated['appointment_date'] !== $originalDate
                     || $validated['appointment_time'] !== $originalTime;
 
+                $today = Carbon::now((string) config('app.shop_timezone', 'Asia/Manila'))
+                    ->toDateString();
+                if ($detailsChanged && $originalStatus === 'approved' && $originalDate < $today) {
+                    throw ValidationException::withMessages([
+                        'appointment' => 'Past-due appointments cannot be rescheduled.',
+                    ]);
+                }
+
                 if ($detailsChanged && ! in_array($nextStatus, AppointmentBookingService::ACTIVE_STATUSES, true)) {
                     throw ValidationException::withMessages([
                         'appointment' => 'Completed or cancelled appointments cannot be rescheduled.',

@@ -1,12 +1,21 @@
 "use client";
 
-import { SubmitErrorHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Circle, CircleCheck } from "lucide-react";
+import { useEffect } from "react";
+import {
+  type SubmitErrorHandler,
+  useForm,
+  useWatch,
+} from "react-hook-form";
+import { toast } from "sonner";
+
+import { PasswordInputWithLabel } from "@/components/common/PasswordInputWithLabel";
+import { Button } from "@/components/ui/button";
 import {
   changePasswordSchema,
-  ChangePasswordSchemaFormValues,
+  type ChangePasswordSchemaFormValues,
 } from "@/validations/user.validation";
-import { InputWithLabel } from "@/components/common/InputWithLabel";
 import {
   Dialog,
   DialogContent,
@@ -15,9 +24,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { useEffect } from "react";
-import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+const passwordRequirements = [
+  {
+    label: "At least 6 characters",
+    test: (password: string) => password.length >= 6,
+  },
+];
 
 type ChangePasswordFormProps = {
   open: boolean;
@@ -35,6 +49,7 @@ export function ChangePasswordForm({
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
     reset,
   } = useForm<ChangePasswordSchemaFormValues>({
@@ -45,6 +60,14 @@ export function ChangePasswordForm({
       password_confirmation: "",
     },
   });
+  const password = useWatch({ control, name: "password", defaultValue: "" });
+  const passwordConfirmation = useWatch({
+    control,
+    name: "password_confirmation",
+    defaultValue: "",
+  });
+  const passwordsMatch =
+    passwordConfirmation.length > 0 && password === passwordConfirmation;
 
   useEffect(() => {
     if (open) {
@@ -83,50 +106,97 @@ export function ChangePasswordForm({
           onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
           className="space-y-4"
         >
-          <div className="relative ">
-            <InputWithLabel
+          <div>
+            <PasswordInputWithLabel
               id="current_password"
               label="Current Password"
-              type="password"
               placeholder="Enter current password"
+              maxLength={255}
+              autoComplete="current-password"
               className="h-10"
               {...register("current_password")}
             />
             {errors.current_password && (
-              <p className="absolute left-0 top-full  text-red-500 text-xs">
+              <p className="mt-1 text-xs text-red-500">
                 {errors.current_password.message}
               </p>
             )}
           </div>
 
-          <div className="relative ">
-            <InputWithLabel
+          <div className="space-y-0.5">
+            <PasswordInputWithLabel
               id="password"
               label="New Password"
-              type="password"
               placeholder="Enter new password"
+              maxLength={255}
+              autoComplete="new-password"
               className="h-10"
               {...register("password")}
             />
             {errors.password && (
-              <p className="absolute left-0 top-full  text-red-500 text-xs">{errors.password.message}</p>
+              <p className="mt-1 text-xs text-red-500">
+                {errors.password.message}
+              </p>
             )}
+            <ul className="grid gap-0.5" aria-live="polite">
+              {passwordRequirements.map((requirement) => {
+                const isMet = requirement.test(password);
+                const RequirementIcon = isMet ? CircleCheck : Circle;
+
+                return (
+                  <li
+                    key={requirement.label}
+                    className={cn(
+                      "flex items-center gap-1 text-[11px] transition-colors",
+                      isMet
+                        ? "font-medium text-green-600"
+                        : "text-gray-500",
+                    )}
+                  >
+                    <RequirementIcon
+                      className="size-3 shrink-0"
+                      aria-hidden="true"
+                    />
+                    {requirement.label}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
 
-          <div className="relative ">
-            <InputWithLabel
+          <div className="space-y-0.5">
+            <PasswordInputWithLabel
               id="password_confirmation"
               label="Confirm Password"
-              type="password"
               placeholder="Re-enter new password"
+              maxLength={255}
+              autoComplete="new-password"
               className="h-10"
               {...register("password_confirmation")}
             />
             {errors.password_confirmation && (
-              <p className="absolute left-0 top-full  text-red-500 text-xs">
+              <p className="mt-1 text-xs text-red-500">
                 {errors.password_confirmation.message}
               </p>
             )}
+            <p
+              className={cn(
+                "flex items-center gap-1 text-[11px] transition-colors",
+                passwordsMatch
+                  ? "font-medium text-green-600"
+                  : "text-gray-500",
+              )}
+              aria-live="polite"
+            >
+              {passwordsMatch ? (
+                <CircleCheck className="size-3" aria-hidden="true" />
+              ) : (
+                <Circle className="size-3" aria-hidden="true" />
+              )}
+              {passwordsMatch
+                ? "Passwords match"
+                : "Passwords must match"}
+            </p>
           </div>
 
           <DialogFooter>

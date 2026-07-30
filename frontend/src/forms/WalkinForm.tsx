@@ -194,7 +194,7 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
         onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
         className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6"
       >
-        <div className="col-span-2 relative ">
+        <div className="relative md:col-span-2">
           <InputWithLabel
             id="customer-name"
             label="Customer Name *"
@@ -236,45 +236,6 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
         </div>
 
         <div className="relative">
-          <SelectWithLabel
-            id="walkin-time"
-            label="Time *"
-            placeholder="Select time"
-            options={timeOptions}
-            value={selectedTime ?? ""}
-            onValueChange={(value) =>
-              setValue("appointment_time", value, { shouldValidate: true })
-            }
-          />
-          {errors.appointment_time && (
-            <p className="absolute left-0 top-full text-red-500 text-xs">
-              {errors.appointment_time.message}
-            </p>
-          )}
-        </div>
-
-        <div className="relative ">
-          <SelectWithLabel
-            id="service"
-            label="Service *"
-            placeholder="Select a service"
-            options={services.map((service) => ({
-              value: service.id.toString(),
-              label: service.name,
-            }))}
-            value={selectedServiceId > 0 ? String(selectedServiceId) : ""}
-            onValueChange={(value) =>
-              setValue("service_id", Number(value), { shouldValidate: true })
-            }
-          />
-          {errors.service_id && (
-            <p className="absolute left-0 top-full  text-red-500 text-xs">
-              {errors.service_id.message}
-            </p>
-          )}
-        </div>
-
-        <div className="relative ">
           <DatePickerWithLabel
             id="walkin-date"
             label="Date *"
@@ -296,13 +257,52 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
             }}
           />
           {errors.appointment_date && (
-            <p className="absolute left-0 top-full  text-red-500 text-xs">
+            <p className="absolute left-0 top-full text-red-500 text-xs">
               {errors.appointment_date.message}
             </p>
           )}
         </div>
 
-        <div className="col-span-2 relative ">
+        <div className="relative">
+          <SelectWithLabel
+            id="service"
+            label="Service *"
+            placeholder="Select a service"
+            options={services.map((service) => ({
+              value: service.id.toString(),
+              label: service.name,
+            }))}
+            value={selectedServiceId > 0 ? String(selectedServiceId) : ""}
+            onValueChange={(value) =>
+              setValue("service_id", Number(value), { shouldValidate: true })
+            }
+          />
+          {errors.service_id && (
+            <p className="absolute left-0 top-full text-red-500 text-xs">
+              {errors.service_id.message}
+            </p>
+          )}
+        </div>
+
+        <div className="relative">
+          <SelectWithLabel
+            id="walkin-time"
+            label="Time *"
+            placeholder="Select time"
+            options={timeOptions}
+            value={selectedTime ?? ""}
+            onValueChange={(value) =>
+              setValue("appointment_time", value, { shouldValidate: true })
+            }
+          />
+          {errors.appointment_time && (
+            <p className="absolute left-0 top-full text-red-500 text-xs">
+              {errors.appointment_time.message}
+            </p>
+          )}
+        </div>
+
+        <div className="relative md:col-span-2">
           <TextAreaWithLabel
             id="notes"
             label="Notes"
@@ -317,7 +317,7 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
           )}
         </div>
 
-        <div className="col-span-2  flex items-center justify-between border-t border-gray-200 pt-4">
+        <div className="flex items-center justify-between border-t border-gray-200 pt-4 md:col-span-2">
           <p className="text-lg font-semibold text-gray-900">
             Total: ₱
             {selectedPrice.toLocaleString(undefined, {

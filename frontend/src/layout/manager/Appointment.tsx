@@ -1046,7 +1046,6 @@ export function Appointment() {
                                           setConfirmActionOpen(true);
                                         }}
                                         onCancel={handleCancelClick}
-                                        onReschedule={handleRescheduleClick}
                                         className={
                                           (updatingIds.includes(appt.id) ? "opacity-60" : "") +
                                           " !border-red-300 !bg-red-50"

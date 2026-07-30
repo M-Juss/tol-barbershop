@@ -21,11 +21,15 @@ import {
   changePassword,
   deleteAccount,
 } from "@/services/customer/user.api";
+import {
+  forgetBrowserPushEnabledForUser,
+  unsubscribeBrowserPushLocally,
+} from "@/services/shared/push.api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 export default function Profile() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showDeactivateAccount, setShowDeactivateAccount] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
@@ -42,6 +46,10 @@ export default function Profile() {
     setIsDeactivating(true);
     try {
       await deleteAccount(password);
+      await unsubscribeBrowserPushLocally().catch(() => {});
+      if (user) {
+        forgetBrowserPushEnabledForUser(user.id);
+      }
       toast.success("Account deactivated");
       window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT));
       window.location.replace("/");
@@ -158,11 +166,15 @@ export default function Profile() {
               Deactivate account
             </DialogTitle>
             <DialogDescription className="text-left leading-6">
+              Resolve every pending or current/upcoming approved appointment
+              before deactivating. Past-due approved appointments do not block
+              deactivation.{" "}
               You will be signed out immediately. Sessions, access tokens, push
               subscriptions will be removed. Booking, walk-in, support,
               feedback, notification, and consent records may be retained where
-              needed for operations, transparency, disputes, or legal
-              obligations.
+              needed for operations, transparency, disputes, or legal obligations.
+              The email address on this account will remain reserved and cannot
+              be used to log in or register again.
             </DialogDescription>
           </DialogHeader>
           <PasswordInputWithLabel

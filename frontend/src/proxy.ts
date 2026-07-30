@@ -11,10 +11,21 @@ const publicPaths = new Set([
   "/login",
   "/register",
   "/verify-email",
+  "/change-registration-email",
   "/forgot-password",
   "/reset-password",
   "/privacy-policy",
   "/terms-of-use",
+]);
+
+const guestPaths = new Set([
+  "/",
+  "/login",
+  "/register",
+  "/verify-email",
+  "/change-registration-email",
+  "/forgot-password",
+  "/reset-password",
 ]);
 
 function getRequestedBasePath(
@@ -32,6 +43,10 @@ export function proxy(request: NextRequest) {
   const allowedBasePath = role ? roleBasePath[role] : undefined;
 
   if (publicPaths.has(pathname)) {
+    if (allowedBasePath && guestPaths.has(pathname)) {
+      return NextResponse.redirect(new URL(allowedBasePath, request.url));
+    }
+
     return NextResponse.next();
   }
 
@@ -62,6 +77,7 @@ export const config = {
     "/login",
     "/register",
     "/verify-email",
+    "/change-registration-email",
     "/forgot-password",
     "/reset-password",
     "/privacy-policy",

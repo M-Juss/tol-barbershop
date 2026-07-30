@@ -14,13 +14,7 @@ import type {
   RatingStat,
   ServiceStat,
   TimeSeriesPoint,
-  SectionReportResponse,
-  ReportOverview,
-  ReportRevenue,
-  ReportAppointments,
-  ReportServices,
-  ReportBarbers,
-  ReportCustomers,
+  CompleteReportResponse,
 } from "@/services/manager/analytics.api";
 
 type ReportDocument = jsPDF & {
@@ -56,19 +50,24 @@ const periodLabels: Record<ReportPeriod, string> = {
   custom: "Custom Range",
 };
 
-function formatCurrency(value: number): string {
-  return `PHP ${value.toLocaleString("en-PH", {
+function toFiniteNumber(value: unknown): number {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function formatCurrency(value: unknown): string {
+  return `PHP ${toFiniteNumber(value).toLocaleString("en-PH", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 }
 
-function formatCount(value: number): string {
-  return value.toLocaleString("en-PH");
+function formatCount(value: unknown): string {
+  return toFiniteNumber(value).toLocaleString("en-PH");
 }
 
-function formatPercent(value: number): string {
-  return `${value.toFixed(1)}%`;
+function formatPercent(value: unknown): string {
+  return `${toFiniteNumber(value).toFixed(1)}%`;
 }
 
 function calculatePercent(value: number, total: number): number {
@@ -316,36 +315,102 @@ function addPage(doc: jsPDF): number {
   return 28;
 }
 
-export async function downloadAnalyticsReportPdf(report: SectionReportResponse): Promise<void> {
+export async function downloadAnalyticsReportPdf(
+  report: CompleteReportResponse,
+): Promise<void> {
   const { meta, data } = report;
   const period = meta.period;
   const granularity = meta.granularity;
-
-  const overviewRaw = data as ReportOverview;
-  const revenueRaw = data as ReportRevenue;
-  const appointmentRaw = data as ReportAppointments;
-  const serviceRaw = data as ReportServices;
-  const barberRaw = data as ReportBarbers;
-  const customersRaw = data as ReportCustomers;
+  const {
+    overview: overviewRaw,
+    revenue: revenueRaw,
+    appointments: appointmentRaw,
+    services: serviceRaw,
+    barbers: barberRaw,
+    customers: customersRaw,
+  } = data;
 
   const kpi: AnalyticsKPI = {
-    total_revenue: overviewRaw.total_revenue ?? revenueRaw.total_revenue ?? 0,
-    completed_appointments: overviewRaw.completed_appointments ?? appointmentRaw.completed ?? 0,
-    average_rating: overviewRaw.average_rating ?? customersRaw.average_rating ?? 0,
-    total_customers: overviewRaw.total_customers ?? customersRaw.total_customers_served ?? 0,
-    completion_rate: overviewRaw.completion_rate ?? appointmentRaw.completion_rate ?? 0,
-    walkin_count: appointmentRaw.online_count !== undefined ? appointmentRaw.walkin_count : 0,
-    cancelled_count: overviewRaw.cancelled_count ?? appointmentRaw.cancelled ?? 0,
+    total_revenue: toFiniteNumber(
+      overviewRaw.total_revenue ?? revenueRaw.total_revenue,
+    ),
+    completed_appointments: toFiniteNumber(
+      overviewRaw.completed_appointments ?? appointmentRaw.completed,
+    ),
+    average_rating: toFiniteNumber(
+      overviewRaw.average_rating ?? customersRaw.average_rating,
+    ),
+    total_customers: toFiniteNumber(
+      overviewRaw.total_customers ?? customersRaw.total_customers_served,
+    ),
+    completion_rate: toFiniteNumber(
+      overviewRaw.completion_rate ?? appointmentRaw.completion_rate,
+    ),
+    walkin_count: toFiniteNumber(appointmentRaw.walkin_count),
+    cancelled_count: toFiniteNumber(
+      overviewRaw.cancelled_count ?? appointmentRaw.cancelled,
+    ),
     date_range: meta.date_range,
   };
 
-  const revenueSeries: TimeSeriesPoint[] = revenueRaw.by_date?.map((p) => ({ label: p.date, value: p.value })) ?? [];
-  const appointmentSeries: AppointmentVolumePoint[] = appointmentRaw.by_date?.map((p) => ({ label: p.date, completed: p.completed, cancelled: p.cancelled, no_show: p.no_show })) ?? [];
-  const serviceStats: ServiceStat[] = serviceRaw.services?.map((s) => ({ service_name: s.service_name, completed_count: s.completed_count, revenue: s.revenue })) ?? [];
-  const barberStats: BarberStat[] = barberRaw.barbers?.map((b) => ({ barber_name: b.barber_name, completed_count: b.completed_count, revenue: b.revenue, total_appointments: b.total_appointments })) ?? [];
-  const ratingStats: RatingStat[] = customersRaw.rating_distribution?.map((r) => ({ rating: r.rating, count: r.count })) ?? [];
-  const peakHourStats: PeakHourStat[] = appointmentRaw.peak_hours?.map((p) => ({ hour: p.hour, count: p.count })) ?? [];
-  const dayOfWeekStats: DayOfWeekStat[] = appointmentRaw.by_day_of_week?.map((d) => ({ day: d.day, day_index: d.day_index, completed: d.completed, cancelled: d.cancelled, no_show: d.no_show, total: d.total })) ?? [];
+  const revenueSeries: TimeSeriesPoint[] =
+    revenueRaw.by_date?.map((point) => ({
+      label: point.date,
+      value: toFiniteNumber(point.value),
+    })) ?? [];
+  const appointmentSeries: AppointmentVolumePoint[] =
+    appointmentRaw.by_date?.map((point) => ({
+      label: point.date,
+      completed: toFiniteNumber(point.completed),
+      cancelled: toFiniteNumber(point.cancelled),
+      no_show: toFiniteNumber(point.no_show),
+    })) ?? [];
+  const serviceStats: ServiceStat[] =
+    serviceRaw.services?.map((service) => ({
+      service_name: service.service_name,
+      completed_count: toFiniteNumber(service.completed_count),
+      revenue: toFiniteNumber(service.revenue),
+    })) ?? [];
+  const barberStats: BarberStat[] =
+    barberRaw.barbers?.map((barber) => ({
+      barber_name: barber.barber_name,
+      completed_count: toFiniteNumber(barber.completed_count),
+      revenue: toFiniteNumber(barber.revenue),
+      total_appointments: toFiniteNumber(barber.total_appointments),
+    })) ?? [];
+  const rawRatingStats: RatingStat[] =
+    customersRaw.rating_distribution?.map((rating) => ({
+      rating: toFiniteNumber(rating.rating),
+      count: toFiniteNumber(rating.count),
+    })) ?? [];
+  const ratingCounts = rawRatingStats.reduce<Map<number, number>>(
+    (counts, item) => {
+      if (item.rating >= 1 && item.rating <= 5) {
+        counts.set(item.rating, (counts.get(item.rating) ?? 0) + item.count);
+      }
+
+      return counts;
+    },
+    new Map(),
+  );
+  const ratingStats: RatingStat[] = [5, 4, 3, 2, 1].map((rating) => ({
+    rating,
+    count: ratingCounts.get(rating) ?? 0,
+  }));
+  const peakHourStats: PeakHourStat[] =
+    appointmentRaw.peak_hours?.map((peakHour) => ({
+      hour: peakHour.hour,
+      count: toFiniteNumber(peakHour.count),
+    })) ?? [];
+  const dayOfWeekStats: DayOfWeekStat[] =
+    appointmentRaw.by_day_of_week?.map((day) => ({
+      day: day.day,
+      day_index: toFiniteNumber(day.day_index),
+      completed: toFiniteNumber(day.completed),
+      cancelled: toFiniteNumber(day.cancelled),
+      no_show: toFiniteNumber(day.no_show),
+      total: toFiniteNumber(day.total),
+    })) ?? [];
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }) as ReportDocument;
   const logo = await loadLogo();
   const ratingCount = ratingStats.reduce((sum, item) => sum + item.count, 0);
@@ -741,7 +806,11 @@ export async function downloadAnalyticsReportPdf(report: SectionReportResponse):
     y = getFinalY(doc, y) + 11;
   }
 
-  if (y > PAGE_HEIGHT - 70) {
+  const ratingSectionHeight = 65;
+  if (
+    ratingCount > 0 &&
+    y + ratingSectionHeight > PAGE_HEIGHT - TABLE_BOTTOM_MARGIN
+  ) {
     y = addPage(doc);
   }
   y = drawSectionTitle(doc, "Customer Ratings", y);
@@ -751,15 +820,14 @@ export async function downloadAnalyticsReportPdf(report: SectionReportResponse):
   } else {
     autoTable(doc, {
       ...baseTableOptions(),
+      pageBreak: "avoid",
       startY: y,
       head: [["Rating", "Responses", "Share"]],
-      body: [...ratingStats]
-        .sort((a, b) => b.rating - a.rating)
-        .map((item) => [
-          `${item.rating} ${item.rating === 1 ? "star" : "stars"}`,
-          formatCount(item.count),
-          formatPercent(calculatePercent(item.count, ratingCount)),
-        ]),
+      body: ratingStats.map((item) => [
+        `${item.rating} ${item.rating === 1 ? "star" : "stars"}`,
+        formatCount(item.count),
+        formatPercent(calculatePercent(item.count, ratingCount)),
+      ]),
       foot: [["OVERALL", formatCount(ratingCount), "100.0%"]],
       columnStyles: {
         0: { cellWidth: 74 },

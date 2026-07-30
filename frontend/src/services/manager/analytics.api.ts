@@ -156,6 +156,20 @@ export interface SectionReportResponse {
   data: ReportOverview | ReportRevenue | ReportAppointments | ReportServices | ReportBarbers | ReportCustomers;
 }
 
+export type CompleteReportData = {
+  overview: ReportOverview;
+  revenue: ReportRevenue;
+  appointments: ReportAppointments;
+  services: ReportServices;
+  barbers: ReportBarbers;
+  customers: ReportCustomers;
+};
+
+export type CompleteReportResponse = {
+  meta: Omit<ReportMeta, "section"> & { section: "all" };
+  data: CompleteReportData;
+};
+
 export type Period = "daily" | "weekly" | "monthly" | "yearly";
 
 const API = process.env.NEXT_PUBLIC_API_URL;
@@ -182,6 +196,26 @@ export const getSectionReport = async (
   }
   if (options?.comparison && options.comparison !== "none") {
     params.set("comparison", options.comparison);
+  }
+
+  return authFetch(`${API}/analytics/reports?${params.toString()}`, {
+    signal: options?.signal,
+  });
+};
+
+export const getCompleteReport = async (
+  period: ReportPeriod,
+  options?: {
+    startDate?: string;
+    endDate?: string;
+    signal?: AbortSignal;
+  },
+): Promise<CompleteReportResponse> => {
+  const params = new URLSearchParams({ section: "all", period });
+
+  if (options?.startDate && options?.endDate) {
+    params.set("start_date", options.startDate);
+    params.set("end_date", options.endDate);
   }
 
   return authFetch(`${API}/analytics/reports?${params.toString()}`, {

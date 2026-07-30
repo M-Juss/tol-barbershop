@@ -244,8 +244,7 @@ class AnalyticsController extends Controller
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
             ->get()
-            ->groupBy(fn ($appointment) => $appointment->appointment_time)
-            ->filter(fn ($appointments, $hour) => in_array($hour, ['09:00', '10:00', '11:00', '12:30', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00']))
+            ->groupBy(fn ($appointment) => substr((string) $appointment->appointment_time, 0, 5))
             ->map(fn ($appointments, $hour) => [
                 'hour' => $hour,
                 'count' => $appointments->count(),
@@ -301,6 +300,14 @@ class AnalyticsController extends Controller
             'services' => $this->reportService->getServices($range, $compRange),
             'barbers' => $this->reportService->getBarbers($range, $compRange),
             'customers' => $this->reportService->getCustomers($range, $compRange),
+            'all' => [
+                'overview' => $this->reportService->getOverview($range),
+                'revenue' => $this->reportService->getRevenue($range),
+                'appointments' => $this->reportService->getAppointments($range),
+                'services' => $this->reportService->getServices($range),
+                'barbers' => $this->reportService->getBarbers($range),
+                'customers' => $this->reportService->getCustomers($range),
+            ],
             default => $this->reportService->getOverview($range, $compRange),
         };
 

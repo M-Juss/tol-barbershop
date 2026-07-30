@@ -40,13 +40,14 @@ function createAnalyticsReportAppointment(
     string $date,
     string $status,
     float $price = 250,
+    string $time = '10:00',
 ): Appointment {
     return Appointment::create([
         'user_id' => $context['customer']->id,
         'service_id' => $context['service']->id,
         'barber_user_id' => $context['barber']->id,
         'appointment_date' => $date,
-        'appointment_time' => '10:00',
+        'appointment_time' => $time,
         'duration_minutes' => 45,
         'price' => $price,
         'status' => $status,
@@ -184,6 +185,38 @@ test('analytics reports endpoint returns section-specific data', function () {
     expect($response->json('meta.section'))->toBe('overview');
     expect($response->json('data.total_revenue'))->toBe(300);
     expect($response->json('data.completed_appointments'))->toBe(1);
+});
+
+test('complete analytics export returns every report section for one date range', function () {
+    $context = createAnalyticsReportContext();
+    createAnalyticsReportAppointment($context, '2026-07-14', 'completed', 300, '10:30:00');
+    createAnalyticsReportAppointment($context, '2026-07-13', 'cancelled', 250, '11:00:00');
+    Sanctum::actingAs($context['manager']);
+
+    $response = $this->getJson('/api/v1/analytics/reports?section=all&period=daily')
+        ->assertOk()
+        ->assertJsonPath('meta.section', 'all')
+        ->assertJsonPath('meta.date_range.from', '2026-07-08')
+        ->assertJsonPath('meta.date_range.to', '2026-07-14');
+
+    $response->assertJsonStructure([
+        'data' => [
+            'overview' => ['total_revenue', 'completed_appointments', 'total_customers'],
+            'revenue' => ['total_revenue', 'by_date', 'by_service', 'by_barber'],
+            'appointments' => ['total', 'completed', 'cancelled', 'peak_hours'],
+            'services' => ['services', 'most_booked', 'least_booked'],
+            'barbers' => ['barbers'],
+            'customers' => ['total_customers_served', 'rating_distribution'],
+        ],
+    ]);
+
+    expect($response->json('data.overview.total_revenue'))->toBe(300)
+        ->and($response->json('data.revenue.total_revenue'))->toBe(300)
+        ->and($response->json('data.appointments.total'))->toBe(2)
+        ->and($response->json('data.appointments.peak_hours.0.hour'))->toBe('10:30')
+        ->and($response->json('data.services.services.0.revenue'))->toBe(300)
+        ->and($response->json('data.barbers.barbers.0.revenue'))->toBe(300)
+        ->and($response->json('data.customers.total_customers_served'))->toBe(1);
 });
 
 test('analytics reports validates section parameter', function () {
@@ -361,6 +394,24 @@ test('analytics reports returns appointments section', function () {
 
     expect($response->json('data.total'))->toBe(2);
     expect($response->json('data.completed'))->toBe(1);
+});
+
+test('peak hours normalize stored times across report periods', function () {
+    $context = createAnalyticsReportContext();
+    createAnalyticsReportAppointment($context, '2026-07-14', 'completed', 250, '10:30:00');
+    Sanctum::actingAs($context['manager']);
+
+    foreach (['daily', '30_days', '3_months', '12_months'] as $period) {
+        $this->getJson("/api/v1/analytics/reports?section=appointments&period={$period}")
+            ->assertOk()
+            ->assertJsonPath('data.peak_hours.0.hour', '10:30')
+            ->assertJsonPath('data.peak_hours.0.count', 1);
+    }
+
+    $this->getJson('/api/v1/analytics/peak-hours?period=daily')
+        ->assertOk()
+        ->assertJsonPath('0.hour', '10:30')
+        ->assertJsonPath('0.count', 1);
 });
 
 test('analytics reports returns services section', function () {

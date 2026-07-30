@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   disableBrowserPush,
   enableBrowserPush,
+  forgetBrowserPushEnabledForUser,
   getBrowserPushSubscription,
+  isBrowserPushEnabledForUser,
   isIOSWithoutInstalledApp,
   isPushSupported,
+  rememberBrowserPushEnabledForUser,
   syncBrowserPush,
 } from "@/services/shared/push.api";
 
@@ -20,6 +24,7 @@ export type PushNotificationStatus =
   | "error";
 
 export function usePushNotifications() {
+  const { user } = useAuth();
   const [status, setStatus] = useState<PushNotificationStatus>("loading");
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -45,12 +50,18 @@ export function usePushNotifications() {
       try {
         const subscription = await getBrowserPushSubscription();
         if (subscription) {
+          if (user && isBrowserPushEnabledForUser(user.id)) {
+            await syncBrowserPush();
+          }
           if (!cancelled) setStatus("enabled");
-          syncBrowserPush().catch(() => {});
           return;
         }
 
-        if (Notification.permission === "granted") {
+        if (
+          Notification.permission === "granted" &&
+          user &&
+          isBrowserPushEnabledForUser(user.id)
+        ) {
           const restored = await enableBrowserPush();
           if (!cancelled) setStatus(restored ? "enabled" : "error");
           return;
@@ -74,12 +85,15 @@ export function usePushNotifications() {
       cancelled = true;
       window.removeEventListener("push-subscription-changed", handleSubscriptionChange);
     };
-  }, []);
+  }, [user]);
 
   const enable = async () => {
     setIsUpdating(true);
     try {
       const enabled = await enableBrowserPush();
+      if (enabled && user) {
+        rememberBrowserPushEnabledForUser(user.id);
+      }
       setStatus(
         enabled
           ? "enabled"
@@ -100,6 +114,9 @@ export function usePushNotifications() {
     setIsUpdating(true);
     try {
       await disableBrowserPush();
+      if (user) {
+        forgetBrowserPushEnabledForUser(user.id);
+      }
       setStatus("disabled");
       return true;
     } catch {

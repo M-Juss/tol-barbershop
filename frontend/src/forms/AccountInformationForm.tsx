@@ -13,7 +13,19 @@ import {
 import { changeInformation } from "@/services/customer/user.api";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { ApiError } from "@/lib/api";
 import { sanitizeString, normalizeEmail, normalizePhone } from "@/lib/sanitizer";
+
+function getEmailValidationMessage(error: ApiError): string | null {
+  if (!error.errors || typeof error.errors !== "object") return null;
+
+  const emailErrors = (error.errors as Record<string, unknown>).email;
+  if (!Array.isArray(emailErrors) || typeof emailErrors[0] !== "string") {
+    return null;
+  }
+
+  return emailErrors[0];
+}
 
 export function AccountInformationForm() {
   const { user, refreshUser } = useAuth();
@@ -87,7 +99,19 @@ export function AccountInformationForm() {
       await refreshUser();
       setIsEditing(false);
       toast.success("Account information updated successfully");
-    } catch {
+    } catch (error) {
+      if (error instanceof ApiError) {
+        const emailMessage = getEmailValidationMessage(error);
+        if (emailMessage) {
+          setError("email", { message: emailMessage });
+          toast.error(emailMessage);
+          return;
+        }
+
+        toast.error(error.message);
+        return;
+      }
+
       toast.error("Failed to update account information");
     }
   };

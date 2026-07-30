@@ -1,22 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Wallet } from "lucide-react";
+import { Users } from "lucide-react";
 import { WalkinForm } from "@/forms/WalkinForm";
 import { StatCard } from "@/components/common/StatCard";
 import {
   getWalkinStats,
   type WalkinStats as WalkinStatsType,
 } from "@/services/manager/walkins.api";
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency: "PHP",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
 
 export function Walkin() {
   const [stats, setStats] = useState<WalkinStatsType | null>(null);
@@ -49,20 +40,13 @@ export function Walkin() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="mb-4">
         <StatCard
           label="Total Walk-ins"
           value={loading ? "..." : (stats?.total_walkins ?? 0).toLocaleString()}
           icon={Users}
           iconContainerClassName="bg-blue-100"
           iconClassName="text-blue-500"
-        />
-        <StatCard
-          label="Total Walk-ins Revenue"
-          value={loading ? "..." : formatCurrency(stats?.total_revenue ?? 0)}
-          icon={Wallet}
-          iconContainerClassName="bg-green-100"
-          iconClassName="text-green-500"
         />
       </div>
 

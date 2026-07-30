@@ -16,6 +16,15 @@ import {
   type LoginResponse,
 } from "@/services/shared/auth.api";
 import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/api";
+import {
+  enableBrowserPush,
+  getBrowserPushSubscription,
+  isBrowserPushEnabledForUser,
+  isPushSupported,
+  NOTIFICATION_PROMPT_DISMISSED_KEY,
+  rememberBrowserPushEnabledForUser,
+  unsubscribeBrowserPushLocally,
+} from "@/services/shared/push.api";
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -101,16 +110,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const user = res.data.user;
     setAuthRoleCookie(user.role);
+
+    if (
+      isBrowserPushEnabledForUser(user.id) &&
+      isPushSupported() &&
+      Notification.permission === "granted"
+    ) {
+      await enableBrowserPush().catch(() => false);
+    } else {
+      localStorage.removeItem(NOTIFICATION_PROMPT_DISMISSED_KEY);
+    }
+
     setUser(user);
     return res;
   };
 
   const logout = async () => {
-    const response = await logoutRequest();
+    let pushEndpoint: string | undefined;
+
+    try {
+      const subscription = await getBrowserPushSubscription();
+      pushEndpoint = subscription?.endpoint;
+
+      if (subscription && user) {
+        rememberBrowserPushEnabledForUser(user.id);
+      }
+    } catch {}
+
+    const response = await logoutRequest(pushEndpoint);
     if (!response?.success) {
       throw new Error(response?.message || "Logout failed");
     }
 
+    await unsubscribeBrowserPushLocally().catch(() => {});
     clearAuthRoleCookie();
     setUser(null);
     window.location.replace("/");

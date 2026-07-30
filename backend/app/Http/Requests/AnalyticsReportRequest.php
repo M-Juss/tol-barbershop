@@ -19,7 +19,7 @@ class AnalyticsReportRequest extends FormRequest
 
         return [
             'section' => ['sometimes', 'string', Rule::in([
-                'overview', 'revenue', 'appointments', 'services', 'barbers', 'customers',
+                'overview', 'revenue', 'appointments', 'services', 'barbers', 'customers', 'all',
             ])],
             'period' => ['sometimes', 'string', Rule::in([
                 'daily', 'weekly', 'monthly', 'yearly',

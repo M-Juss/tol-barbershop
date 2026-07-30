@@ -241,7 +241,6 @@ export function AdminForm({
             onValueChange={(value) =>
               setValue("role_id", value ? Number(value) : null)
             }
-            triggerClassName="h-10 py-0"
           />
 
           <DialogFooter>

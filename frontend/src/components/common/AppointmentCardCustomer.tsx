@@ -1,5 +1,6 @@
-import { cn } from "@/lib/utils";
 import { CalendarDays } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 export type AppointmentStatus =
   | "Approved"
@@ -41,49 +42,67 @@ export function AppointmentCardCustomer({
 }: AppointmentCardCustomerProps) {
   return (
     <div
-      className={cn("border border-gray-200 rounded-xl p-4", className)}
+      className={cn(
+        "relative rounded-xl border border-gray-200 p-4",
+        className,
+      )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex items-center gap-5">
-            <div className="shrink-0 w-28">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Date</p>
-              <div className="flex items-center gap-1.5">
-                <CalendarDays className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                <span className="font-bold text-gray-900 text-sm">{date}</span>
-              </div>
-            </div>
-            <div className="shrink-0 w-24">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Time</p>
-              <p className="font-bold text-blue-600 text-sm">{time}</p>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4">
+        <div className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              Date
+            </p>
+            <div className="flex items-start gap-1.5">
+              <CalendarDays className="mt-0.5 size-3.5 shrink-0 text-blue-500" />
+              <span className="text-sm font-bold leading-tight text-gray-900">
+                {date}
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-5">
-            <div className="shrink-0 w-28">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Service</p>
-              <p className="text-xs text-gray-600 truncate">{service}</p>
-            </div>
-            <div className="shrink-0 w-24">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Barber</p>
-              <p className="text-xs text-gray-600 truncate">{barber}</p>
-            </div>
-            <div className="shrink-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Price</p>
-              <p className="text-xs font-medium text-gray-700">₱{Number(price).toLocaleString()}</p>
-            </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              Time
+            </p>
+            <p className="text-sm font-bold text-blue-600">{time}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              Service
+            </p>
+            <p className="truncate text-xs text-gray-600">{service}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              Barber
+            </p>
+            <p className="truncate pr-2 text-xs text-gray-600">{barber}</p>
           </div>
           {(status === "Cancelled" || status === "Rejected") && cancellation_reason && (
-            <p className="text-red-500 text-xs">
+            <p className="col-span-2 text-xs text-red-500">
               Reason: {cancellation_reason}
             </p>
           )}
         </div>
-        <span
-          className={cn("text-xs font-medium px-3 py-1 rounded-full shrink-0", statusBadge[status])}
-        >
-          {status}
-        </span>
+        <div className="min-w-20 text-right">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              Price
+            </p>
+            <p className="text-xl font-extrabold leading-tight text-primary">
+              ₱{Number(price).toLocaleString()}
+            </p>
+          </div>
+        </div>
       </div>
+      <span
+        className={cn(
+          "absolute right-4 bottom-3 max-w-20 -translate-x-8 truncate rounded-full px-2 py-0.5 text-[10px] font-medium sm:translate-x-0 sm:px-3 sm:py-1 sm:text-xs",
+          statusBadge[status],
+        )}
+      >
+        {status}
+      </span>
     </div>
   );
 }

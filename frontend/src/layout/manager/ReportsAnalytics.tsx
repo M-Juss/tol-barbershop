@@ -45,6 +45,7 @@ import {
   Download,
 } from "lucide-react";
 import {
+  getCompleteReport,
   getSectionReport,
   formatReportDateLabel,
   type ReportSection,
@@ -262,22 +263,34 @@ function ReportsAnalyticsInner() {
   );
 
   const handleExport = useCallback(async () => {
-    if (!reportData || loading) {
+    if (!reportData || loading || reportDataKey !== cacheKey) {
       toast.error("Wait for the report to finish loading");
       return;
     }
 
     try {
       setExporting(true);
-      await downloadAnalyticsReportPdf(reportData);
+      const completeReport = await getCompleteReport(period, {
+        startDate,
+        endDate,
+      });
+      await downloadAnalyticsReportPdf(completeReport);
       toast.success("PDF exported successfully");
     } catch (err) {
       console.error("Export failed:", err);
-      toast.error(err instanceof Error ? err.message : "Could not export PDF. Please try again.");
+      toast.error("Could not export the PDF. Please try again.");
     } finally {
       setExporting(false);
     }
-  }, [reportData, loading]);
+  }, [
+    cacheKey,
+    endDate,
+    loading,
+    period,
+    reportData,
+    reportDataKey,
+    startDate,
+  ]);
 
   const handleRetry = useCallback(() => {
     setCache((prev) => {
