@@ -64,6 +64,7 @@ return new class extends Migration
         });
 
         Schema::table('appointments', function (Blueprint $table) {
+            $table->index('barber_user_id', 'appointments_barber_user_id_index');
             $table->dropUnique('appointments_active_slot_unique');
             $table->dropIndex('appointments_schedule_conflict_index');
             $table->dropIndex('appointments_archived_by_index');
