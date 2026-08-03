@@ -21,6 +21,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        $this->addIndexIfMissing('appointments', ['user_id'], 'appointments_user_id_index');
         $this->dropIndexIfExists('appointment_feedback', 'appointment_feedback_featured_created_id_list_index');
         $this->dropIndexIfExists('appointment_feedback', 'appointment_feedback_rating_created_id_list_index');
         $this->dropIndexIfExists('appointment_feedback', 'appointment_feedback_created_id_list_index');

@@ -166,6 +166,7 @@ git pull origin main
 composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 php artisan migrate --force
 php artisan optimize
+php artisan production:verify
 ```
 
 If environment values change, rebuild Laravel's cached configuration:
@@ -221,6 +222,28 @@ Verify these application cases manually:
 12. Staff image upload attempts are rejected.
 13. Push subscription endpoints reject non-provider URLs.
 
+## Operational Protection
+
+Hostinger Premium's weekly backup is not sufficient for appointment data. Configure a daily MySQL backup or export to storage outside the hosting account. Encrypt it, retain at least seven daily and four weekly copies, and test a restore at least monthly. Keep the weekly Hostinger backup enabled as a second recovery path.
+
+Configure uptime checks at five-minute intervals for all three paths and send failures to an actively monitored email or phone:
+
+```text
+https://www.example.com/
+https://www.example.com/api/v1/public-booking-settings
+https://backend.example.com/up
+```
+
+Configure error alerts for backend 5xx responses and Laravel production log errors. Review repeated 401, 403, 419, 422, and 429 responses for authentication, CSRF, validation, or abuse patterns. In Netlify, enable credit-usage notifications before the monthly allowance is exhausted and set more than one threshold so there is time to react.
+
+Run the public read workload against a staging deployment while watching Hostinger's PHP worker, CPU, and MySQL connection metrics:
+
+```bash
+node operations/load-test.mjs https://staging.example.com --confirm-staging
+```
+
+The default workload is 15 virtual users for 15 minutes. It fails on request errors, non-2xx responses, or p95 latency above 1000 ms. Do not target production. Record p95 latency, 5xx responses, peak PHP workers, peak CPU, and peak MySQL connections in the release notes.
+
 ## Maintenance
 
 Run these checks before each production release:
@@ -229,6 +252,7 @@ Run these checks before each production release:
 composer validate --strict --no-check-publish
 composer audit --locked --no-dev --abandoned=fail
 php artisan test
+composer run test:mysql
 vendor/bin/pint --test
 ```
 
