@@ -28,59 +28,117 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $normalizedEmail = fn (Request $request, string $field): string => Str::lower(
+            trim((string) $request->input($field, $request->query($field)))
+        );
         $emailKey = fn (Request $request, string $field): string => hash(
             'sha256',
-            $request->ip().'|'.Str::lower(trim((string) $request->input($field))),
+            $normalizedEmail($request, $field),
         );
-
+        $sessionKey = fn (Request $request): string => hash(
+            'sha256',
+            $request->hasSession() ? $request->session()->getId() : 'stateless',
+        );
         $userId = fn (Request $request): string => (string) $request->user()->getAuthIdentifier();
         $routeKey = fn (Request $request): string => (string) (
             $request->route()?->getName()
             ?? $request->route()?->uri()
             ?? 'unknown'
         );
+        $rateLimited = fn (string $policy) => fn (Request $_request, array $headers) => response()
+            ->json([
+                'success' => false,
+                'message' => 'Too many attempts. Please try again later.',
+                'code' => 'RATE_LIMITED',
+                'data' => [
+                    'source' => 'laravel',
+                    'policy' => $policy,
+                ],
+            ], 429, $headers)
+            ->header('X-RateLimit-Policy', $policy)
+            ->header('X-Response-Source', 'laravel');
+        $limit = fn (int $attempts, string $key, string $policy): Limit => Limit::perMinute($attempts)
+            ->by($key)
+            ->response($rateLimited($policy));
 
         RateLimiter::for('login', fn (Request $request): array => [
-            Limit::perMinute(10)->by('login-email:'.hash('sha256', Str::lower(trim((string) $request->input('email'))))),
-            Limit::perMinute(120)->by('login-client:'.hash('sha256', $request->ip())),
+            $limit(10, 'login-email:'.$emailKey($request, 'email'), 'login-email'),
+            $limit(30, 'login-session:'.$sessionKey($request), 'login-session'),
+            $limit(300, 'login-global', 'login-global'),
         ]);
         RateLimiter::for('register', fn (Request $request): array => [
-            Limit::perMinute(5)->by('register-email:'.hash('sha256', Str::lower(trim((string) $request->input('email'))))),
-            Limit::perMinute(30)->by('register-client:'.hash('sha256', $request->ip())),
+            $limit(5, 'register-email:'.$emailKey($request, 'email'), 'register-email'),
+            $limit(10, 'register-session:'.$sessionKey($request), 'register-session'),
+            $limit(60, 'register-global', 'register-global'),
         ]);
-        RateLimiter::for('public-read', fn (Request $request): Limit => Limit::perMinute(600)
-            ->by('public-read:'.$request->ip().':'.$routeKey($request)));
+        RateLimiter::for('public-read', fn (Request $request): Limit => $limit(
+            600,
+            'public-read:'.$routeKey($request),
+            'public-read',
+        ));
 
-        RateLimiter::for('polling', fn (Request $request): Limit => Limit::perMinute(600)
-            ->by('poll:'.$userId($request).':'.$routeKey($request)));
+        RateLimiter::for('polling', fn (Request $request): Limit => $limit(
+            600,
+            'poll:'.$userId($request).':'.$routeKey($request),
+            'polling',
+        ));
 
-        RateLimiter::for('authenticated-read', fn (Request $request): Limit => Limit::perMinute(600)
-            ->by('read:'.$userId($request).':'.$routeKey($request)));
+        RateLimiter::for('authenticated-read', fn (Request $request): Limit => $limit(
+            600,
+            'read:'.$userId($request).':'.$routeKey($request),
+            'authenticated-read',
+        ));
 
-        RateLimiter::for('authenticated-write', fn (Request $request): Limit => Limit::perMinute(30)
-            ->by('write:'.$userId($request)));
+        RateLimiter::for('authenticated-write', fn (Request $request): Limit => $limit(
+            30,
+            'write:'.$userId($request),
+            'authenticated-write',
+        ));
 
-        RateLimiter::for('booking-action', fn (Request $request): Limit => Limit::perMinute(30)
-            ->by('booking:'.$userId($request)));
+        RateLimiter::for('booking-action', fn (Request $request): Limit => $limit(
+            30,
+            'booking:'.$userId($request),
+            'booking-action',
+        ));
 
-        RateLimiter::for('support-message', fn (Request $request): Limit => Limit::perMinute(60)
-            ->by('support-msg:'.$userId($request)));
+        RateLimiter::for('support-message', fn (Request $request): Limit => $limit(
+            60,
+            'support-msg:'.$userId($request),
+            'support-message',
+        ));
 
-        RateLimiter::for('logout', fn (Request $request): Limit => Limit::perMinute(30)
-            ->by('logout:'.$userId($request)));
+        RateLimiter::for('logout', fn (Request $request): Limit => $limit(
+            30,
+            'logout:'.$userId($request),
+            'logout',
+        ));
 
-        RateLimiter::for('verification-link', fn (Request $request): Limit => Limit::perMinute(6)
-            ->by(hash('sha256', $request->ip().'|'.$request->route('id'))));
-        RateLimiter::for('verification-resend', fn (Request $request): Limit => Limit::perMinute(6)
-            ->by($emailKey($request, 'email')));
-        RateLimiter::for('change-registration-email', fn (Request $request): Limit => Limit::perMinute(5)
-            ->by($emailKey($request, 'current_email')));
-        RateLimiter::for('forgot-password', fn (Request $request): Limit => Limit::perMinute(10)
-            ->by($emailKey($request, 'email')));
-        RateLimiter::for('reset-password', fn (Request $request): Limit => Limit::perMinute(30)
-            ->by($emailKey($request, 'email')));
-        RateLimiter::for('validate-reset-token', fn (Request $request): Limit => Limit::perMinute(30)
-            ->by($emailKey($request, 'email')));
+        RateLimiter::for('verification-link', fn (Request $request): array => [
+            $limit(6, 'verification-target:'.hash('sha256', (string) (
+                $request->route('id') ?? $normalizedEmail($request, 'email')
+            )), 'verification-target'),
+            $limit(120, 'verification-global', 'verification-global'),
+        ]);
+        RateLimiter::for('verification-resend', fn (Request $request): array => [
+            $limit(6, 'verification-resend-email:'.$emailKey($request, 'email'), 'verification-resend-email'),
+            $limit(60, 'verification-resend-global', 'verification-resend-global'),
+        ]);
+        RateLimiter::for('change-registration-email', fn (Request $request): array => [
+            $limit(5, 'change-registration-email:'.$emailKey($request, 'current_email'), 'change-registration-email'),
+            $limit(30, 'change-registration-email-global', 'change-registration-email-global'),
+        ]);
+        RateLimiter::for('forgot-password', fn (Request $request): array => [
+            $limit(10, 'forgot-password-email:'.$emailKey($request, 'email'), 'forgot-password-email'),
+            $limit(60, 'forgot-password-global', 'forgot-password-global'),
+        ]);
+        RateLimiter::for('reset-password', fn (Request $request): array => [
+            $limit(30, 'reset-password-email:'.$emailKey($request, 'email'), 'reset-password-email'),
+            $limit(120, 'reset-password-global', 'reset-password-global'),
+        ]);
+        RateLimiter::for('validate-reset-token', fn (Request $request): array => [
+            $limit(30, 'validate-reset-token-email:'.$emailKey($request, 'email'), 'validate-reset-token-email'),
+            $limit(120, 'validate-reset-token-global', 'validate-reset-token-global'),
+        ]);
 
         VerifyEmail::createUrlUsing(function (User $user): string {
             $signedPath = URL::temporarySignedRoute(
