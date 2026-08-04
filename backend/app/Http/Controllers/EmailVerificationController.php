@@ -141,7 +141,7 @@ class EmailVerificationController extends Controller
         $validated = $request->validated();
         $throttleKey = 'change-registration-email:'.hash(
             'sha256',
-            $validated['current_email'].'|'.$request->ip(),
+            $validated['current_email'],
         );
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
