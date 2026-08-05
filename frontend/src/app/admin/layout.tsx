@@ -91,7 +91,7 @@ export default function AdminLayout({
     user?.role,
   ]);
 
-  const fetchSummary = useCallback(async (signal?: AbortSignal, force = true) => {
+  const fetchSummary = useCallback(async (signal?: AbortSignal, force = false) => {
     try {
       const summary = await getNavigationSummary(signal, force);
       const pendingAppointments = summary.pending_appointments ?? 0;

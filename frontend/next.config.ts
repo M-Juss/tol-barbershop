@@ -128,6 +128,42 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
+        source: "/api/v1/public-services",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=300, s-maxage=300, stale-while-revalidate=600" },
+        ],
+      },
+      {
+        source: "/api/v1/public-gallery-images",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=300, s-maxage=300, stale-while-revalidate=600" },
+        ],
+      },
+      {
+        source: "/api/v1/public-feedback",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=300, s-maxage=300, stale-while-revalidate=600" },
+        ],
+      },
+      {
+        source: "/api/v1/featured-feedback",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=300, s-maxage=300, stale-while-revalidate=600" },
+        ],
+      },
+      {
+        source: "/api/v1/public-booking-settings",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=300, s-maxage=300, stale-while-revalidate=600" },
+        ],
+      },
+      {
+        source: "/api/v1/public-bootstrap",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=300, s-maxage=300, stale-while-revalidate=600" },
+        ],
+      },
+      {
         source: "/reset-password",
         headers: [
           { key: "Cache-Control", value: "no-store, max-age=0" },

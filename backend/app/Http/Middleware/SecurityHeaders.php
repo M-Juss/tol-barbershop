@@ -44,6 +44,10 @@ class SecurityHeaders
             $response->headers->set('Cache-Control', 'no-store, private');
         }
 
+        if (! $response->headers->has('X-Response-Source')) {
+            $response->headers->set('X-Response-Source', 'laravel');
+        }
+
         return $response;
     }
 }

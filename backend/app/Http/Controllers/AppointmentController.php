@@ -793,18 +793,23 @@ class AppointmentController extends Controller
 
     public function overviewStats()
     {
-        $completedAppointments = Appointment::withTrashed()->where('status', 'completed')->count();
-        $pendingAppointments = Appointment::where('status', 'pending')->count();
-        $approvedAppointments = Appointment::where('status', 'approved')->count();
+        $from = Carbon::now()->subYear()->toDateString();
+        $to = Carbon::today()->addDay()->toDateString();
+
+        $stats = Appointment::withTrashed()
+            ->where('appointment_date', '>=', $from)
+            ->where('appointment_date', '<', $to)
+            ->selectRaw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_appointments, SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_appointments, SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_appointments, SUM(CASE WHEN status = 'completed' THEN price ELSE 0 END) as total_revenue")
+            ->first();
+
         $totalCustomers = User::where('role', 'customer')->count();
-        $totalRevenue = (float) Appointment::withTrashed()->where('status', 'completed')->sum('price');
 
         return response()->json([
-            'completed_appointments' => $completedAppointments,
-            'pending_appointments' => $pendingAppointments,
-            'approved_appointments' => $approvedAppointments,
+            'completed_appointments' => (int) ($stats->completed_appointments ?? 0),
+            'pending_appointments' => (int) ($stats->pending_appointments ?? 0),
+            'approved_appointments' => (int) ($stats->approved_appointments ?? 0),
             'total_customers' => $totalCustomers,
-            'total_revenue' => $totalRevenue,
+            'total_revenue' => (float) ($stats->total_revenue ?? 0),
         ]);
     }
 
@@ -856,10 +861,14 @@ class AppointmentController extends Controller
 
     public function serviceStats()
     {
+        $from = Carbon::now()->subYear()->toDateString();
+        $to = Carbon::today()->addDay()->toDateString();
         $serviceName = "COALESCE(appointments.service_name_snapshot, services.name, 'Unknown')";
         $rows = Appointment::withTrashed()
             ->leftJoin('services', 'services.id', '=', 'appointments.service_id')
             ->where('status', 'completed')
+            ->where('appointments.appointment_date', '>=', $from)
+            ->where('appointments.appointment_date', '<', $to)
             ->selectRaw("{$serviceName} as service_name, COUNT(*) as completed_count")
             ->groupBy(DB::raw($serviceName))
             ->orderByDesc('completed_count')
