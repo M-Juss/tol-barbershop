@@ -27,11 +27,17 @@ const CSRF_COOKIE_URL = "/sanctum/csrf-cookie";
 const SAFE_URL_BASE = "https://same-origin.invalid";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const NETWORK_ERROR_MESSAGE =
-  "We’re having trouble connecting right now. Check your internet connection and try again in a few moments.";
+  "We're having trouble connecting right now. Check your internet connection and try again in a few moments.";
 const SERVER_ERROR_MESSAGE =
   "Something went wrong on our side. Please try again later.";
+const GET_MAX_RETRIES = 2;
+const RETRY_BASE_DELAY_MS = 1_000;
+const RETRY_MAX_DELAY_MS = 10_000;
 
 let csrfInitialization: Promise<void> | null = null;
+
+const inFlightGetRequests = new Map<string, Promise<unknown>>();
+const dedupConsumerCount = new Map<string, number>();
 
 function parseRetryAfter(value: string | null): number | null {
   if (!value) return null;
@@ -188,6 +194,26 @@ function isStateChanging(method: string): boolean {
   return !SAFE_METHODS.has(method);
 }
 
+function getDeduplicationKey(url: string, method: string): string | null {
+  if (method !== "GET") return null;
+  return `get:${url}`;
+}
+
+function getRetryDelay(attempt: number): number {
+  const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+  return Math.min(delay + Math.random() * RETRY_BASE_DELAY_MS, RETRY_MAX_DELAY_MS);
+}
+
+function isRetryableError(error: unknown): boolean {
+  if (error instanceof ApiError) {
+    return error.status === 0 || error.code === "NETWORK_ERROR";
+  }
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return false;
+  }
+  return true;
+}
+
 function getSafeReferrer(): string | undefined {
   return typeof window === "undefined" ? undefined : `${window.location.origin}/`;
 }
@@ -316,10 +342,100 @@ async function request(
   return parseResponse(response, clearAuthOnUnauthorized);
 }
 
+async function requestWithDedupAndRetry(
+  url: string,
+  options: RequestInit,
+  clearAuthOnUnauthorized: boolean,
+) {
+  const method = (options.method ?? "GET").toUpperCase();
+  const dedupKey = getDeduplicationKey(url, method);
+
+  if (dedupKey) {
+    const existing = inFlightGetRequests.get(dedupKey);
+    if (existing) {
+      dedupConsumerCount.set(dedupKey, (dedupConsumerCount.get(dedupKey) ?? 1) + 1);
+
+      const cleanup = () => {
+        const count = (dedupConsumerCount.get(dedupKey) ?? 1) - 1;
+        if (count <= 0) {
+          dedupConsumerCount.delete(dedupKey);
+        } else {
+          dedupConsumerCount.set(dedupKey, count);
+        }
+      };
+
+      options.signal?.addEventListener("abort", () => {
+        cleanup();
+        const remaining = dedupConsumerCount.get(dedupKey) ?? 0;
+        if (remaining <= 0) {
+          inFlightGetRequests.delete(dedupKey);
+        }
+      }, { once: true });
+
+      return existing;
+    }
+
+    dedupConsumerCount.set(dedupKey, 1);
+  }
+
+  const maxRetries = method === "GET" ? GET_MAX_RETRIES : 0;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const shareableOptions = dedupKey
+        ? { ...options, signal: undefined }
+        : options;
+
+      const result = await request(url, shareableOptions, clearAuthOnUnauthorized);
+
+      if (dedupKey) {
+        inFlightGetRequests.delete(dedupKey);
+        dedupConsumerCount.delete(dedupKey);
+      }
+
+      return result;
+    } catch (error) {
+      lastError = error;
+
+      if (dedupKey) {
+        inFlightGetRequests.delete(dedupKey);
+        dedupConsumerCount.delete(dedupKey);
+      }
+
+      if (attempt < maxRetries && isRetryableError(error)) {
+        const delayMs = getRetryDelay(attempt);
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, delayMs);
+          if (options.signal) {
+            options.signal.addEventListener(
+              "abort",
+              () => {
+                clearTimeout(timer);
+                resolve();
+              },
+              { once: true },
+            );
+          }
+        });
+
+        if (options.signal?.aborted) {
+          throw error;
+        }
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw lastError;
+}
+
 export async function publicFetch(url: string, options: RequestInit = {}) {
-  return request(url, options, false);
+  return requestWithDedupAndRetry(url, options, false);
 }
 
 export async function authFetch(url: string, options: RequestInit = {}) {
-  return request(url, options, true);
+  return requestWithDedupAndRetry(url, options, true);
 }

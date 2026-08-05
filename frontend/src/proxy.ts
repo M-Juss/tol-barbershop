@@ -70,6 +70,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
+  source: "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:js|css|woff|woff2|ttf|eot|svg|png|jpg|jpeg|gif|webp|ico|json|xml|txt|manifest\\.webmanifest)$).*)",
   matcher: [
     "/",
     "/login",
