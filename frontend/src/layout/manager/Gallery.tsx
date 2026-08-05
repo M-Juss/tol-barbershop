@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GalleryImageForm } from "@/forms/GalleryImageForm";
+import { getCloudinaryImageUrl, isCloudinaryImageUrl } from "@/lib/cloudinary";
 import {
   galleryCategories,
   galleryCategoryLabels,
@@ -217,9 +218,10 @@ export function Gallery() {
               >
                 <div className="relative aspect-[4/3] bg-gray-100">
                   <Image
-                    src={image.image_url}
+                    src={getCloudinaryImageUrl(image.image_url, 900)}
                     alt={safeAltText}
                     fill
+                    unoptimized={isCloudinaryImageUrl(image.image_url)}
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover"
                   />

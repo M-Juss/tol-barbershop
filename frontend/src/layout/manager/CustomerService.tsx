@@ -40,6 +40,7 @@ const CancelTicketDialog = dynamic(
   { ssr: false }
 );
 import { useAuth } from "@/contexts/AuthContext";
+import { useRealtimeEvent } from "@/contexts/RealtimeContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { startPolling } from "@/lib/polling";
@@ -200,14 +201,19 @@ export function CustomerService() {
         return current?.id === myTicket.id ? current : myTicket;
       });
     } catch (error) {
-      if (signal && !allowDuringMutation) throw error;
+      const isAbort =
+        error instanceof DOMException && error.name === "AbortError";
+      if (!isAbort && signal && !allowDuringMutation) throw error;
     } finally {
       setLoading(false);
     }
   }, [authUser?.id]);
 
   useEffect(() => {
-    return startPolling(fetchQueue, 10000);
+    const controller = new AbortController();
+    void fetchQueue(controller.signal);
+
+    return () => controller.abort();
   }, [fetchQueue]);
 
   useEffect(() => {
@@ -478,15 +484,19 @@ export function CustomerService() {
     };
   }, [refreshHistory]);
 
-  useEffect(() => {
-    if (tabView !== "history") return;
+  useRealtimeEvent("support_tickets", async (signal) => {
+    if (tabViewRef.current === "queue") {
+      await fetchQueue(signal);
+      return;
+    }
 
-    return startPolling(async (signal) => {
+    if (tabViewRef.current === "history") {
       const updatedAfter = historyCheckedAtRef.current;
-      if (!updatedAfter) return;
-      await fetchHistory(signal, updatedAfter);
-    }, 60000);
-  }, [fetchHistory, tabView]);
+      if (updatedAfter) {
+        await fetchHistory(signal, updatedAfter);
+      }
+    }
+  });
 
   const handleTabChange = (tab: TabView) => {
     tabViewRef.current = tab;
@@ -611,7 +621,7 @@ export function CustomerService() {
                             {formatTicketId(ticket.id)}
                           </span>
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-400" suppressHydrationWarning>
                           {timeAgo(ticket.created_at)}
                         </p>
                       </div>
@@ -810,7 +820,7 @@ export function CustomerService() {
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {(historyDetailTicket.status === "resolved" || historyDetailTicket.status === "cancelled") && historyDetailTicket.resolved_at && (
                       <div className="flex items-center justify-between text-xs">
-                        <p className={historyDetailTicket.status === "resolved" ? "text-green-600 font-medium" : "text-gray-500"}>
+                        <p className={historyDetailTicket.status === "resolved" ? "text-green-600 font-medium" : "text-gray-500"} suppressHydrationWarning>
                           {historyDetailTicket.status === "resolved" ? "Resolved" : "Cancelled"} {formatDateShort(historyDetailTicket.resolved_at)}
                         </p>
                         <p className="text-gray-500">

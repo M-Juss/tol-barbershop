@@ -5,13 +5,17 @@ import { useEffect, useState } from "react";
 
 import { SectionHeading } from "./SectionHeading";
 import { FadeIn } from "@/components/common/FadeIn";
+import { getCloudinaryImageUrl, isCloudinaryImageUrl } from "@/lib/cloudinary";
 import {
   getLandingServices,
   type LandingService,
 } from "@/services/shared/landing.api";
 
 const SERVICES_IMAGE_URL =
-  "https://res.cloudinary.com/lgyelfkv/image/upload/tol-barbershop/landing-gallery/axui0kjzyjs9rgc2nyxj";
+  getCloudinaryImageUrl(
+    "https://res.cloudinary.com/lgyelfkv/image/upload/tol-barbershop/landing-gallery/axui0kjzyjs9rgc2nyxj",
+    1280,
+  );
 const SERVICES_IMAGE_FALLBACK = "/InteriorImage/Interior1.jpg";
 
 export function ServicesSection() {
@@ -78,6 +82,7 @@ export function ServicesSection() {
               fill
               className="object-cover transition-transform duration-700 hover:scale-[1.03]"
               sizes="(max-width: 1024px) 100vw, 50vw"
+              unoptimized={isCloudinaryImageUrl(servicesImageSrc)}
               onError={() => {
                 if (servicesImageSrc !== SERVICES_IMAGE_FALLBACK) {
                   setServicesImageSrc(SERVICES_IMAGE_FALLBACK);

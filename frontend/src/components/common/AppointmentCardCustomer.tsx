@@ -2,39 +2,20 @@ import { CalendarDays } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-export type AppointmentStatus =
-  | "Approved"
-  | "Pending"
-  | "Completed"
-  | "Cancelled"
-  | "Rejected"
-  | "No-show";
-
 type AppointmentCardCustomerProps = {
   service: string;
   barber: string;
   price: number;
-  status: AppointmentStatus;
   date: string;
   time: string;
   cancellation_reason?: string | null;
   className?: string;
 };
 
-const statusBadge: Record<AppointmentStatus, string> = {
-  Approved: "bg-blue-100 text-blue-500",
-  Pending: "bg-yellow-100 text-yellow-600",
-  Completed: "bg-green-100 text-green-600",
-  Cancelled: "bg-red-100 text-red-500",
-  Rejected: "bg-orange-100 text-orange-600",
-  "No-show": "bg-gray-200 text-gray-600",
-};
-
 export function AppointmentCardCustomer({
   service,
   barber,
   price,
-  status,
   date,
   time,
   cancellation_reason,
@@ -78,7 +59,7 @@ export function AppointmentCardCustomer({
             </p>
             <p className="truncate pr-2 text-xs text-gray-600">{barber}</p>
           </div>
-          {(status === "Cancelled" || status === "Rejected") && cancellation_reason && (
+          {cancellation_reason && (
             <p className="col-span-2 text-xs text-red-500">
               Reason: {cancellation_reason}
             </p>
@@ -95,14 +76,6 @@ export function AppointmentCardCustomer({
           </div>
         </div>
       </div>
-      <span
-        className={cn(
-          "absolute right-4 bottom-3 max-w-20 -translate-x-8 truncate rounded-full px-2 py-0.5 text-[10px] font-medium sm:translate-x-0 sm:px-3 sm:py-1 sm:text-xs",
-          statusBadge[status],
-        )}
-      >
-        {status}
-      </span>
     </div>
   );
 }

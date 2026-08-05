@@ -30,10 +30,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatTicketId } from "@/lib/booking";
-import { ApiError } from "@/lib/api";
 import {
   getMyTickets,
-  getTicketState,
   createTicket,
   cancelTicket,
   getMessages,
@@ -43,6 +41,7 @@ import {
   type SupportMessage,
 } from "@/services/customer/support.api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRealtimeEvent } from "@/contexts/RealtimeContext";
 import { toast } from "sonner";
 import { startPolling } from "@/lib/polling";
 import { cn } from "@/lib/utils";
@@ -51,6 +50,7 @@ import {
   SUPPORT_CATEGORY_MAX_LENGTH,
   SUPPORT_TEXT_MAX_LENGTH,
 } from "@/lib/support";
+import { getNavigationSummary } from "@/services/shared/navigation.api";
 
 type FabState = "idle" | "submitting" | "waiting" | "active" | "resolved";
 type SheetTab = "ticketing" | "history";
@@ -221,12 +221,13 @@ export function SupportFab() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  const fetchTicketState = useCallback(async (signal?: AbortSignal) => {
+  const fetchTicketState = useCallback(async (signal?: AbortSignal, force = false) => {
     if (ticketMutationPendingRef.current) return;
     const mutationVersion = ticketMutationVersionRef.current;
 
     try {
-      const currentTicket = await getTicketState(signal);
+      const summary = await getNavigationSummary(signal, force);
+      const currentTicket = summary.support_ticket;
       if (
         ticketMutationPendingRef.current ||
         mutationVersion !== ticketMutationVersionRef.current
@@ -255,8 +256,7 @@ export function SupportFab() {
     } catch (error) {
       const isAbortError =
         error instanceof DOMException && error.name === "AbortError";
-      const isRateLimited = error instanceof ApiError && error.status === 429;
-      if (!isAbortError && !isRateLimited) {
+      if (!isAbortError) {
         setFabState("idle");
       }
       throw error;
@@ -266,8 +266,17 @@ export function SupportFab() {
   useEffect(() => {
     if (!user) return;
 
-    return startPolling(fetchTicketState, 10000);
+    const controller = new AbortController();
+    void fetchTicketState(controller.signal);
+
+    return () => controller.abort();
   }, [user, fetchTicketState]);
+
+  useRealtimeEvent(
+    "support_tickets",
+    (signal) => fetchTicketState(signal, true),
+    Boolean(user),
+  );
 
   const fetchMessages = useCallback(async (signal?: AbortSignal) => {
     if (!ticket || ticket.status !== "active") return;

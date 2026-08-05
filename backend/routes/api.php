@@ -15,7 +15,9 @@ use App\Http\Controllers\GalleryImageController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\LogoutController;
 use App\Http\Controllers\ModuleController;
+use App\Http\Controllers\NavigationSummaryController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PublicBootstrapController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\RoleController;
@@ -48,6 +50,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/public-feedback', [AppointmentFeedbackController::class, 'publicIndex'])->middleware('throttle:public-read');
     Route::get('/featured-feedback', [AppointmentFeedbackController::class, 'featuredIndex'])->middleware('throttle:public-read');
     Route::get('/public-booking-settings', [SettingsController::class, 'publicBookingSettings'])->middleware('throttle:public-read');
+    Route::get('/public-bootstrap', PublicBootstrapController::class)->middleware('throttle:public-read');
 
     Route::middleware(['auth:sanctum', 'active', 'customer.verified'])->group(function () {
         Route::post('/logout', [LogoutController::class, 'logout'])->middleware('throttle:logout');
@@ -58,6 +61,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/push/unsubscribe', [PushSubscriptionController::class, 'unsubscribe'])->middleware('throttle:authenticated-write');
         Route::post('/push/unsubscribe-all', [PushSubscriptionController::class, 'unsubscribeAll'])->middleware('throttle:authenticated-write');
         Route::get('/changes', [EntityChangeController::class, 'index'])->middleware('throttle:polling');
+        Route::get('/navigation-summary', NavigationSummaryController::class)->middleware('throttle:authenticated-read');
 
         Route::middleware('role:admin,manager')->group(function () {
             Route::get('/appointments/pending-count', [AppointmentController::class, 'pendingCount'])->middleware(['module:appointment', 'throttle:polling']);

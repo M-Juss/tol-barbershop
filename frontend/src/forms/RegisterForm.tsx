@@ -241,11 +241,11 @@ export function RegisterForm() {
           label={
             <span className="text-xs">
               I agree to the{" "}
-              <Link href="/terms-of-use" target="_blank" className="font-medium text-accent hover:underline">
+              <Link href="/terms-of-use" prefetch={false} target="_blank" className="font-medium text-accent hover:underline">
                 Terms of Use
               </Link>{" "}
               and{" "}
-              <Link href="/privacy-policy" target="_blank" className="font-medium text-accent hover:underline">
+              <Link href="/privacy-policy" prefetch={false} target="_blank" className="font-medium text-accent hover:underline">
                 Privacy Policy
               </Link>
               .

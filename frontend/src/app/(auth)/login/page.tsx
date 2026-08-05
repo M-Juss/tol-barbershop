@@ -6,31 +6,21 @@ import { RedirectIfAuthenticated } from "@/components/common/RedirectIfAuthentic
 
 type LoginPageProps = {
   searchParams: Promise<{
-    verified?: string | string[];
     password_reset?: string | string[];
-    session_expired?: string | string[];
     account_disabled?: string | string[];
   }>;
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
-  const verified =
-    params.verified === "1"
-      ? "Your email has been verified. You can now log in."
-      : params.verified === "already"
-        ? "Your email is already verified. You can log in."
-        : null;
   const statusMessage =
     params.password_reset === "1"
       ? "Your password has been reset. You can now log in."
-      : verified;
+      : null;
   const authMessage =
     params.account_disabled === "1"
       ? "Your account is disabled. Contact the barbershop for assistance."
-      : params.session_expired === "1"
-        ? "Your session expired. Please log in again."
-        : null;
+      : null;
 
   return (
     <RedirectIfAuthenticated>
@@ -42,6 +32,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               alt="TOL Barbershop logo"
               height={32}
               width={32}
+              priority
               className="rounded-3xl shadow-md shadow-black/20"
             />
             <h1 className="font-bold text-primary text-lg">TOL Barbershop</h1>
@@ -82,8 +73,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             aria-label="Legal documents"
             className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-gray-500"
           >
-            <Link href="/privacy-policy" className="hover:text-accent">Privacy</Link>
-            <Link href="/terms-of-use" className="hover:text-accent">Terms</Link>
+            <Link href="/privacy-policy" prefetch={false} className="hover:text-accent">Privacy</Link>
+            <Link href="/terms-of-use" prefetch={false} className="hover:text-accent">Terms</Link>
           </nav>
         </div>
       </div>

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const MAX_BOOKING_DAYS_AHEAD = 7;
+
 export const appointmentStatusSchema = z.enum([
   "pending",
   "approved",
@@ -23,10 +25,10 @@ const bookingDateSchema = z
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const latest = new Date(today);
-      latest.setDate(latest.getDate() + 30);
+      latest.setDate(latest.getDate() + MAX_BOOKING_DAYS_AHEAD);
       return date >= today && date <= latest;
     },
-    { message: "Appointments may only be booked up to 30 days in advance." },
+    { message: "Appointments may only be booked up to 7 days in advance." },
   )
   .refine((value) => new Date(`${value}T00:00:00`).getDay() !== 0, {
     message: "Appointments cannot be booked on Sundays.",

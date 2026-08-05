@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useRealtimeEvent } from "@/contexts/RealtimeContext";
 import {
   Calendar,
@@ -16,9 +17,7 @@ import { ResponsiveSidebar } from "@/components/common/ResponsiveSidebar";
 import { NotificationPrompt } from "@/components/common/NotificationPrompt";
 import { toast } from "sonner";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
-import { startPolling } from "@/lib/polling";
-import { getPendingAppointmentCount } from "@/services/manager/admin.api";
-import { getWaitingCount } from "@/services/manager/support.api";
+import { getNavigationSummary } from "@/services/shared/navigation.api";
 
 const navSections = [
   {
@@ -63,6 +62,7 @@ export default function ManagerLayout({
   children: React.ReactNode;
 }) {
   useRoleRoutePersistence("/manager");
+  const router = useRouter();
   const [pendingCount, setPendingCount] = useState(0);
   const [waitingCount, setWaitingCount] = useState(0);
   const prevCountRef = useRef(0);
@@ -70,58 +70,59 @@ export default function ManagerLayout({
   const isFirstLoadRef = useRef(true);
   const isFirstWaitingLoadRef = useRef(true);
 
-  const fetchPendingCount = useCallback(async (signal?: AbortSignal) => {
+  const fetchSummary = useCallback(async (signal?: AbortSignal, force = true) => {
     try {
-      const count = await getPendingAppointmentCount(signal);
-      if (!isFirstLoadRef.current && count > prevCountRef.current) {
-        const diff = count - prevCountRef.current;
+      const summary = await getNavigationSummary(signal, force);
+      const pendingAppointments = summary.pending_appointments ?? 0;
+      const waitingTickets = summary.waiting_support_tickets ?? 0;
+
+      if (!isFirstLoadRef.current && pendingAppointments > prevCountRef.current) {
+        const diff = pendingAppointments - prevCountRef.current;
         toast(`${diff} New Pending Appointment${diff > 1 ? "s" : ""}`, {
           description: `A customer has submitted a new booking request.`,
           action: {
             label: "View",
-            onClick: () => (window.location.href = "/manager/appointment"),
+            onClick: () => router.push("/manager/appointment"),
           },
           duration: 8000,
         });
       }
       isFirstLoadRef.current = false;
-      prevCountRef.current = count;
-      setPendingCount(count);
+      prevCountRef.current = pendingAppointments;
+      setPendingCount(pendingAppointments);
+
+      if (!isFirstWaitingLoadRef.current && waitingTickets > prevWaitingRef.current) {
+        const diff = waitingTickets - prevWaitingRef.current;
+        toast(`${diff} New Waiting Ticket${diff > 1 ? "s" : ""}`, {
+          description: `A customer is waiting in the support queue.`,
+          action: {
+            label: "View",
+            onClick: () => router.push("/manager/customer-service"),
+          },
+          duration: 8000,
+        });
+      }
+      isFirstWaitingLoadRef.current = false;
+      prevWaitingRef.current = waitingTickets;
+      setWaitingCount(waitingTickets);
     } catch {}
-  }, []);
-
-  const fetchWaitingCount = useCallback(async (signal?: AbortSignal) => {
-    const count = await getWaitingCount(signal);
-    if (!isFirstWaitingLoadRef.current && count > prevWaitingRef.current) {
-      const diff = count - prevWaitingRef.current;
-      toast(`${diff} New Waiting Ticket${diff > 1 ? "s" : ""}`, {
-        description: `A customer is waiting in the support queue.`,
-        action: {
-          label: "View",
-          onClick: () => (window.location.href = "/manager/customer-service"),
-        },
-        duration: 8000,
-      });
-    }
-    isFirstWaitingLoadRef.current = false;
-    prevWaitingRef.current = count;
-    setWaitingCount(count);
-  }, []);
+  }, [router]);
 
   useEffect(() => {
-    return startPolling(fetchWaitingCount, 10000);
-  }, [fetchWaitingCount]);
+    const controller = new AbortController();
+    queueMicrotask(() => void fetchSummary(controller.signal, false));
 
-  useEffect(() => {
-    const onAppointmentsUpdated = () => fetchPendingCount();
+    const onAppointmentsUpdated = () => fetchSummary();
     window.addEventListener("appointments:updated", onAppointmentsUpdated);
 
     return () => {
+      controller.abort();
       window.removeEventListener("appointments:updated", onAppointmentsUpdated);
     };
-  }, [fetchPendingCount]);
+  }, [fetchSummary]);
 
-  useRealtimeEvent("appointments", fetchPendingCount);
+  useRealtimeEvent("appointments", fetchSummary);
+  useRealtimeEvent("support_tickets", fetchSummary);
 
   const sections = navSections.map((section) => ({
     ...section,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useRealtimeEvent } from "@/contexts/RealtimeContext";
 import {
   AlertCircle,
   CheckCheck,
@@ -432,11 +433,11 @@ export function Notification() {
     );
   }, [unreadCount]);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true);
       const [notificationData] = await Promise.all([
-        getNotifications(page),
+        getNotifications(page, signal),
       ]);
 
       setNotifications(notificationData.notifications);
@@ -452,6 +453,8 @@ export function Notification() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useRealtimeEvent("notifications", loadData);
 
   const openDetail = async (notification: NotificationItem) => {
     setSelectedNotification(notification);

@@ -137,6 +137,12 @@ export function Overview() {
   useRealtimeEvent("appointments", refreshAppointments);
 
   useEffect(() => {
+    const controller = new AbortController();
+    refreshAppointments(controller.signal);
+    return () => controller.abort();
+  }, [refreshAppointments]);
+
+  useEffect(() => {
     if (!authUser) return;
 
     const fetchPending = async () => {
@@ -267,7 +273,6 @@ export function Overview() {
                 service={appointment.service}
                 barber={appointment.barber}
                 price={appointment.price}
-                status={appointment.status}
                 date={appointment.date}
                 time={appointment.time}
               />

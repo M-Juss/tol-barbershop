@@ -113,10 +113,10 @@ export function LandingFooter() {
           &copy; 2026 TOL Barbershop. All rights reserved.
         </p>
         <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1 sm:text-sm text-xs">
-          <Link href="/privacy-policy" className="text-neutral hover:text-white">
+          <Link href="/privacy-policy" prefetch={false} className="text-neutral hover:text-white">
             Privacy Policy
           </Link>
-          <Link href="/terms-of-use" className="text-neutral hover:text-white">
+          <Link href="/terms-of-use" prefetch={false} className="text-neutral hover:text-white">
             Terms of Use
           </Link>
         </div>

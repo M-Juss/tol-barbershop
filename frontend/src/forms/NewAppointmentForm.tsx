@@ -21,6 +21,7 @@ import {
 import {
   createAppointmentSchema,
   batchAppointmentSchema,
+  MAX_BOOKING_DAYS_AHEAD,
 } from "@/validations/appointment.validation";
 import { toast } from "sonner";
 import { useRateLimit } from "@/hooks/useRateLimit";
@@ -307,7 +308,6 @@ export function NewAppointmentForm() {
       console.error("Failed to book appointment:", error);
       const message =
         error instanceof Error ? error.message : "Failed to book appointment";
-      setFormError(message);
       toast.error(message);
     } finally {
       setLoading(false);
@@ -383,7 +383,6 @@ export function NewAppointmentForm() {
         error instanceof Error
           ? error.message
           : "Failed to book group appointment";
-      setFormError(message);
       toast.error(message);
     } finally {
       setLoading(false);
@@ -523,7 +522,7 @@ export function NewAppointmentForm() {
               label="Date"
               placeholder="Pick a date"
               disablePastDates={true}
-              maxDaysAhead={30}
+              maxDaysAhead={MAX_BOOKING_DAYS_AHEAD}
               disableSundays={true}
               date={selectedDate}
               onDateChange={(date) => setSelectedDate(date)}

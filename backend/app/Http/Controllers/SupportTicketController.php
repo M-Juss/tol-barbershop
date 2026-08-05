@@ -276,6 +276,7 @@ class SupportTicketController extends Controller
         }
 
         EntityChange::dispatch('support_tickets');
+        EntityChange::dispatch('notifications');
 
         return $this->noData('Ticket cancelled successfully');
     }
@@ -373,6 +374,7 @@ class SupportTicketController extends Controller
         }
 
         EntityChange::dispatch('support_tickets');
+        EntityChange::dispatch('notifications');
 
         $ticket->load([
             'customer:id,fullname,email',
@@ -451,6 +453,7 @@ class SupportTicketController extends Controller
         }
 
         EntityChange::dispatch('support_tickets');
+        EntityChange::dispatch('notifications');
 
         return $this->success('Ticket resolved successfully', $ticket);
     }

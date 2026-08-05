@@ -28,56 +28,61 @@ export type LandingGalleryImage = {
   display_order: number;
 };
 
-export const getLandingServices = async (): Promise<LandingService[]> => {
+type LandingBootstrap = {
+  services: LandingService[];
+  gallery_images: LandingGalleryImage[];
+  featured_feedback: LandingFeedback[];
+  feedback: LandingFeedback[];
+};
+
+const BOOTSTRAP_STALE_MS = 5 * 60_000;
+
+let bootstrapRequest: Promise<LandingBootstrap> | null = null;
+let bootstrapData: LandingBootstrap | null = null;
+let bootstrapExpiresAt = 0;
+
+async function getLandingBootstrap(): Promise<LandingBootstrap> {
+  if (bootstrapData && Date.now() < bootstrapExpiresAt) {
+    return bootstrapData;
+  }
+
+  if (bootstrapRequest) {
+    return bootstrapRequest;
+  }
+
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   if (!apiUrl) {
     throw new Error("NEXT_PUBLIC_API_URL is not configured");
   }
 
-  const result = await publicFetch(`${apiUrl}/public-services`, {
-    cache: "no-store",
-  });
-  return result.data?.services ?? result.services ?? [];
+  bootstrapRequest = publicFetch(`${apiUrl}/public-bootstrap`, {
+    cache: "force-cache",
+  }).then((result) => (result.data ?? result) as LandingBootstrap);
+
+  try {
+    bootstrapData = await bootstrapRequest;
+    bootstrapExpiresAt = Date.now() + BOOTSTRAP_STALE_MS;
+    return bootstrapData;
+  } finally {
+    bootstrapRequest = null;
+  }
+}
+
+export const getLandingServices = async (): Promise<LandingService[]> => {
+  return (await getLandingBootstrap()).services ?? [];
 };
 
 export const getLandingGalleryImages = async (): Promise<
   LandingGalleryImage[]
 > => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-  if (!apiUrl) {
-    throw new Error("NEXT_PUBLIC_API_URL is not configured");
-  }
-
-  const result = await publicFetch(`${apiUrl}/public-gallery-images`, {
-    cache: "no-store",
-  });
-  return result.data?.gallery_images ?? result.gallery_images ?? [];
+  return (await getLandingBootstrap()).gallery_images ?? [];
 };
 
 export const getLandingFeedback = async (): Promise<LandingFeedback[]> => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-  if (!apiUrl) {
-    throw new Error("NEXT_PUBLIC_API_URL is not configured");
-  }
-
-  const result = await publicFetch(`${apiUrl}/public-feedback`, {
-    cache: "no-store",
-  });
-  return result.data?.feedback ?? result.feedback ?? [];
+  return (await getLandingBootstrap()).feedback ?? [];
 };
 
 export const getFeaturedFeedback = async (): Promise<LandingFeedback[]> => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
-  if (!apiUrl) {
-    throw new Error("NEXT_PUBLIC_API_URL is not configured");
-  }
-
-  const result = await publicFetch(`${apiUrl}/featured-feedback`, {
-    cache: "no-store",
-  });
-  return result.data?.feedback ?? result.feedback ?? [];
+  return (await getLandingBootstrap()).featured_feedback ?? [];
 };

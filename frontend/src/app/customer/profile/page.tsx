@@ -188,7 +188,7 @@ export default function Profile() {
           />
           <p className="text-xs leading-5 text-muted-foreground">
             See the{" "}
-            <Link href="/privacy-policy" target="_blank" className="text-accent hover:underline">
+            <Link href="/privacy-policy" prefetch={false} target="_blank" className="text-accent hover:underline">
               Privacy Policy
             </Link>{" "}
             or contact support for a specific data request.

@@ -128,7 +128,7 @@ class AppointmentController extends Controller
 
         $perPage = $validated['per_page'] ?? 15;
         $appointments = $query
-            ->orderByDesc('created_at')
+            ->orderByDesc('updated_at')
             ->orderByDesc('id')
             ->paginate($perPage, ['*'], 'page', $validated['page'] ?? 1);
 
@@ -1105,7 +1105,7 @@ class AppointmentController extends Controller
                 'required',
                 'date_format:Y-m-d',
                 'after_or_equal:'.Carbon::today((string) config('app.shop_timezone', 'Asia/Manila'))->toDateString(),
-                'before_or_equal:'.Carbon::today((string) config('app.shop_timezone', 'Asia/Manila'))->addDays(30)->toDateString(),
+                'before_or_equal:'.Carbon::today((string) config('app.shop_timezone', 'Asia/Manila'))->addDays(AppointmentBookingService::MAX_BOOKING_DAYS_AHEAD)->toDateString(),
             ],
             'ignore_appointment_id' => ['sometimes', 'integer', 'exists:appointments,id'],
         ]);

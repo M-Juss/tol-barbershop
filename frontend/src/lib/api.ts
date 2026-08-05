@@ -298,7 +298,8 @@ async function request(
       method,
       headers: buildHeaders(options, isFormData),
       credentials: "include",
-      cache: "no-store",
+      cache:
+        stateChanging ? "no-store" : (options.cache ?? "no-store"),
       mode: "same-origin",
       redirect: "error",
       referrer: getSafeReferrer(),

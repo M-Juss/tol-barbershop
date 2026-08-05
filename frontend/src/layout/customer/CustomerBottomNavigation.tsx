@@ -137,6 +137,7 @@ export function CustomerBottomNavigation({
               >
                 <Link
                   href={item.href}
+                  prefetch={false}
                   onClick={() => setIsVisible(true)}
                   aria-current={active ? "page" : undefined}
                   className="absolute -top-5 flex min-w-16 flex-col items-center gap-1 text-primary-foreground"
@@ -161,6 +162,7 @@ export function CustomerBottomNavigation({
             <Link
               key={item.key}
               href={item.href}
+              prefetch={false}
               onClick={() => setIsVisible(true)}
               aria-current={active ? "page" : undefined}
               className={cn(

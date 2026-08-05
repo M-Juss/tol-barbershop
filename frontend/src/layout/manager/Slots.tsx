@@ -52,8 +52,9 @@ export function Slots() {
   const [loading, setLoading] = useState(true);
   const [activityLogs, setActivityLogs] = useState<
     Array<{
-      action: string;
-      details: string;
+      title: string;
+      reason: string;
+      actor: string;
       time: string;
     }>
   >([]);
@@ -135,25 +136,21 @@ export function Slots() {
               day: "numeric",
             },
           );
-          const time = new Date(activity.created_at).toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-            hour12: true,
-          });
           const subject =
             activity.closure_scope === "barber"
               ? `${activity.barber_name ?? "Barber"}'s schedule`
               : "The shop";
 
+          const title =
+            activity.action === "reopened"
+              ? `${subject} was reopened`
+              : `${subject} was closed`;
+
           return {
-            action:
-              activity.action === "reopened"
-                ? `${subject} was reopened for ${formattedDate}`
-                : `${subject} was closed for ${formattedDate}`,
-            details: `Reason: ${activity.reason}${activity.actor_name ? ` • By ${activity.actor_name}` : ""}`,
-            time,
+            title,
+            reason: activity.reason,
+            actor: activity.actor_name ?? "",
+            time: formattedDate,
           };
         });
 
@@ -348,7 +345,7 @@ export function Slots() {
                     <p className="text-xs text-gray-400 font-medium uppercase tracking-wide leading-none mb-1">
                       {label}
                     </p>
-                    <p className="text-sm font-semibold text-gray-800 truncate">
+                    <p className="text-sm font-semibold text-gray-800 whitespace-normal break-words">
                       {value}
                     </p>
                   </div>
@@ -380,9 +377,10 @@ export function Slots() {
           ) : (
             activityLogs.map((log, index) => (
               <ActivityLog
-                key={`${log.action}-${index}`}
-                action={log.action}
-                details={log.details}
+                key={`${log.title}-${index}`}
+                title={log.title}
+                reason={log.reason}
+                actor={log.actor}
                 time={log.time}
               />
             ))

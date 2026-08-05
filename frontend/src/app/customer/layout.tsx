@@ -6,8 +6,8 @@ import { SupportFab } from "@/components/common/SupportFab";
 import { NotificationPrompt } from "@/components/common/NotificationPrompt";
 import { CustomerBottomNavigation } from "@/layout/customer/CustomerBottomNavigation";
 import { useRoleRoutePersistence } from "@/hooks/useRoleRoutePersistence";
-import { startPolling } from "@/lib/polling";
-import { getNotifications } from "@/services/shared/notification.api";
+import { useRealtimeEvent } from "@/contexts/RealtimeContext";
+import { getNavigationSummary } from "@/services/shared/navigation.api";
 
 export default function CustomerLayout({
   children,
@@ -20,8 +20,8 @@ export default function CustomerLayout({
 
   const loadUnreadCount = useCallback(async (signal?: AbortSignal) => {
     try {
-      const data = await getNotifications(1, signal);
-      setUnreadCount(data.unread_count);
+      const summary = await getNavigationSummary(signal, true);
+      setUnreadCount(summary.unread_notifications ?? 0);
     } catch (error) {
       if (signal?.aborted) return;
       setUnreadCount(0);
@@ -30,7 +30,12 @@ export default function CustomerLayout({
   }, []);
 
   useEffect(() => {
-    const stopPolling = startPolling(loadUnreadCount, 30000);
+    const controller = new AbortController();
+    void getNavigationSummary(controller.signal).then((summary) => {
+      if (!controller.signal.aborted) {
+        setUnreadCount(summary.unread_notifications ?? 0);
+      }
+    }).catch(() => {});
 
     const handleUnreadUpdate = (event: Event) => {
       const customEvent = event as CustomEvent<{ unreadCount?: number }>;
@@ -43,10 +48,12 @@ export default function CustomerLayout({
     window.addEventListener("notifications:unread-updated", handleUnreadUpdate as EventListener);
 
     return () => {
-      stopPolling();
+      controller.abort();
       window.removeEventListener("notifications:unread-updated", handleUnreadUpdate as EventListener);
     };
-  }, [loadUnreadCount]);
+  }, []);
+
+  useRealtimeEvent("notifications", loadUnreadCount);
 
   const sections = useMemo(
     () => [

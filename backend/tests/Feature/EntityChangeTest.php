@@ -30,14 +30,28 @@ test('the change version endpoint requires authentication', function () {
     $this->getJson('/api/v1/changes')->assertUnauthorized();
 });
 
-test('authenticated users can retrieve appointment change versions', function () {
+test('authenticated users can retrieve entity change versions', function () {
     $user = User::factory()->create();
     Sanctum::actingAs($user);
 
     EntityChange::dispatch('appointments');
-    $version = EntityChange::version('appointments');
+    EntityChange::dispatch('support_tickets');
 
     $this->getJson('/api/v1/changes')
         ->assertOk()
-        ->assertJsonPath('data.appointments', $version);
+        ->assertJsonPath('data.appointments', EntityChange::version('appointments'))
+        ->assertJsonPath('data.support_tickets', EntityChange::version('support_tickets'))
+        ->assertJsonStructure([
+            'data' => [
+                'appointments',
+                'support_tickets',
+                'notifications',
+                'closed_dates',
+                'barbers',
+                'services',
+                'gallery_images',
+                'feedback',
+                'admins',
+            ],
+        ]);
 });

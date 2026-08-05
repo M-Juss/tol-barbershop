@@ -84,7 +84,7 @@ export function Historical() {
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Appointment History</h1>
         <p className="text-gray-500 mt-1">
-          Table view of current appointments (sorted by created date)
+          Appointments are ordered by last updated, latest first
         </p>
       </div>
 
