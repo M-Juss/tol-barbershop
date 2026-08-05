@@ -12,8 +12,21 @@ class EntityChangeController extends Controller
 
     public function index(): JsonResponse
     {
-        return $this->success('Entity change versions retrieved', [
-            'appointments' => EntityChange::version('appointments'),
-        ]);
+        $entityTypes = [
+            'appointments',
+            'support_tickets',
+            'notifications',
+            'closed_dates',
+            'barbers',
+            'services',
+            'gallery_images',
+            'feedback',
+            'admins',
+        ];
+
+        return $this->success(
+            'Entity change versions retrieved',
+            EntityChange::versions($entityTypes),
+        );
     }
 }

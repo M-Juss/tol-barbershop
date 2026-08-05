@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Users } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { WalkinForm } from "@/forms/WalkinForm";
 import { StatCard } from "@/components/common/StatCard";
 import {
@@ -10,6 +11,8 @@ import {
 } from "@/services/manager/walkins.api";
 
 export function Walkin() {
+  const pathname = usePathname();
+  const router = useRouter();
   const [stats, setStats] = useState<WalkinStatsType | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -50,7 +53,15 @@ export function Walkin() {
         />
       </div>
 
-      <WalkinForm onSuccess={loadStats} />
+      <WalkinForm
+        onSuccess={() =>
+          router.push(
+            pathname.startsWith("/admin/")
+              ? "/admin/history"
+              : "/manager/history",
+          )
+        }
+      />
     </div>
   );
 }

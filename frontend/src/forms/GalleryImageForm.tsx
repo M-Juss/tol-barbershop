@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useRateLimit } from "@/hooks/useRateLimit";
+import { getCloudinaryImageUrl, isCloudinaryImageUrl } from "@/lib/cloudinary";
 import {
   galleryCategories,
   galleryCategoryLabels,
@@ -163,10 +164,10 @@ export function GalleryImageForm({
           {previewUrl && (
             <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-gray-200 bg-gray-100">
               <Image
-                src={previewUrl}
+                src={getCloudinaryImageUrl(previewUrl, 900)}
                 alt="Gallery image preview"
                 fill
-                unoptimized={previewUrl.startsWith("blob:")}
+                unoptimized={previewUrl.startsWith("blob:") || isCloudinaryImageUrl(previewUrl)}
                 sizes="(max-width: 640px) 100vw, 32rem"
                 className="object-cover"
               />

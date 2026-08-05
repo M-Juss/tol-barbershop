@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\NotificationResource;
 use App\Models\Notification;
+use App\Support\EntityChange;
 use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -54,6 +55,7 @@ class NotificationController extends Controller
                 'is_read' => true,
                 'read_at' => Carbon::now(),
             ]);
+            EntityChange::dispatch('notifications');
         }
 
         return $this->success('Notification marked as read.', new NotificationResource($notification));
@@ -73,6 +75,7 @@ class NotificationController extends Controller
                 'read_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
             ]);
+        EntityChange::dispatch('notifications');
 
         return $this->success('All notifications marked as read.');
     }

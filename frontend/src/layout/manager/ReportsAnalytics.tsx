@@ -62,7 +62,6 @@ import {
   SECTIONS,
 } from "@/services/manager/analytics.api";
 import { ReportDateRangePicker } from "@/components/common/ReportDateRangePicker";
-import { downloadAnalyticsReportPdf } from "@/lib/reportPdf";
 import { cn } from "@/lib/utils";
 import { sanitizeString } from "@/lib/sanitizer";
 import { formatTime12 } from "@/lib/time-slots";
@@ -150,7 +149,6 @@ function ReportsAnalyticsInner() {
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [reportData, setReportData] = useState<SectionReportResponse | null>(null);
   const [reportDataKey, setReportDataKey] = useState<string | null>(null);
@@ -164,7 +162,6 @@ function ReportsAnalyticsInner() {
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     const id = ++fetchId.current;
     setLoading(true);
-    setError(null);
 
     try {
       const result = await getSectionReport(section, period, {
@@ -187,7 +184,6 @@ function ReportsAnalyticsInner() {
       if (err instanceof DOMException && err.name === "AbortError") return;
 
       console.error("Failed to load analytics:", err);
-      setError("Could not load report data. Please try again.");
       toast.error("Could not load report data. Please try again.");
     } finally {
       if (id !== fetchId.current) return;
@@ -201,7 +197,6 @@ function ReportsAnalyticsInner() {
       setReportData(cached);
       setReportDataKey(cacheKey);
       setLoading(false);
-      setError(null);
       return;
     }
 
@@ -274,6 +269,7 @@ function ReportsAnalyticsInner() {
         startDate,
         endDate,
       });
+      const { downloadAnalyticsReportPdf } = await import("@/lib/reportPdf");
       await downloadAnalyticsReportPdf(completeReport);
       toast.success("PDF exported successfully");
     } catch (err) {
@@ -291,15 +287,6 @@ function ReportsAnalyticsInner() {
     reportDataKey,
     startDate,
   ]);
-
-  const handleRetry = useCallback(() => {
-    setCache((prev) => {
-      const next = new Map(prev);
-      next.delete(cacheKey);
-      return next;
-    });
-    fetchData();
-  }, [fetchData, cacheKey]);
 
   const dateLabel = (() => {
     if (reportDataKey === cacheKey && reportData?.meta?.date_range) {
@@ -370,17 +357,6 @@ function ReportsAnalyticsInner() {
       </div>
 
       <div className="px-4 sm:px-6 pb-4 sm:pb-6">
-        {error && !loading && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 flex items-center gap-3" role="alert">
-            <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-            <p className="text-sm text-red-700 flex-1">{error}</p>
-            <Button variant="outline" size="sm" onClick={handleRetry} className="shrink-0">
-              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-              Retry
-            </Button>
-          </div>
-        )}
-
         {loading && !isDataReady ? (
           <ReportsLoadingSkeleton />
         ) : isDataReady ? (
@@ -838,7 +814,53 @@ function BarbersPanel({ data }: { data: ReportBarbers }) {
             </ChartCard>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-x-auto">
+          <div className="space-y-3 md:hidden">
+            {data.barbers.map((barber) => (
+              <article
+                key={barber.barber_id}
+                className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
+              >
+                <h3 className="border-b border-gray-100 pb-3 font-semibold text-gray-900">
+                  {sanitizeString(barber.barber_name)}
+                </h3>
+                <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                  <div>
+                    <dt className="text-xs text-gray-500">Appointments</dt>
+                    <dd className="mt-0.5 font-medium text-gray-900">
+                      {barber.completed_count}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Revenue</dt>
+                    <dd className="mt-0.5 font-medium text-gray-900">
+                      ₱{barber.revenue.toLocaleString()}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Rating</dt>
+                    <dd className="mt-0.5 font-medium text-gray-900">
+                      {barber.average_rating !== null
+                        ? `${barber.average_rating} ★`
+                        : "—"}
+                      {barber.rating_count > 0 ? (
+                        <span className="ml-1 text-gray-400">
+                          ({barber.rating_count})
+                        </span>
+                      ) : null}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Completion</dt>
+                    <dd className="mt-0.5 font-medium text-gray-900">
+                      {barber.completion_rate}%
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-left text-gray-500">

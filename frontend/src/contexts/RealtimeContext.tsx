@@ -10,10 +10,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ApiError } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { getPollingBackoffMs } from "@/lib/polling";
+import { invalidateRequestCache } from "@/lib/request-cache";
 import {
   getEntityChangeVersions,
   type EntityChangeVersions,
@@ -28,9 +28,8 @@ type RealtimeContextValue = {
 };
 
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
-const POLL_INTERVAL_MS = 10_000;
+const POLL_INTERVAL_MS = 15_000;
 const POLL_JITTER_MS = 1_000;
-const FALLBACK_REFRESH_INTERVAL_MS = 5 * 60_000;
 const CHANGE_REQUEST_TIMEOUT_MS = 15_000;
 
 function getPollDelay(): number {
@@ -44,14 +43,12 @@ function getPollDelay(): number {
 export function RealtimeProvider({ children }: { children: ReactNode }) {
   const { user, isLoading, isAuthenticated } = useAuth();
   const isPageVisible = usePageVisibility();
-  const listenersRef = useRef(
-    new Map<EntityType, Set<EventCallback>>(),
-  );
+  const listenersRef = useRef(new Map<EntityType, Set<EventCallback>>());
   const versionsRef = useRef(
     new Map<EntityType, EntityChangeVersions[EntityType]>(),
   );
-  const lastRefreshRef = useRef(new Map<EntityType, number>());
   const [subscriptionCount, setSubscriptionCount] = useState(0);
+  const hasSubscriptions = subscriptionCount > 0;
   const consecutiveFailuresRef = useRef(0);
   const backoffUntilRef = useRef(0);
 
@@ -59,7 +56,6 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     const listeners = listenersRef.current.get(entityType);
     if (!listeners) return;
 
-    lastRefreshRef.current.set(entityType, Date.now());
     for (const listener of listeners) {
       try {
         void Promise.resolve(listener()).catch(() => {});
@@ -80,16 +76,6 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       setSubscriptionCount((count) => count + 1);
     }
 
-    if (versionsRef.current.has(entityType)) {
-      queueMicrotask(() => {
-        if (listenersRef.current.get(entityType)?.has(callback)) {
-          try {
-            void Promise.resolve(callback()).catch(() => {});
-          } catch {}
-        }
-      });
-    }
-
     return () => {
       const currentListeners = listenersRef.current.get(entityType);
       if (!currentListeners?.delete(callback)) return;
@@ -103,7 +89,6 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     versionsRef.current.clear();
-    lastRefreshRef.current.clear();
     consecutiveFailuresRef.current = 0;
     backoffUntilRef.current = 0;
   }, [user?.id]);
@@ -113,7 +98,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       isLoading ||
       !isAuthenticated ||
       !isPageVisible ||
-      subscriptionCount === 0
+      !hasSubscriptions
     ) {
       return;
     }
@@ -165,26 +150,20 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         backoffUntilRef.current = 0;
 
         for (const entityType of Object.keys(versions) as EntityType[]) {
-          if (!listenersRef.current.has(entityType)) continue;
-
           const nextVersion = versions[entityType];
           const previousVersion = versionsRef.current.get(entityType);
-          const lastRefresh = lastRefreshRef.current.get(entityType) ?? 0;
           versionsRef.current.set(entityType, nextVersion);
 
-          if (
-            previousVersion === undefined ||
-            previousVersion !== nextVersion ||
-            Date.now() - lastRefresh >= FALLBACK_REFRESH_INTERVAL_MS
-          ) {
-            notify(entityType);
+          if (previousVersion !== undefined && previousVersion !== nextVersion) {
+            invalidateRequestCache(`${entityType}:`);
+            if (listenersRef.current.has(entityType)) {
+              notify(entityType);
+            }
           }
         }
       } catch (error) {
         const isAbortError =
           error instanceof DOMException && error.name === "AbortError";
-        const isRateLimited = error instanceof ApiError && error.status === 429;
-
         if (!isAbortError || didTimeout) {
           consecutiveFailuresRef.current++;
           shouldBackoff = true;
@@ -196,15 +175,6 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
           backoffUntilRef.current = Date.now() + nextDelayMs;
         }
 
-        if (!stopped && !isRateLimited && (!isAbortError || didTimeout)) {
-          const now = Date.now();
-          for (const entityType of listenersRef.current.keys()) {
-            const lastRefresh = lastRefreshRef.current.get(entityType) ?? 0;
-            if (now - lastRefresh >= FALLBACK_REFRESH_INTERVAL_MS) {
-              notify(entityType);
-            }
-          }
-        }
       } finally {
         clearTimeout(requestTimeoutId);
         inFlight = false;
@@ -223,22 +193,14 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const handleFocus = () => {
-      if (document.visibilityState === "visible") {
-        void run();
-      }
-    };
-
-    window.addEventListener("focus", handleFocus);
     void run();
 
     return () => {
       stopped = true;
       if (timeoutId) clearTimeout(timeoutId);
       controller?.abort();
-      window.removeEventListener("focus", handleFocus);
     };
-  }, [isAuthenticated, isLoading, isPageVisible, notify, subscriptionCount]);
+  }, [hasSubscriptions, isAuthenticated, isLoading, isPageVisible, notify]);
 
   const value = useMemo(() => ({ subscribe }), [subscribe]);
 

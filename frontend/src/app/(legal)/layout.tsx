@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { LegalBackButton } from "@/app/(legal)/_components/LegalBackButton";
+
 const legalLinks = [
   { href: "/privacy-policy", label: "Privacy" },
   { href: "/terms-of-use", label: "Terms" },
@@ -12,7 +14,8 @@ export default function LegalLayout({
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <header className="border-b border-border bg-card px-4 py-3 shadow-sm sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex max-w-7xl items-center gap-3">
+          <LegalBackButton />
           <Link
             href="/"
             className="flex w-fit items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
@@ -34,21 +37,6 @@ export default function LegalLayout({
               </span>
             </span>
           </Link>
-
-          <nav
-            aria-label="Legal documents"
-            className="grid grid-cols-2 gap-x-5 gap-y-2 text-xs font-medium text-muted-foreground sm:flex sm:flex-wrap sm:justify-end sm:text-sm"
-          >
-            {legalLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="py-1 transition-colors hover:text-accent"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
         </div>
       </header>
 
@@ -71,12 +59,13 @@ export default function LegalLayout({
           </div>
           <nav
             aria-label="Footer legal documents"
-            className="grid grid-cols-2 gap-x-6 gap-y-2 self-start text-xs text-white/65 sm:text-sm"
+            className=" space-x-4 self-start text-xs text-white/65 sm:text-sm"
           >
             {legalLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
+                prefetch={false}
                 className="hover:text-white"
               >
                 {link.label}

@@ -104,12 +104,28 @@ test('customer appointment history is isolated even when a display reference col
         ->toBe([$other->id, $own->id]);
 });
 
-test('appointment history paginates without overlap and orders deterministically', function () {
+test('appointment history paginates without overlap and orders by last updated', function () {
     $context = createAppointmentHistoryContext();
-    $first = createAppointmentHistoryRecord($context, ['created_at' => '2026-07-15 11:00:00']);
-    $second = createAppointmentHistoryRecord($context, ['created_at' => '2026-07-15 12:00:00']);
-    $third = createAppointmentHistoryRecord($context, ['created_at' => '2026-07-15 12:00:00']);
-    $fourth = createAppointmentHistoryRecord($context, ['created_at' => '2026-07-15 09:00:00']);
+    $first = createAppointmentHistoryRecord($context, [
+        'appointment_date' => '2026-07-15',
+        'appointment_time' => '11:00',
+        'status' => 'rejected',
+    ]);
+    $second = createAppointmentHistoryRecord($context, [
+        'appointment_date' => '2026-07-16',
+        'appointment_time' => '09:00',
+        'status' => 'completed',
+    ]);
+    $fourth = createAppointmentHistoryRecord($context, [
+        'appointment_date' => '2026-07-14',
+        'appointment_time' => '19:00',
+        'status' => 'approved',
+    ]);
+    $third = createAppointmentHistoryRecord($context, [
+        'appointment_date' => '2026-07-16',
+        'appointment_time' => '09:00',
+        'status' => 'pending',
+    ]);
     Sanctum::actingAs($context['manager']);
 
     $pageOne = $this->getJson('/api/v1/appointments/history?per_page=2&page=1')
@@ -126,8 +142,8 @@ test('appointment history paginates without overlap and orders deterministically
     $pageOneIds = collect($pageOne->json('data.appointments'))->pluck('id')->all();
     $pageTwoIds = collect($pageTwo->json('data.appointments'))->pluck('id')->all();
 
-    expect($pageOneIds)->toBe([$third->id, $second->id]);
-    expect($pageTwoIds)->toBe([$first->id, $fourth->id]);
+    expect($pageOneIds)->toBe([$third->id, $fourth->id]);
+    expect($pageTwoIds)->toBe([$second->id, $first->id]);
     expect(array_intersect($pageOneIds, $pageTwoIds))->toBe([]);
 });
 

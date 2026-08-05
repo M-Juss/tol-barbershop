@@ -16,6 +16,8 @@ class SettingsController extends Controller
                 'closing_time' => '19:00',
                 'slot_interval_minutes' => 60,
                 'max_slots_per_booking' => 11,
+            ])->withHeaders([
+                'Cache-Control' => 'public, max-age=300, s-maxage=300, stale-while-revalidate=600',
             ]);
         } catch (\Exception $e) {
             return $this->error('Could not fetch booking settings', [], 500);

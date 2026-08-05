@@ -60,7 +60,6 @@ type WalkinFormProps = {
 export function WalkinForm({ onSuccess }: WalkinFormProps) {
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [formError, setFormError] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
   const initialTime = useMemo(() => getManilaNow(), []);
@@ -139,7 +138,6 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
   };
 
   const onFormSubmit = async (data: WalkinSchemaValues) => {
-    setFormError("");
     try {
       await createAppointment({
         service_id: data.service_id,
@@ -172,7 +170,6 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
       console.error("Failed to complete walk-in appointment:", error);
       const message =
         error instanceof Error ? error.message : "Failed to complete walk-in";
-      setFormError(message);
       toast.error(message);
     }
   };
@@ -335,8 +332,6 @@ export function WalkinForm({ onSuccess }: WalkinFormProps) {
           </Button>
         </div>
       </form>
-
-      {formError && <p className="mt-3 text-sm text-red-500">{formError}</p>}
     </div>
   );
 }

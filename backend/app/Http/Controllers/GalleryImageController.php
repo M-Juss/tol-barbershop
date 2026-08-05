@@ -26,6 +26,8 @@ class GalleryImageController extends Controller
 
             return $this->success('Public gallery images retrieved successfully', [
                 'gallery_images' => GalleryImageResource::collection($images),
+            ])->withHeaders([
+                'Cache-Control' => 'public, max-age=300, s-maxage=300, stale-while-revalidate=600',
             ]);
         } catch (Throwable $e) {
             Log::error('Could not fetch public gallery images', ['exception' => $e]);

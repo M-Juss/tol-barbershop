@@ -103,7 +103,6 @@ export function AccountInformationForm() {
       if (error instanceof ApiError) {
         const emailMessage = getEmailValidationMessage(error);
         if (emailMessage) {
-          setError("email", { message: emailMessage });
           toast.error(emailMessage);
           return;
         }

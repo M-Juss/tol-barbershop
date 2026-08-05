@@ -17,6 +17,8 @@ class AppointmentBookingService
 
     public const MAX_PENDING_APPOINTMENTS_PER_CUSTOMER = 11;
 
+    public const MAX_BOOKING_DAYS_AHEAD = 7;
+
     private const STATUS_TRANSITIONS = [
         'pending' => ['approved', 'cancelled', 'rejected'],
         'approved' => ['completed', 'cancelled', 'no_show'],
@@ -309,9 +311,9 @@ class AppointmentBookingService
             ]);
         }
 
-        if ($date->gt($today->addDays(30))) {
+        if ($date->gt($today->addDays(self::MAX_BOOKING_DAYS_AHEAD))) {
             throw ValidationException::withMessages([
-                'appointment_date' => 'Appointments may only be booked up to 30 days in advance.',
+                'appointment_date' => 'Appointments may only be booked up to 7 days in advance.',
             ]);
         }
 

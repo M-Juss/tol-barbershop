@@ -3,10 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { getCloudinaryImageUrl, isCloudinaryImageUrl } from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
 
 const HERO_IMAGE_URL =
-  "https://res.cloudinary.com/lgyelfkv/image/upload/TOL-Hero_mpjd3d";
+  getCloudinaryImageUrl(
+    "https://res.cloudinary.com/lgyelfkv/image/upload/TOL-Hero_mpjd3d",
+    1920,
+  );
 const HERO_IMAGE_FALLBACK = "/TOL-Hero.png";
 
 export function HeroSection() {
@@ -24,6 +28,7 @@ export function HeroSection() {
         sizes="100vw"
         className="object-cover object-center"
         priority
+        unoptimized={isCloudinaryImageUrl(heroImageSrc)}
         onError={() => {
           if (heroImageSrc !== HERO_IMAGE_FALLBACK) {
             setHeroImageSrc(HERO_IMAGE_FALLBACK);

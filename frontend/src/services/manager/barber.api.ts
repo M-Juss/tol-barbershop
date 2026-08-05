@@ -1,4 +1,5 @@
 import { authFetch } from "@/lib/api";
+import { invalidateRequestCache } from "@/lib/request-cache";
 
 export interface Barber {
   id: number;
@@ -32,6 +33,7 @@ export const createBarber = async (data: CreateBarberData): Promise<void> => {
     method: "POST",
     body: formData,
   });
+  invalidateRequestCache("barbers:");
 };
 
 export const updateBarber = async (
@@ -49,10 +51,12 @@ export const updateBarber = async (
     method: "POST",
     body: formData,
   });
+  invalidateRequestCache("barbers:");
 };
 
 export const deleteBarber = async (id: number): Promise<void> => {
   await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/barber/${id}`, {
     method: "DELETE",
   });
+  invalidateRequestCache("barbers:");
 };

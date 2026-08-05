@@ -28,6 +28,7 @@ import {
 import { sanitizeText } from "@/lib/sanitizer";
 import { generateTimeOptions, isTimeSlotUnavailable, formatTime12 } from "@/lib/time-slots";
 import { toast } from "sonner";
+import { MAX_BOOKING_DAYS_AHEAD } from "@/validations/appointment.validation";
 
 const rescheduleSchema = z.object({
   barber_user_id: z.string().min(1, "Please select a barber"),
@@ -349,7 +350,7 @@ export function RescheduleForm({
                 label="New Date"
                 placeholder="Pick a date"
                 disablePastDates={true}
-                maxDaysAhead={30}
+                maxDaysAhead={MAX_BOOKING_DAYS_AHEAD}
                 disableSundays={true}
                 date={parsedSelectedDate}
                 onDateChange={(date) => {

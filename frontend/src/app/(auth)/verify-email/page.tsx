@@ -78,7 +78,7 @@ export default async function VerifyEmailPage({
 
           <Link
             href="/"
-            className="mt-6 text-sm font-medium text-accent underline-offset-4 hover:underline"
+            className="mt-6 text-sm  text-accent/90 underline-offset-4 hover:underline"
           >
             Back to Home
           </Link>

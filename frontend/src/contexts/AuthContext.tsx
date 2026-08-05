@@ -48,12 +48,21 @@ function clearAuthRoleCookie(): void {
   document.cookie = "auth_role=; path=/; max-age=0; samesite=lax";
 }
 
+function hasAuthRoleCookie(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie
+    .split(";")
+    .some((cookie) => cookie.trim().startsWith("auth_role="));
+}
+
 function redirectFromProtectedRoute(reason: string): void {
   if (
     typeof window !== "undefined" &&
     /^\/(admin|manager|customer)(?:\/|$)/.test(window.location.pathname)
   ) {
-    window.location.replace(`/login?${reason}=1`);
+    window.location.replace(
+      reason === "account_disabled" ? "/login?account_disabled=1" : "/login",
+    );
   }
 }
 
@@ -97,6 +106,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const restore = async () => {
       setIsLoading(true);
+      if (!hasAuthRoleCookie()) {
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
       await refreshUser();
       setIsLoading(false);
     };

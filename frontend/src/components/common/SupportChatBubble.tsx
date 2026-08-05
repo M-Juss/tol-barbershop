@@ -46,7 +46,7 @@ export function SupportChatBubble({
       >
         {message}
       </div>
-      <span className="text-[10px] text-gray-400">
+      <span className="text-[10px] text-gray-400" suppressHydrationWarning>
         {formatMessageTimestamp(createdAt)}
       </span>
     </div>

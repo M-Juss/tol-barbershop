@@ -37,8 +37,8 @@ export default function RegisterPage() {
             aria-label="Legal documents"
             className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-gray-500"
           >
-            <Link href="/privacy-policy" className="hover:text-accent">Privacy</Link>
-            <Link href="/terms-of-use" className="hover:text-accent">Terms</Link>
+            <Link href="/privacy-policy" prefetch={false} className="hover:text-accent">Privacy</Link>
+            <Link href="/terms-of-use" prefetch={false} className="hover:text-accent">Terms</Link>
           </nav>
         </div>
       </div>

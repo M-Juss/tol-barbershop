@@ -6,9 +6,13 @@ import { useState } from "react";
 
 import { SectionHeading } from "./SectionHeading";
 import { FadeIn } from "@/components/common/FadeIn";
+import { getCloudinaryImageUrl, isCloudinaryImageUrl } from "@/lib/cloudinary";
 
 const VISIT_IMAGE_URL =
-  "https://res.cloudinary.com/lgyelfkv/image/upload/Outdoor_vbhkhp";
+  getCloudinaryImageUrl(
+    "https://res.cloudinary.com/lgyelfkv/image/upload/Outdoor_vbhkhp",
+    1280,
+  );
 const VISIT_IMAGE_FALLBACK = "/Outdoor.jpeg";
 
 export function VisitSection() {
@@ -37,6 +41,7 @@ export function VisitSection() {
               fill
               className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.03]"
               sizes="(max-width: 1024px) 100vw, 42vw"
+              unoptimized={isCloudinaryImageUrl(visitImageSrc)}
               onError={() => {
                 if (visitImageSrc !== VISIT_IMAGE_FALLBACK) {
                   setVisitImageSrc(VISIT_IMAGE_FALLBACK);

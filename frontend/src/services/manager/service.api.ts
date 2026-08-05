@@ -1,4 +1,5 @@
 import { authFetch } from "@/lib/api";
+import { invalidateRequestCache } from "@/lib/request-cache";
 
 export interface Service {
   id: number;
@@ -29,6 +30,7 @@ export const createService = async (data: CreateServiceData): Promise<void> => {
     method: 'POST',
     body: JSON.stringify(data),
   });
+  invalidateRequestCache("services:");
 };
 
 export const updateService = async (id: number, data: CreateServiceData): Promise<void> => {
@@ -36,10 +38,12 @@ export const updateService = async (id: number, data: CreateServiceData): Promis
     method: 'PUT',
     body: JSON.stringify(data),
   });
+  invalidateRequestCache("services:");
 };
 
 export const deleteService = async (id: number): Promise<void> => {
   await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/services/${id}`, {
     method: 'DELETE',
   });
+  invalidateRequestCache("services:");
 };

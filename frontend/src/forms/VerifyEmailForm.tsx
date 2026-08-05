@@ -78,13 +78,10 @@ export function VerifyEmailForm({ email }: VerifyEmailFormProps) {
 
     const autoVerify = async () => {
       try {
-        const response =
-          await confirmEmailVerificationRequest(verificationPath);
+        await confirmEmailVerificationRequest(verificationPath);
         sessionStorage.removeItem("email_verification_path");
         if (!active) return;
-        router.replace(
-          `/login?verified=${response.data.status === "already_verified" ? "already" : "1"}`,
-        );
+        router.replace("/login");
       } catch (error) {
         sessionStorage.removeItem("email_verification_path");
         if (!active) return;
@@ -108,7 +105,7 @@ export function VerifyEmailForm({ email }: VerifyEmailFormProps) {
       const response = await checkEmailVerificationStatus(currentEmail);
       if (response.data.verified) {
         sessionStorage.removeItem("email_verification_path");
-        router.replace("/login?verified=1");
+        router.replace("/login");
       }
     } catch {
       // Silently fail — user can try again
@@ -167,11 +164,15 @@ export function VerifyEmailForm({ email }: VerifyEmailFormProps) {
           </p>
         </div>
         <Button
-          variant="outline"
-          onClick={checkVerification}
+          onClick={handleResend}
+          disabled={isResending || cooldownRemaining > 0}
           className="mt-4 h-10"
         >
-          I&apos;ve verified my email
+          {isResending
+            ? "Sending..."
+            : cooldownRemaining > 0
+              ? `Resend available in ${cooldownRemaining}s`
+              : "Send a new verification email"}
         </Button>
       </div>
     );
@@ -198,14 +199,10 @@ export function VerifyEmailForm({ email }: VerifyEmailFormProps) {
         className="h-10 border-gray-300 bg-gray-50 text-gray-700 disabled:cursor-not-allowed disabled:opacity-100"
       />
 
-      <Button
-        type="button"
-        variant="outline"
-        onClick={checkVerification}
-        className="h-10 w-full"
-      >
-        I&apos;ve verified my email
-      </Button>
+      <p className="text-center text-sm leading-6 text-gray-600">
+        Open the verification link in your email. This page will continue
+        automatically after verification.
+      </p>
 
       {!showResend ? (
         <button

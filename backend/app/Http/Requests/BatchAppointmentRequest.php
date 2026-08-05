@@ -3,6 +3,8 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\SanitizesInput;
+use App\Services\AppointmentBookingService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -32,6 +34,11 @@ class BatchAppointmentRequest extends FormRequest
 
     public function rules(): array
     {
+        $today = Carbon::today((string) config('app.shop_timezone', 'Asia/Manila'));
+        $latestBookingDate = $today->copy()
+            ->addDays(AppointmentBookingService::MAX_BOOKING_DAYS_AHEAD)
+            ->toDateString();
+
         return [
             'barber_user_id' => [
                 'required',
@@ -44,7 +51,8 @@ class BatchAppointmentRequest extends FormRequest
                 'required',
                 'date',
                 'date_format:Y-m-d',
-                'after_or_equal:today',
+                'after_or_equal:'.$today->toDateString(),
+                'before_or_equal:'.$latestBookingDate,
             ],
 
             'notes' => [

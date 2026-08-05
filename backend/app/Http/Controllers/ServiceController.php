@@ -23,7 +23,10 @@ class ServiceController extends Controller
                 'services' => ServiceResource::collection($services),
             ];
 
-            return $this->success('Public services retrieved successfully', $data);
+            return $this->success('Public services retrieved successfully', $data)
+                ->withHeaders([
+                    'Cache-Control' => 'public, max-age=300, s-maxage=300, stale-while-revalidate=600',
+                ]);
         } catch (Throwable $exception) {
             report($exception);
 

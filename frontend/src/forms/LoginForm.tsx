@@ -77,7 +77,7 @@ export function LoginForm() {
       className="w-full space-y-4 px-1 py-1"
       onSubmit={handleSubmit(onSubmit, onFormInvalid)}
     >
-      <div className="relative mb-3">
+      <div className="relative mb-4">
         <InputWithLabel
           id="email"
           type="email"

@@ -11,6 +11,7 @@ import {
   type GalleryCategory,
 } from "@/lib/gallery";
 import { cn } from "@/lib/utils";
+import { getCloudinaryImageUrl, isCloudinaryImageUrl } from "@/lib/cloudinary";
 import {
   getLandingGalleryImages,
   type LandingGalleryImage,
@@ -113,9 +114,10 @@ export function GallerySection() {
               <FadeIn key={image.src} delay={index * 80}>
                 <div className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-white/10 shadow-xl shadow-black/15">
                   <Image
-                    src={image.src}
+                    src={getCloudinaryImageUrl(image.src, 900)}
                     alt={image.alt}
                     fill
+                    unoptimized={isCloudinaryImageUrl(image.src)}
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover transition-transform duration-700 group-hover:scale-[1.04]"
                   />

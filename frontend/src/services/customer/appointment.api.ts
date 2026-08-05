@@ -1,5 +1,8 @@
 import { ApiError, authFetch, publicFetch } from "@/lib/api";
 import { formatBookingId } from "@/lib/booking";
+import { getCachedRequest } from "@/lib/request-cache";
+
+const REFERENCE_DATA_STALE_MS = 5 * 60_000;
 
 export interface Barber {
   id: number;
@@ -70,6 +73,7 @@ export interface Appointment {
   approved_at: string | null;
   completed_at: string | null;
   cancelled_at: string | null;
+  rejected_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -150,15 +154,19 @@ export type OccupiedAppointmentSlot = {
 };
 
 export const getActiveBarbers = async (): Promise<Barber[]> => {
-  const response = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/barber`);
-  return response.data?.data ?? response.data;
+  return getCachedRequest("barbers:active", async () => {
+    const response = await authFetch(`${process.env.NEXT_PUBLIC_API_URL}/barber`);
+    return response.data?.data ?? response.data;
+  }, REFERENCE_DATA_STALE_MS);
 };
 
 export const getActiveServices = async (): Promise<Service[]> => {
-  const response = await authFetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/services`,
-  );
-  return response.data.services;
+  return getCachedRequest("services:active", async () => {
+    const response = await authFetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/services`,
+    );
+    return response.data.services;
+  }, REFERENCE_DATA_STALE_MS);
 };
 
 export const getAppointments = async (
@@ -221,10 +229,9 @@ export const getAppointmentHistory = async (
         ].some((value) => value?.toLowerCase().includes(search));
       })
       .sort((first, second) => {
-        const createdDifference =
-          new Date(second.created_at).getTime() -
-          new Date(first.created_at).getTime();
-        return createdDifference || second.id - first.id;
+        const firstUpdated = new Date(first.updated_at).getTime();
+        const secondUpdated = new Date(second.updated_at).getTime();
+        return secondUpdated - firstUpdated || second.id - first.id;
       });
     const perPage = filters.per_page ?? 10;
     const page = filters.page ?? 1;
@@ -321,9 +328,12 @@ export const getUnavailableSlots = async (
 };
 
 export const getBookingSettings = async (): Promise<BookingSettings> => {
-  const response = await publicFetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/public-booking-settings`,
-  );
+  return getCachedRequest("settings:booking", async () => {
+    const response = await publicFetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/public-booking-settings`,
+      { cache: "force-cache" },
+    );
 
-  return response.data;
+    return response.data;
+  }, REFERENCE_DATA_STALE_MS);
 };

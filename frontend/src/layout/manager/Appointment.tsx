@@ -102,7 +102,9 @@ function normalizeToHHmm(time: string): string {
   return time;
 }
 
-const todayDate = new Date().toISOString().split("T")[0];
+function getTodayDate(): string {
+  return new Date().toISOString().split("T")[0];
+}
 
 type PendingUnit =
   | { kind: "group"; batchId: string; appointments: Appointment[]; sortKey: string; overdue: boolean }
@@ -235,12 +237,14 @@ function AppointmentRow({
   onStatusChange,
   onCancel,
   onReschedule,
+  todayDate,
   className = "",
 }: {
   appt: Appointment;
   onStatusChange: (appt: Appointment, status: "completed" | "no_show") => void;
   onCancel?: (appt: Appointment) => void;
   onReschedule?: (appt: Appointment) => void;
+  todayDate: string;
   className?: string;
 }) {
   const actionDisabled = appt.appointment_date.split("T")[0] > todayDate;
@@ -430,6 +434,7 @@ export function Appointment() {
   const [batchRejectDialogOpen, setBatchRejectDialogOpen] = useState(false);
   const [batchRejectTarget, setBatchRejectTarget] = useState<Appointment[] | null>(null);
   const [batchRejectReason, setBatchRejectReason] = useState("");
+  const todayDateRef = useRef(getTodayDate());
   const [pendingDetailAppointments, setPendingDetailAppointments] = useState<
     Appointment[] | null
   >(null);
@@ -452,6 +457,12 @@ export function Appointment() {
     const id = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadAppointments(controller.signal);
+    return () => controller.abort();
+  }, [loadAppointments]);
 
   useRealtimeEvent("appointments", loadAppointments);
 
@@ -511,7 +522,7 @@ export function Appointment() {
     [appointments],
   );
 
-  const today = new Date().toISOString().split("T")[0];
+  const [today] = useState(getTodayDate);
 
   const upcomingApproved = useMemo(
     () => approvedAppointments.filter((a) => a.appointment_date >= today),
@@ -924,6 +935,7 @@ export function Appointment() {
                                         }}
                                         onCancel={handleCancelClick}
                                         onReschedule={handleRescheduleClick}
+                                        todayDate={todayDateRef.current}
                                       />
                                     </div>
                                   ))}
@@ -1046,6 +1058,7 @@ export function Appointment() {
                                           setConfirmActionOpen(true);
                                         }}
                                         onCancel={handleCancelClick}
+                                        todayDate={todayDateRef.current}
                                         className={
                                           (updatingIds.includes(appt.id) ? "opacity-60" : "") +
                                           " !border-red-300 !bg-red-50"

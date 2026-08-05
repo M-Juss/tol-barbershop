@@ -89,7 +89,7 @@ test('scheduled bookings enforce active resources and all business date boundari
     $invalidSchedules = [
         ['2026-07-15', '09:00', 'appointment_date'],
         ['2026-07-19', '09:00', 'appointment_date'],
-        ['2026-08-17', '09:00', 'appointment_date'],
+        ['2026-07-24', '09:00', 'appointment_date'],
         ['2026-07-18', '09:30', 'appointment_time'],
         ['2026-07-18', '20:00', 'appointment_time'],
     ];
@@ -102,6 +102,20 @@ test('scheduled bookings enforce active resources and all business date boundari
             ->assertUnprocessable()
             ->assertJsonValidationErrors($errorKey);
     }
+
+    $this->getJson("/api/v1/appointments/available-slots?barber_id={$barber->id}&date=2026-07-23")
+        ->assertOk();
+    $this->getJson("/api/v1/appointments/available-slots?barber_id={$barber->id}&date=2026-07-24")
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('date');
+    $this->postJson('/api/v1/appointments/batch', [
+        'barber_user_id' => $barber->id,
+        'appointment_date' => '2026-07-24',
+        'appointments' => [
+            ['customer_name' => null, 'service_id' => $service->id, 'appointment_time' => '09:00', 'price' => 300],
+            ['customer_name' => 'Second Guest', 'service_id' => $service->id, 'appointment_time' => '10:00', 'price' => 300],
+        ],
+    ])->assertUnprocessable()->assertJsonValidationErrors('appointment_date');
 
     expect(Appointment::count())->toBe(0);
 });

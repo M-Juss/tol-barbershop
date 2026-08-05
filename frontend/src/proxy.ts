@@ -14,8 +14,6 @@ const publicPaths = new Set([
   "/change-registration-email",
   "/forgot-password",
   "/reset-password",
-  "/privacy-policy",
-  "/terms-of-use",
 ]);
 
 const guestPaths = new Set([
@@ -80,8 +78,6 @@ export const config = {
     "/change-registration-email",
     "/forgot-password",
     "/reset-password",
-    "/privacy-policy",
-    "/terms-of-use",
     "/admin/:path*",
     "/manager/:path*",
     "/customer/:path*",

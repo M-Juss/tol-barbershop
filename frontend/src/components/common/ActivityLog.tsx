@@ -1,25 +1,31 @@
 import { Activity } from "lucide-react";
 
 type ActivityLogProps = {
-  action: string;
-  details: string;
+  title: string;
+  reason: string;
+  actor: string;
   time: string;
 };
 
-export function ActivityLog({ action, details, time }: ActivityLogProps) {
+export function ActivityLog({ title, reason, actor, time }: ActivityLogProps) {
   return (
     <div className="flex items-start gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-      <div className="p-2 bg-white rounded-lg border border-gray-200">
+      <div className="p-2 bg-white rounded-lg border border-gray-200 shrink-0">
         <Activity className="w-4 h-4 text-gray-600" />
       </div>
-      <div className="flex-1">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="font-medium text-gray-900">{action}</p>
-            <p className="text-sm text-gray-600 mt-1">{details}</p>
-          </div>
-          <span className="text-xs text-gray-500">{time}</span>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-gray-900 break-words">{title}</p>
+        <div className="mt-1 text-sm text-gray-600 space-y-0.5">
+          {reason && (
+            <p className="break-words">
+              <span className="text-gray-400">Reason:</span> {reason}
+            </p>
+          )}
+          {actor && (
+            <p className="text-gray-400">Closed by: {actor}</p>
+          )}
         </div>
+        <p className="text-xs text-gray-400 mt-1.5">{time}</p>
       </div>
     </div>
   );
