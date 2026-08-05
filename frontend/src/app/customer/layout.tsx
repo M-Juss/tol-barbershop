@@ -18,9 +18,9 @@ export default function CustomerLayout({
   const scrollContainerRef = useRef<HTMLElement | null>(null);
   useRoleRoutePersistence("/customer");
 
-  const loadUnreadCount = useCallback(async (signal?: AbortSignal) => {
+  const loadUnreadCount = useCallback(async (signal?: AbortSignal, force = false) => {
     try {
-      const summary = await getNavigationSummary(signal, true);
+      const summary = await getNavigationSummary(signal, force);
       setUnreadCount(summary.unread_notifications ?? 0);
     } catch (error) {
       if (signal?.aborted) return;

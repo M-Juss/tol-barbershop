@@ -319,7 +319,7 @@ export function SupportFab() {
       sheetTab === "ticketing";
 
     if (shouldPollMessages) {
-      return startPolling(fetchMessages, 3000);
+      return startPolling(fetchMessages, 5000);
     }
 
     if (ticket?.status !== "active") {

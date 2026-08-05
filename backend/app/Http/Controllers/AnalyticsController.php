@@ -127,18 +127,22 @@ class AnalyticsController extends Controller
         $period = $request->period();
         $range = $this->getDateRange($period);
 
-        $rows = Appointment::withTrashed()->select(['appointment_date', 'price'])
+        $dateExpr = match ($period) {
+            'daily' => 'DATE(appointment_date)',
+            'weekly' => "strftime('%Y-%W', appointment_date)",
+            'yearly' => "strftime('%Y', appointment_date)",
+            default => "strftime('%Y-%m', appointment_date)",
+        };
+
+        $rows = DB::table('appointments')
+            ->selectRaw("{$dateExpr} as label, SUM(price) as value")
             ->where('status', 'completed')
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
+            ->groupBy('label')
+            ->orderBy('label')
             ->get()
-            ->groupBy(fn ($appointment) => $this->getGroupLabel($appointment->appointment_date, $period))
-            ->map(fn ($appointments, $label) => [
-                'label' => (string) $label,
-                'value' => (float) $appointments->sum('price'),
-            ])
-            ->sortBy('label')
-            ->values();
+            ->map(fn ($row) => ['label' => (string) $row->label, 'value' => (float) $row->value]);
 
         return response()->json($rows);
     }
@@ -148,19 +152,26 @@ class AnalyticsController extends Controller
         $period = $request->period();
         $range = $this->getDateRange($period);
 
-        $rows = Appointment::withTrashed()->select(['appointment_date', 'status'])
+        $dateExpr = match ($period) {
+            'daily' => 'DATE(appointment_date)',
+            'weekly' => "strftime('%Y-%W', appointment_date)",
+            'yearly' => "strftime('%Y', appointment_date)",
+            default => "strftime('%Y-%m', appointment_date)",
+        };
+
+        $rows = DB::table('appointments')
+            ->selectRaw("{$dateExpr} as label, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed, SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled, SUM(CASE WHEN status = 'no_show' THEN 1 ELSE 0 END) as no_show")
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
+            ->groupBy('label')
+            ->orderBy('label')
             ->get()
-            ->groupBy(fn ($appointment) => $this->getGroupLabel($appointment->appointment_date, $period))
-            ->map(fn ($appointments, $label) => [
-                'label' => (string) $label,
-                'completed' => $appointments->where('status', 'completed')->count(),
-                'cancelled' => $appointments->where('status', 'cancelled')->count(),
-                'no_show' => $appointments->where('status', 'no_show')->count(),
-            ])
-            ->sortBy('label')
-            ->values();
+            ->map(fn ($row) => [
+                'label' => (string) $row->label,
+                'completed' => (int) $row->completed,
+                'cancelled' => (int) $row->cancelled,
+                'no_show' => (int) $row->no_show,
+            ]);
 
         return response()->json($rows);
     }
@@ -169,18 +180,19 @@ class AnalyticsController extends Controller
     {
         $range = $this->getDateRange($request->period());
 
-        $rows = Appointment::withTrashed()->with('service:id,name')
-            ->where('status', 'completed')
-            ->where('appointment_date', '>=', $range['from'])
-            ->where('appointment_date', '<', $range['end_exclusive'])
+        $rows = DB::table('appointments')
+            ->join('services', 'services.id', '=', 'appointments.service_id')
+            ->selectRaw('services.name as service_name, COUNT(*) as completed_count, SUM(appointments.price) as revenue')
+            ->where('appointments.status', 'completed')
+            ->where('appointments.appointment_date', '>=', $range['from'])
+            ->where('appointments.appointment_date', '<', $range['end_exclusive'])
+            ->groupBy('services.name')
             ->get()
-            ->groupBy(fn ($appt) => $appt->service?->name ?? 'Unknown')
-            ->map(fn ($appts, $name) => [
-                'service_name' => $name,
-                'completed_count' => $appts->count(),
-                'revenue' => (float) $appts->sum('price'),
-            ])
-            ->values();
+            ->map(fn ($row) => [
+                'service_name' => (string) $row->service_name,
+                'completed_count' => (int) $row->completed_count,
+                'revenue' => (float) $row->revenue,
+            ]);
 
         return response()->json($rows);
     }
@@ -189,23 +201,20 @@ class AnalyticsController extends Controller
     {
         $range = $this->getDateRange($request->period());
 
-        $rows = Appointment::withTrashed()->with('barber:id,fullname')
-            ->whereIn('status', ['completed', 'cancelled', 'no_show'])
-            ->where('appointment_date', '>=', $range['from'])
-            ->where('appointment_date', '<', $range['end_exclusive'])
+        $rows = DB::table('appointments')
+            ->join('users', 'users.id', '=', 'appointments.barber_user_id')
+            ->selectRaw("users.fullname as barber_name, SUM(CASE WHEN appointments.status = 'completed' THEN 1 ELSE 0 END) as completed_count, SUM(CASE WHEN appointments.status = 'completed' THEN appointments.price ELSE 0 END) as revenue, COUNT(*) as total_appointments")
+            ->whereIn('appointments.status', ['completed', 'cancelled', 'no_show'])
+            ->where('appointments.appointment_date', '>=', $range['from'])
+            ->where('appointments.appointment_date', '<', $range['end_exclusive'])
+            ->groupBy('users.fullname')
             ->get()
-            ->groupBy(fn ($appt) => $appt->barber?->fullname ?? 'Unknown')
-            ->map(function ($appts, $name) {
-                $completedAppts = $appts->where('status', 'completed');
-
-                return [
-                    'barber_name' => $name,
-                    'completed_count' => $completedAppts->count(),
-                    'revenue' => (float) $completedAppts->sum('price'),
-                    'total_appointments' => $appts->count(),
-                ];
-            })
-            ->values();
+            ->map(fn ($row) => [
+                'barber_name' => (string) $row->barber_name,
+                'completed_count' => (int) $row->completed_count,
+                'revenue' => (float) $row->revenue,
+                'total_appointments' => (int) $row->total_appointments,
+            ]);
 
         return response()->json($rows);
     }
@@ -239,18 +248,15 @@ class AnalyticsController extends Controller
     {
         $range = $this->getDateRange($request->period());
 
-        $rows = Appointment::withTrashed()->select(['appointment_time'])
+        $rows = DB::table('appointments')
+            ->selectRaw('SUBSTR(appointment_time, 1, 5) as hour, COUNT(*) as count')
             ->whereIn('status', ['completed', 'approved'])
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
+            ->groupBy('hour')
+            ->orderBy('hour')
             ->get()
-            ->groupBy(fn ($appointment) => substr((string) $appointment->appointment_time, 0, 5))
-            ->map(fn ($appointments, $hour) => [
-                'hour' => $hour,
-                'count' => $appointments->count(),
-            ])
-            ->sortBy('hour')
-            ->values();
+            ->map(fn ($row) => ['hour' => (string) $row->hour, 'count' => (int) $row->count]);
 
         return response()->json($rows);
     }
@@ -260,22 +266,24 @@ class AnalyticsController extends Controller
         $range = $this->getDateRange($request->period());
 
         $dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        $rows = Appointment::withTrashed()->select(['appointment_date', 'status'])
+        $rows = DB::table('appointments')
+            ->selectRaw("(CAST(strftime('%w', appointment_date) AS INTEGER) + 6) % 7 as day_index, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed, SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled, SUM(CASE WHEN status = 'no_show' THEN 1 ELSE 0 END) as no_show, COUNT(*) as total")
             ->where('appointment_date', '>=', $range['from'])
             ->where('appointment_date', '<', $range['end_exclusive'])
+            ->groupBy('day_index')
             ->get()
-            ->groupBy(fn ($appointment) => $appointment->appointment_date->dayOfWeekIso - 1);
+            ->keyBy('day_index');
 
         $result = [];
         for ($i = 0; $i < 7; $i++) {
-            $dayData = $rows->get($i, collect());
+            $dayData = $rows->get($i);
             $result[] = [
                 'day' => $dayNames[$i],
                 'day_index' => $i,
-                'completed' => $dayData->where('status', 'completed')->count(),
-                'cancelled' => $dayData->where('status', 'cancelled')->count(),
-                'no_show' => $dayData->where('status', 'no_show')->count(),
-                'total' => $dayData->count(),
+                'completed' => (int) ($dayData->completed ?? 0),
+                'cancelled' => (int) ($dayData->cancelled ?? 0),
+                'no_show' => (int) ($dayData->no_show ?? 0),
+                'total' => (int) ($dayData->total ?? 0),
             ];
         }
 

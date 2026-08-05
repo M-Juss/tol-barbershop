@@ -266,7 +266,7 @@ export function CustomerService() {
     const shouldPollMessages = activeTicketId !== null && tabView === "chat";
 
     if (shouldPollMessages) {
-      return startPolling(fetchMessages, 3000);
+      return startPolling(fetchMessages, 5000);
     }
 
     if (activeTicketId === null) {
