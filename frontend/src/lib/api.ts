@@ -22,8 +22,14 @@ export class ApiError extends Error {
 
 export const AUTH_UNAUTHORIZED_EVENT = "auth:unauthorized";
 
-const API_PREFIX = "/api/v1";
-const CSRF_COOKIE_URL = "/sanctum/csrf-cookie";
+const API_ORIGIN = (
+  process.env.NEXT_PUBLIC_API_ORIGIN ?? ""
+).replace(/\/$/, "");
+const API_PATH_PREFIX = "/api/v1";
+const CSRF_COOKIE_URL = API_ORIGIN
+  ? `${API_ORIGIN}/sanctum/csrf-cookie`
+  : "/sanctum/csrf-cookie";
+const API_REQUEST_MODE: RequestMode = API_ORIGIN ? "cors" : "same-origin";
 const SAFE_URL_BASE = "https://same-origin.invalid";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const NETWORK_ERROR_MESSAGE =
@@ -306,7 +312,27 @@ function getSafeReferrer(): string | undefined {
   return typeof window === "undefined" ? undefined : `${window.location.origin}/`;
 }
 
-function getRelativeApiUrl(url: string): string {
+function getApiRequestUrl(url: string): string {
+  if (API_ORIGIN) {
+    const parsed = new URL(url);
+    if (
+      parsed.origin !== API_ORIGIN ||
+      parsed.username ||
+      parsed.password
+    ) {
+      throw new Error(`API requests must use ${API_ORIGIN} in direct mode.`);
+    }
+    if (
+      (parsed.pathname !== API_PATH_PREFIX &&
+        !parsed.pathname.startsWith(`${API_PATH_PREFIX}/`)) ||
+      parsed.hash
+    ) {
+      throw new Error(`API requests must stay under ${API_PATH_PREFIX}.`);
+    }
+
+    return `${parsed.origin}${parsed.pathname}${parsed.search}`;
+  }
+
   if (!url.startsWith("/") || url.startsWith("//")) {
     throw new Error("API requests must use a same-origin relative URL.");
   }
@@ -314,11 +340,11 @@ function getRelativeApiUrl(url: string): string {
   const parsed = new URL(url, SAFE_URL_BASE);
   if (
     parsed.origin !== SAFE_URL_BASE ||
-    (parsed.pathname !== API_PREFIX &&
-      !parsed.pathname.startsWith(`${API_PREFIX}/`)) ||
+    (parsed.pathname !== API_PATH_PREFIX &&
+      !parsed.pathname.startsWith(`${API_PATH_PREFIX}/`)) ||
     parsed.hash
   ) {
-    throw new Error(`API requests must stay under ${API_PREFIX}.`);
+    throw new Error(`API requests must stay under ${API_PATH_PREFIX}.`);
   }
 
   return `${parsed.pathname}${parsed.search}`;
@@ -335,7 +361,7 @@ export async function initializeCsrfCookie(force = false): Promise<void> {
         headers: { Accept: "application/json" },
         credentials: "include",
         cache: "no-store",
-        mode: "same-origin",
+        mode: API_REQUEST_MODE,
         redirect: "error",
         referrer: getSafeReferrer(),
         referrerPolicy: "same-origin",
@@ -375,7 +401,11 @@ export async function initializeCsrfCookie(force = false): Promise<void> {
   }
 }
 
-function buildHeaders(options: RequestInit, isFormData: boolean): Headers {
+function buildHeaders(
+  options: RequestInit,
+  isFormData: boolean,
+  stateChanging: boolean,
+): Headers {
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
 
@@ -383,9 +413,11 @@ function buildHeaders(options: RequestInit, isFormData: boolean): Headers {
     headers.set("Content-Type", "application/json");
   }
 
-  const csrfToken = getCookie("XSRF-TOKEN");
-  if (csrfToken) {
-    headers.set("X-XSRF-TOKEN", csrfToken);
+  if (stateChanging) {
+    const csrfToken = getCookie("XSRF-TOKEN");
+    if (csrfToken) {
+      headers.set("X-XSRF-TOKEN", csrfToken);
+    }
   }
 
   return headers;
@@ -396,7 +428,7 @@ async function request(
   options: RequestInit,
   clearAuthOnUnauthorized: boolean,
 ) {
-  const relativeUrl = getRelativeApiUrl(url);
+  const apiUrl = getApiRequestUrl(url);
   const method = (options.method ?? "GET").toUpperCase();
   const stateChanging = isStateChanging(method);
   const isFormData =
@@ -407,14 +439,14 @@ async function request(
   }
 
   const performFetch = () =>
-    safeFetch(relativeUrl, {
+    safeFetch(apiUrl, {
       ...options,
       method,
-      headers: buildHeaders(options, isFormData),
+      headers: buildHeaders(options, isFormData, stateChanging),
       credentials: "include",
       cache:
         stateChanging ? "no-store" : (options.cache ?? "no-store"),
-      mode: "same-origin",
+      mode: API_REQUEST_MODE,
       redirect: "error",
       referrer: getSafeReferrer(),
       referrerPolicy: "same-origin",

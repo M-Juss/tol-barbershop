@@ -1,6 +1,6 @@
 # Production Deployment Notes
 
-This deployment uses Netlify Free for `frontend/` and Hostinger Premium Shared Hosting for `backend/`. Browsers must call Laravel through the Netlify same-origin rewrites at `/api/*` and `/sanctum/*`. Do not configure the browser to call the backend hostname directly.
+This deployment uses Netlify Free for `frontend/` and Hostinger Premium Shared Hosting for `backend/`. The normal production architecture is direct browser-to-backend: the frontend at `https://www.saysontest.online` and the Laravel API at `https://api.saysontest.online`, which the browser calls directly using CORS and credentials. The Netlify `/api/*` and `/sanctum/*` rewrites are retained temporarily only as a migration fallback while direct mode is validated; they are not the intended permanent browser request path.
 
 Netlify Free allows commercial use with custom domains. Use branch-based Deploy Previews only for development or non-production validation; do not point authenticated production traffic at a Deploy Preview URL.
 
@@ -33,16 +33,21 @@ Set these Netlify environment variables in the dashboard:
 
 ```dotenv
 NODE_VERSION=22
-BACKEND_URL=https://backend.example.com
+BACKEND_URL=https://api.saysontest.online
+NEXT_PUBLIC_API_ORIGIN=https://api.saysontest.online
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=<same public VAPID key used by Laravel>
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=<your Cloudinary cloud name>
 ```
 
-`BACKEND_URL` must be a clean HTTPS origin without credentials, a path, query string, or fragment. The production build intentionally fails when it is missing or unsafe.
+`BACKEND_URL` must be a clean HTTPS origin without credentials, a path, query string, or fragment. The production build intentionally fails when it is missing or unsafe. It remains present while the `/api/*` and `/sanctum/*` rewrites exist as fallback.
 
-Do not set `NEXT_PUBLIC_API_URL` to the backend hostname. The application fixes it to `/api/v1` so cookies and CSRF remain same-origin from the browser's perspective.
+`NEXT_PUBLIC_API_ORIGIN` enables direct browser-to-backend mode. `NEXT_PUBLIC_API_URL` is derived by `frontend/next.config.ts` from `NEXT_PUBLIC_API_ORIGIN` and must not be manually configured. With it set, browser API requests go to `https://api.saysontest.online/api/v1/*`, CSRF initialization goes to `https://api.saysontest.online/sanctum/csrf-cookie`, and requests use `credentials: include`. GET/HEAD/OPTIONS requests do not send `X-XSRF-TOKEN`; state-changing requests send it when available. The frontend CSP `connect-src` must permit `https://api.saysontest.online`.
 
 Use one stable production frontend hostname (the Netlify custom domain). Deploy Preview URLs are development-only and must not be added to backend CORS, Sanctum stateful domains, or any production allowlist.
+
+## Temporary Fallback Rewrites
+
+The Next.js rewrites at `/api/*` and `/sanctum/*` remain available during the migration and act as a fallback while direct mode is validated (via `BACKEND_URL`). They are not the intended normal browser request path once `NEXT_PUBLIC_API_ORIGIN` is enabled, and they should not be treated as permanent architecture. Production cutover is not yet assumed complete.
 
 ## Laravel Environment
 
@@ -51,8 +56,8 @@ Create `backend/.env` on Hostinger via the File Manager or SSH. Set owner-only p
 ```dotenv
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://backend.example.com
-FRONTEND_URL=https://www.example.com
+APP_URL=https://api.saysontest.online
+FRONTEND_URL=https://www.saysontest.online
 SHOP_TIMEZONE=Asia/Manila
 APP_KEY=<php artisan key:generate --show>
 
@@ -70,12 +75,12 @@ DB_PASSWORD=<strong database password>
 SESSION_DRIVER=database
 SESSION_LIFETIME=120
 SESSION_ENCRYPT=true
-SESSION_DOMAIN=null
+SESSION_DOMAIN=.saysontest.online
 SESSION_SECURE_COOKIE=true
 SESSION_HTTP_ONLY=true
 SESSION_SAME_SITE=lax
 
-SANCTUM_STATEFUL_DOMAINS=www.example.com
+SANCTUM_STATEFUL_DOMAINS=www.saysontest.online,saysontest.online
 
 CACHE_STORE=database
 QUEUE_CONNECTION=sync
@@ -104,7 +109,7 @@ DEFAULT_MANAGER_NAME=<manager fullname>
 DEFAULT_MANAGER_CONTACT=<manager phone>
 ```
 
-`SESSION_DOMAIN` must remain unset or `null`. Laravel cookies travel to the browser through the Netlify rewrite, so assigning the backend domain to them will break login and CSRF.
+`SESSION_DOMAIN=.saysontest.online` is required for the sibling-subdomain Sanctum SPA architecture. `www.saysontest.online` and `api.saysontest.online` are different origins but the same registrable site, so a shared cookie domain lets the browser return the session and `XSRF-TOKEN` cookies to the API origin automatically. Cookies are sent with `Secure`, `SameSite=Lax`, and `HttpOnly` (session cookie), which keeps CSRF-token reads protected in this cross-origin but same-site setup. This configuration has been manually verified.
 
 Do not add Deploy Preview domains, wildcard domains, or unused ngrok domains to `SANCTUM_STATEFUL_DOMAINS` or CORS in production.
 
@@ -117,6 +122,18 @@ Configure the Hostinger hPanel cron scheduler to run Laravel's scheduler every m
 ```
 
 Without this cron job, inactive support tickets are not cancelled automatically.
+
+## CORS and Sanctum
+
+Because the browser calls the backend directly, credentialed CORS is mandatory:
+
+- Credentialed CORS means `Access-Control-Allow-Origin` must echo exactly `https://www.saysontest.online` with `Access-Control-Allow-Credentials: true`. Never use `Access-Control-Allow-Origin: *`.
+- CORS must cover `api/*` (including `/api/v1/*`) and `sanctum/csrf-cookie`.
+- The `OPTIONS` preflight must allow the production Origin, the methods used (GET, POST, PUT, PATCH, DELETE, OPTIONS), and the headers `content-type`, `x-xsrf-token`, and `accept`.
+- `SANCTUM_STATEFUL_DOMAINS=www.saysontest.online,saysontest.online` makes Sanctum treat the frontend origin as stateful, so the SPA session cookie authenticates API calls.
+- Session authentication remains cookie-based. The `XSRF-TOKEN` cookie (readable by the frontend) must be echoed back as the `X-XSRF-TOKEN` header on state-changing requests; the `HttpOnly` session cookie is sent automatically by the shared cookie domain.
+
+This exact CORS/CSRF behavior has been manually verified against `https://api.saysontest.online` (credentialed responses, preflight 204, CSRF cookie issuance, login, and authenticated `/api/v1/user`).
 
 ## Shared Hosting Layout
 
@@ -193,18 +210,32 @@ Never expose a seeded manager account while DNS or the public frontend is open t
 After deployment, verify frontend headers:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sS -D - -o /dev/null https://www.example.com/
+curl --proto '=https' --tlsv1.2 -sS -D - -o /dev/null https://www.saysontest.online/
 ```
 
 Confirm the response contains CSP, HSTS, frame denial, `nosniff`, referrer policy, permissions policy, and no `X-Powered-By` header.
 
-Verify the CSRF handshake through Netlify, not through the backend hostname:
+Verify the CSRF handshake directly against the backend as the primary test, using the frontend origin and referer so CORS and shared cookies are exercised:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sS -c cookies.txt -D - -o /dev/null https://www.example.com/sanctum/csrf-cookie
+curl --proto '=https' --tlsv1.2 -sS -c cookies.txt -D - -o /dev/null \
+  -H "Origin: https://www.saysontest.online" \
+  -H "Referer: https://www.saysontest.online/" \
+  https://api.saysontest.online/sanctum/csrf-cookie
 ```
 
-Confirm an `XSRF-TOKEN` cookie is returned with `Secure` and `SameSite=Lax`. Confirm authenticated state-changing requests without a matching XSRF header receive HTTP 419.
+Confirm a `204` response that sets `XSRF-TOKEN` and session cookies scoped to `.saysontest.online` with `Secure` and `SameSite=Lax`, plus `Access-Control-Allow-Origin: https://www.saysontest.online` and `Access-Control-Allow-Credentials: true`. Confirm authenticated state-changing requests without a matching XSRF header receive HTTP 419.
+
+Verify direct authenticated API traffic from the frontend origin:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sS -b cookies.txt \
+  -H "Origin: https://www.saysontest.online" \
+  -H "Referer: https://www.saysontest.online/" \
+  https://api.saysontest.online/api/v1/user
+```
+
+It should return HTTP 200 with the current user and the credentialed CORS headers when a valid session exists.
 
 Verify these application cases manually:
 
@@ -229,10 +260,12 @@ Hostinger Premium's weekly backup is not sufficient for appointment data. Config
 Configure uptime checks at five-minute intervals for all three paths and send failures to an actively monitored email or phone:
 
 ```text
-https://www.example.com/
-https://www.example.com/api/v1/public-booking-settings
-https://backend.example.com/up
+https://www.saysontest.online/
+https://api.saysontest.online/api/v1/public-booking-settings
+https://api.saysontest.online/up
 ```
+
+API health and application checks target `api.saysontest.online` directly rather than routing API monitoring through the frontend. Frontend health stays on `https://www.saysontest.online/`, and backend health stays on `https://api.saysontest.online/up`. Public API checks use `https://api.saysontest.online/api/v1/...`.
 
 Configure error alerts for backend 5xx responses and Laravel production log errors. Review repeated 401, 403, 419, 422, and 429 responses for authentication, CSRF, validation, or abuse patterns. In Netlify, enable credit-usage notifications before the monthly allowance is exhausted and set more than one threshold so there is time to react.
 

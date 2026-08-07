@@ -139,9 +139,18 @@ export const confirmEmailVerificationRequest = async (
     throw new Error("Invalid email verification link.");
   }
 
-  return publicFetch(`${parsed.pathname}${parsed.search}`, {
-    method: "POST",
-  });
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  if (!apiUrl) {
+    throw new Error("NEXT_PUBLIC_API_URL is not configured");
+  }
+
+  return publicFetch(
+    `${apiUrl}${parsed.pathname.slice("/api/v1".length)}${parsed.search}`,
+    {
+      method: "POST",
+    },
+  );
 };
 
 type CheckVerificationStatusResponse = {

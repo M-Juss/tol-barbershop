@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 const configuredBackendUrl = process.env.BACKEND_URL?.replace(/\/$/, "");
+const publicApiOrigin = process.env.NEXT_PUBLIC_API_ORIGIN?.replace(/\/$/, "");
 
 if (!isDevelopment && !configuredBackendUrl) {
   throw new Error("BACKEND_URL must be configured for production builds.");
@@ -52,7 +53,7 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://res.cloudinary.com https://maps.gstatic.com https://maps.googleapis.com",
   "font-src 'self' data:",
-  `connect-src 'self'${isDevelopment ? ` ws: wss: http://localhost:8000 ${configuredBackendUrl || "http://localhost:8000"}` : ""}`,
+  `connect-src 'self' https://api.saysontest.online${isDevelopment ? ` ws: wss: http://localhost:8000 ${configuredBackendUrl || "http://localhost:8000"}` : ""}`,
   "frame-src https://www.google.com https://maps.google.com",
   "media-src 'self' https://res.cloudinary.com",
   "manifest-src 'self'",
@@ -97,7 +98,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   env: {
-    NEXT_PUBLIC_API_URL: "/api/v1",
+    NEXT_PUBLIC_API_URL: publicApiOrigin
+      ? `${publicApiOrigin}/api/v1`
+      : "/api/v1",
   },
   allowedDevOrigins,
   images: {
