@@ -31,12 +31,22 @@ const RealtimeContext = createContext<RealtimeContextValue | null>(null);
 const POLL_INTERVAL_MS = 15_000;
 const POLL_JITTER_MS = 1_000;
 const CHANGE_REQUEST_TIMEOUT_MS = 15_000;
+const INITIAL_CHANGE_POLL_DELAY_MS = 5_000;
+const INITIAL_POLL_JITTER_MS = 1_000;
 
 function getPollDelay(): number {
   return (
     POLL_INTERVAL_MS +
     Math.floor(Math.random() * (POLL_JITTER_MS * 2 + 1)) -
     POLL_JITTER_MS
+  );
+}
+
+function getInitialPollDelay(): number {
+  return (
+    INITIAL_CHANGE_POLL_DELAY_MS +
+    Math.floor(Math.random() * (INITIAL_POLL_JITTER_MS * 2 + 1)) -
+    INITIAL_POLL_JITTER_MS
   );
 }
 
@@ -106,6 +116,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     let stopped = false;
     let inFlight = false;
     let rerunRequested = false;
+    let firstPoll = true;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     let controller: AbortController | undefined;
 
@@ -121,6 +132,13 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       if (backoffRemainingMs > 0) {
         if (timeoutId) clearTimeout(timeoutId);
         scheduleNext(backoffRemainingMs);
+        return;
+      }
+      if (firstPoll) {
+        firstPoll = false;
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = undefined;
+        scheduleNext(getInitialPollDelay());
         return;
       }
       if (inFlight) {
