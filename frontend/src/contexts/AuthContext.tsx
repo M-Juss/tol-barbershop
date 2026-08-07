@@ -15,7 +15,7 @@ import {
   type AuthUser,
   type LoginResponse,
 } from "@/services/shared/auth.api";
-import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/api";
+import { AUTH_UNAUTHORIZED_EVENT, ApiError } from "@/lib/api";
 import {
   enableBrowserPush,
   getBrowserPushSubscription,
@@ -96,10 +96,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearAuthRoleCookie();
         setUser(null);
       }
-    } catch {
-      clearAuthRoleCookie();
-      setUser(null);
-      redirectFromProtectedRoute("session_expired");
+    } catch (error) {
+      const isAuthFailure =
+        error instanceof ApiError &&
+        (error.status === 401 || error.code === "ACCOUNT_DISABLED");
+
+      if (isAuthFailure) {
+        clearAuthRoleCookie();
+        setUser(null);
+        redirectFromProtectedRoute(
+          error instanceof ApiError && error.code === "ACCOUNT_DISABLED"
+            ? "account_disabled"
+            : "session_expired",
+        );
+      }
+
+      // Temporary errors (429, network, 5xx) are intentionally ignored
+      // to preserve the existing authenticated session.
     }
   }, []);
 

@@ -33,11 +33,86 @@ const SERVER_ERROR_MESSAGE =
 const GET_MAX_RETRIES = 2;
 const RETRY_BASE_DELAY_MS = 1_000;
 const RETRY_MAX_DELAY_MS = 10_000;
+const MAX_CONCURRENT_GETS = 2;
 
 let csrfInitialization: Promise<void> | null = null;
 
 const inFlightGetRequests = new Map<string, Promise<unknown>>();
 const dedupConsumerCount = new Map<string, number>();
+
+let activeGetCount = 0;
+const waitingGetQueue: Array<{
+  signal: AbortSignal | null | undefined;
+  resolve: () => void;
+  reject: (reason: unknown) => void;
+  settled: boolean;
+  handleAbort: () => void;
+}> = [];
+
+function createAbortError(): Error {
+  if (typeof DOMException !== "undefined") {
+    return new DOMException("The operation was aborted.", "AbortError");
+  }
+  const error = new Error("The operation was aborted.");
+  error.name = "AbortError";
+  return error;
+}
+
+async function acquireGetSlot(
+  signal: AbortSignal | null | undefined,
+): Promise<void> {
+  if (signal?.aborted) {
+    throw createAbortError();
+  }
+
+  if (activeGetCount < MAX_CONCURRENT_GETS) {
+    activeGetCount++;
+    return;
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const entry = {
+      signal,
+      resolve,
+      reject,
+      settled: false,
+      handleAbort: () => {
+        const index = waitingGetQueue.indexOf(entry);
+        if (index >= 0) {
+          waitingGetQueue.splice(index, 1);
+        }
+        if (!entry.settled) {
+          entry.settled = true;
+          entry.reject(createAbortError());
+        }
+      },
+    };
+
+    waitingGetQueue.push(entry);
+    signal?.addEventListener("abort", entry.handleAbort, { once: true });
+    if (signal?.aborted) {
+      entry.handleAbort();
+    }
+  });
+}
+
+function releaseGetSlot(): void {
+  activeGetCount = Math.max(0, activeGetCount - 1);
+
+  while (waitingGetQueue.length > 0) {
+    const entry = waitingGetQueue.shift()!;
+    entry.signal?.removeEventListener("abort", entry.handleAbort);
+    if (entry.settled) continue;
+    if (entry.signal?.aborted) {
+      entry.settled = true;
+      entry.reject(createAbortError());
+      continue;
+    }
+    activeGetCount++;
+    entry.resolve();
+    return;
+  }
+}
 
 function parseRetryAfter(value: string | null): number | null {
   if (!value) return null;
@@ -199,14 +274,27 @@ function getDeduplicationKey(url: string, method: string): string | null {
   return `get:${url}`;
 }
 
-function getRetryDelay(attempt: number): number {
+function getRetryDelay(attempt: number, lastError?: unknown): number {
+  if (
+    lastError instanceof ApiError &&
+    lastError.status === 429 &&
+    lastError.retryAfterSeconds != null &&
+    lastError.retryAfterSeconds > 0
+  ) {
+    const retryAfterMs = lastError.retryAfterSeconds * 1_000;
+    const jitter = Math.random() * 1_000;
+    return Math.min(retryAfterMs + jitter, RETRY_MAX_DELAY_MS);
+  }
+
   const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
   return Math.min(delay + Math.random() * RETRY_BASE_DELAY_MS, RETRY_MAX_DELAY_MS);
 }
 
-function isRetryableError(error: unknown): boolean {
+function isRetryableError(error: unknown, method: string): boolean {
   if (error instanceof ApiError) {
-    return error.status === 0 || error.code === "NETWORK_ERROR";
+    if (error.status === 0 || error.code === "NETWORK_ERROR") return true;
+    if (error.status === 429 && method === "GET") return true;
+    return false;
   }
   if (error instanceof DOMException && error.name === "AbortError") {
     return false;
@@ -332,11 +420,24 @@ async function request(
       referrerPolicy: "same-origin",
     });
 
-  let response = await performFetch();
+  const performNetworkRequest = async (): Promise<Response> => {
+    if (method !== "GET") {
+      return performFetch();
+    }
+
+    await acquireGetSlot(options.signal);
+    try {
+      return await performFetch();
+    } finally {
+      releaseGetSlot();
+    }
+  };
+
+  let response = await performNetworkRequest();
 
   if (stateChanging && response.status === 419) {
     await initializeCsrfCookie(true);
-    response = await performFetch();
+    response = await performNetworkRequest();
   }
 
   return parseResponse(response, clearAuthOnUnauthorized);
@@ -403,8 +504,8 @@ async function requestWithDedupAndRetry(
         dedupConsumerCount.delete(dedupKey);
       }
 
-      if (attempt < maxRetries && isRetryableError(error)) {
-        const delayMs = getRetryDelay(attempt);
+      if (attempt < maxRetries && isRetryableError(error, method)) {
+        const delayMs = getRetryDelay(attempt, error);
         await new Promise<void>((resolve) => {
           const timer = setTimeout(resolve, delayMs);
           if (options.signal) {
